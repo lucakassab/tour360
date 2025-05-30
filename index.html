@@ -15,10 +15,9 @@
   <script>
     const owner = 'lucakassab';
     const repo = 'tour360';
-    const branch = 'main';
 
     async function getFirstMedia() {
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=main`;
       try {
         const res = await fetch(apiUrl);
         if (!res.ok) throw new Error(`GitHub API respondeu status ${res.status}`);
@@ -27,7 +26,7 @@
           if (file.type === 'file' && /\.(jpg|jpeg|png|gif|mp4|webm)$/i.test(file.name)) {
             return {
               name: file.name,
-              url: file.download_url
+              url: `https://${owner}.github.io/${repo}/media/${file.name}`
             };
           }
         }
