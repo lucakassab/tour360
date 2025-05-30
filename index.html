@@ -57,6 +57,19 @@
       }
     }
 
+    function applyStereoHalf(entity) {
+      // Mostra metade superior (um olho) no modo não-VR
+      entity.setAttribute('material', 'offset', '0 0.5');
+      entity.setAttribute('material', 'repeat', '1 0.5');
+    }
+
+    function resetStereo(entity) {
+      // Restaura mapeamento estéreo top-bottom para VR
+      entity.setAttribute('stereo', 'top-bottom');
+      entity.setAttribute('material', 'offset', '0 0');
+      entity.setAttribute('material', 'repeat', '1 1');
+    }
+
     function loadMedia(filename) {
       clearScene();
       const url = `${baseUrl}/${filename}`;
@@ -86,6 +99,7 @@
         currentEntity = vs;
 
         if (isStereo) {
+          // Inicia com metade para PC
           applyStereoHalf(vs);
           scene.addEventListener('enter-vr', () => resetStereo(vs));
           scene.addEventListener('exit-vr', () => applyStereoHalf(vs));
@@ -99,21 +113,15 @@
         currentEntity = sky;
 
         if (isStereo) {
+          // Inicia com metade para PC
           applyStereoHalf(sky);
           scene.addEventListener('enter-vr', () => resetStereo(sky));
           scene.addEventListener('exit-vr', () => applyStereoHalf(sky));
         }
+
+      } else {
+        console.error('Tipo de mídia não suportado:', url);
       }
-    }
-
-    function applyStereoHalf(entity) {
-      entity.setAttribute('material', 'offset', '0 0.5');
-      entity.setAttribute('material', 'repeat', '1 0.5');
-    }
-
-    function resetStereo(entity) {
-      entity.setAttribute('material', 'offset', '0 0');
-      entity.setAttribute('material', 'repeat', '1 1');
     }
 
     async function init() {
