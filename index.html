@@ -10,75 +10,78 @@
   </style>
 </head>
 <body>
-  <a-scene embedded></a-scene>
+  <a-scene embedded>
+    <!-- Listens for VR mode to toggle stereo mapping -->
+  </a-scene>
 
   <script>
     const owner = 'lucakassab';
     const repo = 'tour360';
+    const branch = 'main';
 
     async function getFirstMedia() {
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=main`;
-      try {
-        const res = await fetch(apiUrl);
-        if (!res.ok) throw new Error(`GitHub API respondeu status ${res.status}`);
-        const files = await res.json();
-        for (const file of files) {
-          if (file.type === 'file' && /\.(jpg|jpeg|png|gif|mp4|webm)$/i.test(file.name)) {
-            return {
-              name: file.name,
-              url: `https://${owner}.github.io/${repo}/media/${file.name}`
-            };
-          }
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
+      const res = await fetch(apiUrl);
+      if (!res.ok) throw new Error(`GitHub API respondeu status ${res.status}`);
+      const files = await res.json();
+      for (const file of files) {
+        if (file.type === 'file' && /\.(jpg|jpeg|png|gif|mp4|webm)$/i.test(file.name)) {
+          return { name: file.name, url: file.download_url };
         }
-        return null;
-      } catch (e) {
-        console.error('Erro ao listar mídia no GitHub:', e);
-        return null;
       }
+      return null;
+    }
+
+    function applyStereoHalf(entity) {
+      entity.removeAttribute('stereo');
+      entity.setAttribute('material', 'offset', '0 0.5');
+      entity.setAttribute('material', 'repeat', '1 0.5');
+    }
+
+    function resetStereo(entity) {
+      entity.setAttribute('stereo', 'top-bottom');
+      entity.setAttribute('material', 'offset', '0 0');
+      entity.setAttribute('material', 'repeat', '1 1');
     }
 
     async function init() {
       const media = await getFirstMedia();
-      if (!media) {
-        console.error('Nenhuma mídia encontrada em /media/ no GitHub.');
-        return;
-      }
-
+      if (!media) { console.error('Nenhuma mídia encontrada em /media/ no GitHub.'); return; }
       const mediaUrl = media.url;
       const name = media.name.toLowerCase();
       const isVideo = /\.(mp4|webm)$/i.test(name);
       const isImage = /\.(jpg|jpeg|png|gif)$/i.test(name);
       const isStereo = /_stereo\./i.test(name);
-      const isMono = /_mono\./i.test(name);
-      const stereo = isStereo ? 'stereo' : 'mono';
-      const layout = isStereo ? 'top-bottom' : '';
       const scene = document.querySelector('a-scene');
 
       if (isVideo) {
         const video = document.createElement('video');
-        video.id = 'mediaVideo';
-        video.src = mediaUrl;
-        video.loop = true;
-        video.autoplay = true;
-        video.crossOrigin = 'anonymous';
-        video.playsInline = true;
-        video.muted = true;
+        video.id = 'mediaVideo'; video.src = mediaUrl;
+        video.loop = true; video.autoplay = true; video.crossOrigin = 'anonymous';
+        video.playsInline = true; video.muted = true;
         video.setAttribute('webkit-playsinline', '');
         document.body.appendChild(video);
 
-        const videosphere = document.createElement('a-videosphere');
-        videosphere.setAttribute('src', '#mediaVideo');
-        if (layout) videosphere.setAttribute('stereo', layout);
-        scene.appendChild(videosphere);
+        const vs = document.createElement('a-videosphere');
+        vs.setAttribute('src', '#mediaVideo');
+        if (isStereo) vs.setAttribute('stereo', 'top-bottom');
+        scene.appendChild(vs);
+
+        if (!scene.is('vr-mode') && isStereo) applyStereoHalf(vs);
+        scene.addEventListener('enter-vr', () => { if (isStereo) resetStereo(vs); });
+        scene.addEventListener('exit-vr', () => { if (isStereo) applyStereoHalf(vs); });
 
       } else if (isImage) {
         const sky = document.createElement('a-sky');
         sky.setAttribute('src', mediaUrl);
-        if (layout) sky.setAttribute('stereo', layout);
         scene.appendChild(sky);
 
-      } else {
-        console.error('Tipo de mídia não suportado ou não reconhecido:', mediaUrl);
+        if (isStereo) {
+          sky.setAttribute('stereo', 'top-bottom');
+          applyStereoHalf(sky);
+          scene.addEventListener('enter-vr', () => resetStereo(sky));
+          scene.addEventListener('exit-vr', () => applyStereoHalf(sky));
+        }
       }
     }
 
