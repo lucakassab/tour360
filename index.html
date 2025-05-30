@@ -48,9 +48,10 @@
       const name = media.name.toLowerCase();
       const isVideo = /\.(mp4|webm)$/i.test(name);
       const isImage = /\.(jpg|jpeg|png|gif)$/i.test(name);
-      const params = new URLSearchParams(window.location.search);
-      const stereo = params.get('stereo') || 'mono';
-      const layout = stereo === 'stereo' ? 'top-bottom' : '';
+      const isStereo = /_stereo\./i.test(name);
+      const isMono = /_mono\./i.test(name);
+      const stereo = isStereo ? 'stereo' : 'mono';
+      const layout = isStereo ? 'top-bottom' : '';
       const scene = document.querySelector('a-scene');
 
       if (isVideo) {
