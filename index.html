@@ -33,7 +33,8 @@
     }
 
     function applyStereoHalf(entity) {
-      entity.removeAttribute('stereo');
+      // Ajusta UV para mostrar apenas a metade superior (olho direito por exemplo)
+      // Mantém atributo stereo para VR
       entity.setAttribute('material', 'offset', '0 0.5');
       entity.setAttribute('material', 'repeat', '1 0.5');
     }
