@@ -27,7 +27,10 @@
         const files = await res.json();
         for (const file of files) {
           if (file.type === 'file' && /\.(jpg|jpeg|png|gif|mp4|webm)$/i.test(file.name)) {
-            return file.download_url;
+            return {
+              name: file.name,
+              url: file.download_url
+            };
           }
         }
         return null;
@@ -38,14 +41,15 @@
     }
 
     async function init() {
-      const mediaUrl = await getFirstMedia();
-      if (!mediaUrl) {
+      const media = await getFirstMedia();
+      if (!media) {
         console.error('Nenhuma mídia encontrada em /media/ no GitHub.');
         return;
       }
 
-      const ext = mediaUrl.split('.').pop().split('?')[0].toLowerCase();
-      const type = ['mp4', 'webm'].includes(ext) ? 'video' : 'image';
+      const mediaUrl = media.url;
+      const name = media.name.toLowerCase();
+      const type = name.endsWith('.mp4') || name.endsWith('.webm') ? 'video' : 'image';
       const params = new URLSearchParams(window.location.search);
       const stereo = params.get('stereo') || 'mono';
       const layout = stereo === 'stereo' ? 'top-bottom' : '';
@@ -55,10 +59,12 @@
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = mediaUrl;
-        video.loop = '';
-        video.autoplay = '';
+        video.loop = true;
+        video.autoplay = true;
         video.crossOrigin = 'anonymous';
-        video.playsInline = '';
+        video.playsInline = true;
+        video.muted = true; // obrigatório pra autoplay funcionar
+        video.setAttribute('webkit-playsinline', '');
         document.body.appendChild(video);
 
         const videosphere = document.createElement('a-videosphere');
