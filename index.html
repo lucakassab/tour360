@@ -13,12 +13,10 @@
   <a-scene embedded></a-scene>
 
   <script>
-    // CONFIGURADO PARA SEU REPOSITÓRIO GitHub
     const owner = 'lucakassab';
     const repo = 'tour360';
     const branch = 'main';
 
-    // Busca o primeiro arquivo de mídia na pasta /media/ do GitHub via API
     async function getFirstMedia() {
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
       try {
@@ -40,6 +38,19 @@
       }
     }
 
+    async function detectMediaType(url) {
+      try {
+        const head = await fetch(url, { method: 'HEAD' });
+        const contentType = head.headers.get('Content-Type') || '';
+        if (contentType.startsWith('video/')) return 'video';
+        if (contentType.startsWith('image/')) return 'image';
+        return 'unknown';
+      } catch (err) {
+        console.error('Erro ao detectar o tipo da mídia:', err);
+        return 'unknown';
+      }
+    }
+
     async function init() {
       const media = await getFirstMedia();
       if (!media) {
@@ -48,12 +59,12 @@
       }
 
       const mediaUrl = media.url;
-      const name = media.name.toLowerCase();
-      const type = name.endsWith('.mp4') || name.endsWith('.webm') ? 'video' : 'image';
       const params = new URLSearchParams(window.location.search);
       const stereo = params.get('stereo') || 'mono';
       const layout = stereo === 'stereo' ? 'top-bottom' : '';
       const scene = document.querySelector('a-scene');
+
+      const type = await detectMediaType(mediaUrl);
 
       if (type === 'video') {
         const video = document.createElement('video');
@@ -63,7 +74,7 @@
         video.autoplay = true;
         video.crossOrigin = 'anonymous';
         video.playsInline = true;
-        video.muted = true; // obrigatório pra autoplay funcionar
+        video.muted = true;
         video.setAttribute('webkit-playsinline', '');
         document.body.appendChild(video);
 
@@ -71,11 +82,15 @@
         videosphere.setAttribute('src', '#mediaVideo');
         if (layout) videosphere.setAttribute('stereo', layout);
         scene.appendChild(videosphere);
-      } else {
+
+      } else if (type === 'image') {
         const sky = document.createElement('a-sky');
         sky.setAttribute('src', mediaUrl);
         if (layout) sky.setAttribute('stereo', layout);
         scene.appendChild(sky);
+
+      } else {
+        console.error('Tipo de mídia não suportado ou não reconhecido:', mediaUrl);
       }
     }
 
