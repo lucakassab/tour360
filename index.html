@@ -38,19 +38,6 @@
       }
     }
 
-    async function detectMediaType(url) {
-      try {
-        const head = await fetch(url, { method: 'HEAD' });
-        const contentType = head.headers.get('Content-Type') || '';
-        if (contentType.startsWith('video/')) return 'video';
-        if (contentType.startsWith('image/')) return 'image';
-        return 'unknown';
-      } catch (err) {
-        console.error('Erro ao detectar o tipo da mídia:', err);
-        return 'unknown';
-      }
-    }
-
     async function init() {
       const media = await getFirstMedia();
       if (!media) {
@@ -59,14 +46,15 @@
       }
 
       const mediaUrl = media.url;
+      const name = media.name.toLowerCase();
+      const isVideo = /\.(mp4|webm)$/i.test(name);
+      const isImage = /\.(jpg|jpeg|png|gif)$/i.test(name);
       const params = new URLSearchParams(window.location.search);
       const stereo = params.get('stereo') || 'mono';
       const layout = stereo === 'stereo' ? 'top-bottom' : '';
       const scene = document.querySelector('a-scene');
 
-      const type = await detectMediaType(mediaUrl);
-
-      if (type === 'video') {
+      if (isVideo) {
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = mediaUrl;
@@ -83,7 +71,7 @@
         if (layout) videosphere.setAttribute('stereo', layout);
         scene.appendChild(videosphere);
 
-      } else if (type === 'image') {
+      } else if (isImage) {
         const sky = document.createElement('a-sky');
         sky.setAttribute('src', mediaUrl);
         if (layout) sky.setAttribute('stereo', layout);
