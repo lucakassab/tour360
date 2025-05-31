@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Tour360 – Visualizador 360° Estéreo (CDN UMD corrigido)</title>
 
-  <!-- 1) Carrega Three.js UMD r147 via Unpkg (define global THREE) -->
-  <script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
+  <!-- 1) Carrega Three.js UMD r147 via JSDelivr (define global THREE) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
   <script>
     if (typeof THREE === 'undefined') {
       console.error('❌ Three.js NÃO foi carregado! Verifique conexão ou CDN.');
@@ -15,8 +15,8 @@
     }
   </script>
 
-  <!-- 2) Carrega OrbitControls UMD r147 via Unpkg (define global THREE.OrbitControls) -->
-  <script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- 2) Carrega OrbitControls UMD r147 via JSDelivr (define global THREE.OrbitControls) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
   <script>
     if (typeof THREE.OrbitControls === 'undefined') {
       console.error('❌ OrbitControls NÃO está disponível (verifique CDN).');
@@ -25,8 +25,8 @@
     }
   </script>
 
-  <!-- 3) Carrega VRButton UMD r147 via Unpkg (define global VRButton) -->
-  <script src="https://unpkg.com/three@0.147.0/examples/js/webxr/VRButton.js"></script>
+  <!-- 3) Carrega VRButton UMD r147 via JSDelivr (define global VRButton) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/webxr/VRButton.js"></script>
   <script>
     if (typeof VRButton === 'undefined') {
       console.error('❌ VRButton NÃO está disponível (verifique CDN).');
