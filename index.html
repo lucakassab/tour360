@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>Tour360_1.4</title>
+<title>Tour360_1.6</title>
   <style>
     body {
       margin: 0;
@@ -29,7 +29,7 @@
   </style>
 </head>
 <body>
-  <div id="debug">[DEBUG] Iniciando teste minimalista...</div>
+  <div id="debug">[DEBUG] Iniciando Tour360_1.5...</div>
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
@@ -44,7 +44,7 @@
 
     let camera, scene, renderer;
 
-    debug('1) Chamando init() minimalista');
+    debug('1) Chamando init() com downscale automático');
     init();
 
     function init() {
@@ -53,44 +53,72 @@
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(0, 0, 0.1);
 
-      debug('3) Configurando renderer (SEM VR agora)');
+      debug('3) Configurando renderer');
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      debug('4) Criando geometria da esfera');
-      const geometry = new THREE.SphereGeometry(500, 60, 40);
-      geometry.scale(-1, 1, 1);
+      // Descobre o máximo de textura que a GPU suporta
+      const maxTexSize = renderer.capabilities.maxTextureSize;
+      debug(`3.1) GPU suporta até ${maxTexSize}×${maxTexSize} como textura`);
 
-      debug('5) Carregando textura com força no LinearFilter e sem mipmaps');
-      const loader = new THREE.TextureLoader();
-      loader.load(
-        './media/A2_Stereo.jpg',
-        (texture) => {
-          debug('6) Textura carregada (dimensões: ' + texture.image.width + 'x' + texture.image.height + ')');
+      debug('4) Carregando imagem original (8000×8000)');
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        debug(`5) Imagem carregada (dimensões originais: ${img.width}×${img.height})`);
 
-          // Força NPOT funcionar
-          texture.minFilter = THREE.LinearFilter;
-          texture.generateMipmaps = false;
-          texture.needsUpdate = true;
-          debug('7) Ajustado minFilter=LinearFilter e generateMipmaps=false');
-
-          debug('8) Criando material com a textura');
-          const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide });
-
-          debug('9) Criando mesh da esfera e adicionando à cena');
-          const sphere = new THREE.Mesh(geometry, material);
-          scene.add(sphere);
-
-          debug('10) Chamando animate() para renderizar');
-          animate();
-        },
-        undefined,
-        (err) => {
-          debug('Erro ao carregar textura: ' + err);
+        // Se extrapolar o limite, redimensiona pra maxTexSize × maxTexSize
+        let targetWidth = img.width;
+        let targetHeight = img.height;
+        if (img.width > maxTexSize || img.height > maxTexSize) {
+          // Mantém proporção (é quadrada anyway, mas só pra garantir)
+          if (img.width >= img.height) {
+            targetWidth = maxTexSize;
+            targetHeight = Math.floor((img.height / img.width) * maxTexSize);
+          } else {
+            targetHeight = maxTexSize;
+            targetWidth = Math.floor((img.width / img.height) * maxTexSize);
+          }
+          debug(`5.1) Redimensionando para ${targetWidth}×${targetHeight} (encaixar no limite)`);
+        } else {
+          debug('5.1) Imagem já dentro do limite, sem redimensionamento');
         }
-      );
+
+        // Faz o draw no canvas para escalar
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, targetWidth, targetHeight);
+        debug('5.2) Canvas criado e imagem redimensionada');
+
+        // Cria a textura a partir do canvas redimensionado
+        const texture = new THREE.Texture(canvas);
+        // Já não precisa ajustar minFilter, pois agora é POT ou dentro do máximo
+        texture.needsUpdate = true;
+        debug('5.3) Textura criada a partir do canvas');
+
+        // Agora cria a esfera
+        debug('6) Criando geometria da esfera');
+        const geometry = new THREE.SphereGeometry(500, 60, 40);
+        geometry.scale(-1, 1, 1);
+
+        debug('7) Aplicando a textura no material da esfera');
+        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide });
+        const sphere = new THREE.Mesh(geometry, material);
+        scene.add(sphere);
+        debug('7.1) Mesh da esfera adicionada à cena');
+
+        debug('8) Chamando animate() para renderizar');
+        animate();
+      };
+      img.onerror = (err) => {
+        debug('Erro ao carregar imagem: ' + err);
+      };
+      debug('4.1) Definindo src da imagem: ./media/A2_Stereo.jpg');
+      img.src = './media/A2_Stereo.jpg';
 
       window.addEventListener('resize', onWindowResize);
     }
