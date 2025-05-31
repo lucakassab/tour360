@@ -3,33 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360 – Monoscopia e Estéreo VR</title>
+  <title>Tour360 – Monoscopia e Estéreo VR (Correções)</title>
 
-  <!-- 1) Carrega Three.js UMD r147 via JSDelivr -->
+  <!-- 1) Three.js UMD r147 via JSDelivr -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
   <script>
     if (typeof THREE === 'undefined') {
-      console.error('❌ Three.js NÃO carregou! Verifica CDN.');
+      console.error('❌ Three.js NÃO carregou! Verifique a CDN.');
     } else {
       console.log('✅ Three.js r' + THREE.REVISION + ' carregado.');
     }
   </script>
 
-  <!-- 2) Carrega OrbitControls UMD r147 via JSDelivr -->
+  <!-- 2) OrbitControls UMD r147 via JSDelivr -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
   <script>
     if (typeof THREE.OrbitControls === 'undefined') {
-      console.error('❌ OrbitControls NÃO carregou! Verifica CDN.');
+      console.error('❌ OrbitControls NÃO carregou! Verifique a CDN.');
     } else {
       console.log('✅ OrbitControls carregado.');
     }
   </script>
 
-  <!-- 3) Carrega VRButton UMD r147 via JSDelivr (definição global VRButton) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/webxr/VRButton.js"></script>
+  <!-- 3) VRButton UMD r147 via Unpkg (corrige falha de CDN anterior) -->
+  <script src="https://unpkg.com/three@0.147.0/examples/js/webxr/VRButton.js"></script>
   <script>
     if (typeof VRButton === 'undefined') {
-      console.error('❌ VRButton NÃO carregou! Verifica CDN.');
+      console.error('❌ VRButton NÃO carregou! Verifique Unpkg ou bloqueio WebXR.');
     } else {
       console.log('✅ VRButton carregado.');
     }
@@ -99,7 +99,7 @@
           tex.format = THREE.RGBAFormat;
           console.log('    ✅ Textura carregada:', tex.image.width + '×' + tex.image.height);
 
-          // Agora que a textura carregou, criamos os materiais e meshes:
+          // Agora que a textura carregou, criamos materiais e meshes:
           createSpheres(geometry);
         },
         undefined,
@@ -148,7 +148,7 @@
         uniforms: { tex: { value: texture360 } },
         vertexShader,
         fragmentShader: fragmentTopo,
-        side: THREE.FrontSide // geometria invertida faz o interior aparecer
+        side: THREE.FrontSide // geometria invertida → interior aparece
       });
 
       const materialLeft = new THREE.ShaderMaterial({
@@ -201,8 +201,15 @@
     }
 
     function render() {
+      // Se as esferas ainda não existirem (texture carregando), pula a lógica:
+      if (!sphereMono || !sphereLeft || !sphereRight) {
+        // Ainda sem mesh, desenhamos fundo vazio (preto) e esperamos
+        renderer.render(scene, camera);
+        return;
+      }
+
       if (renderer.xr.isPresenting) {
-        // ----------- MODO VR: usa estereoscopia top-bottom -----------
+        // ----------- MODO VR: exibe estereoscopia top-bottom -----------
         if (sphereMono.visible) {
           console.log('🕶️ Entrou em modo VR.');
         }
@@ -222,7 +229,7 @@
           xrCam.cameras[1].layers.enable(2);
         }
       } else {
-        // ----------- MODO PLANO: usa metade superior (mono) -----------
+        // ----------- MODO PLANO: exibe metade superior (mono) -----------
         if (!sphereMono.visible) {
           console.log('📱 Voltou para modo plano.');
         }
@@ -259,8 +266,8 @@
 </head>
 <body>
   <!-- 
-    O script acima já injeta o <canvas> e o botão “Enter VR” (se suportado).
-    Não precisa colocar mais nada aqui.
+    Este script já injeta o <canvas> do Three.js e o botão VR (se suportado).
+    Não precisa adicionar mais nada no body.
   -->
 </body>
 </html>
