@@ -3,57 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
-  <title>Tour360V4</title>
+  <title>Tour360 V5</title>
 
   <!--
-    ==========================================
-    USANDO THREE.JS R149 (não r150+) VIA CDN:
-    ==========================================
-    - three.min.js expõe a variável global `THREE`.
-    - OrbitControls.js e VRButton.js importam THR EE como global.
-    - Isso evita o erro de “OrbitControls is not a constructor” e “VRButton undefined”.
+    ================================
+    USANDO ES MODULES COM URLs EXPLÍCITOS
+    ================================
+    - Importa Three.js, OrbitControls e VRButton diretamente de URLs.
+    - Nada de imports “bare” tipo 'three' que dão erro de specifier.
+    - Versão usada: 0.150.1 (r150).
   -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/webxr/VRButton.js"></script>
+  <script type="module">
+    // =========================
+    // IMPORTS VIA unpkg (r150)
+    // =========================
+    import * as THREE from 'https://unpkg.com/three@0.150.1/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.150.1/examples/jsm/controls/OrbitControls.js';
+    import { VRButton } from 'https://unpkg.com/three@0.150.1/examples/jsm/webxr/VRButton.js';
 
-  <script>
-    // ==============================================
-    // CHECAGENS INICIAIS E DEBUG
-    // ==============================================
+    console.log('🛠️ THREE, OrbitControls e VRButton importados via ES Modules:');
+    console.log('   • THREE.REVISION =', THREE.REVISION);
+    console.log('   • OrbitControls typeof =', typeof OrbitControls);
+    console.log('   • VRButton typeof =', typeof VRButton);
+
+    // Se qualquer um desses der 'undefined' ou não for função, a porra tá errada.
     if (typeof THREE === 'undefined') {
-      console.error('❌ Three.js NÃO foi carregado! Verifique o CDN (r149).');
-    } else {
-      console.log('✅ Three.js version', THREE.REVISION, 'carregado (r149).');
+      console.error('❌ THREE virou undefined. Verifica se o unpkg tá bloqueado ou sem internet.');
+    }
+    if (typeof OrbitControls !== 'function') {
+      console.error('❌ OrbitControls não foi importado direito.');
+    }
+    if (typeof VRButton !== 'function') {
+      console.error('❌ VRButton não foi importado direito.');
     }
 
-    // Em r149, o OrbitControls aparece como THREE.OrbitControls
-    if (typeof THREE.OrbitControls === 'undefined') {
-      console.error('❌ OrbitControls NÃO está disponível como global. Verifique o CDN (r149/examples/js/controls/OrbitControls.js).');
-    } else {
-      console.log('✅ OrbitControls carregado (global THREE.OrbitControls).');
-    }
-
-    // Em r149, VRButton aparece como global VRButton
-    if (typeof VRButton === 'undefined') {
-      console.error('❌ VRButton NÃO está disponível como global. Verifique o CDN (r149/examples/js/webxr/VRButton.js).');
-    } else {
-      console.log('✅ VRButton carregado (global VRButton).');
-    }
-
-    // ==============================================
-    // VARIÁVEIS GLOBAIS
-    // ==============================================
+    // ====================================
+    // VARIÁVEIS GLOBAIS DO VISUALIZADOR
+    // ====================================
     let camera, scene, renderer;
     let controls;
     let sphereMono, sphereLeft, sphereRight;
     let texture360;
 
-    // ==============================================
-    // INICIALIZAÇÃO QUANDO A PÁGINA CARREGA
-    // ==============================================
+    // ====================================
+    // FUNÇÃO INIT E ANIMATE
+    // ====================================
     window.addEventListener('load', () => {
-      console.log('⚙️ onload: inicializando o visualizador 360° VR...');
+      console.log('⚙️ onload: iniciando o visualizador 360° VR...');
       init();
       animate();
     });
@@ -67,7 +63,7 @@
       camera.position.set(0, 0, 0.01);
       console.log('  • Cena e câmera criadas.');
 
-      // 2) RENDERER COM WebXR HABILITADO
+      // 2) RENDERER COM WebXR ATIVADO
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -75,38 +71,38 @@
       renderer.xr.enabled = true;
       document.body.appendChild(renderer.domElement);
 
-      // ADICIONA O BOTÃO “Enter VR” se VRButton existir
-      if (typeof VRButton !== 'undefined') {
+      // ADICIONA O BOTÃO “ENTER VR” se VRButton existir
+      if (typeof VRButton === 'function') {
         document.body.appendChild(VRButton.createButton(renderer));
         console.log('  • VRButton adicionado ao DOM.');
       } else {
-        console.warn('  • VRButton ausente — sem botão “Enter VR”.');
+        console.warn('  • VRButton não está definido, sem botão “Enter VR”.');
       }
 
-      console.log('  • Renderer criado. WebXR =', renderer.xr.enabled);
+      console.log('  • Renderer criado. WebXR habilitado =', renderer.xr.enabled);
 
-      // 3) CONTROLES (mouse/touch) PARA MODO NÃO-VR
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      // 3) OrbitControls para MODO PLANO (mouse/touch)
+      controls = new OrbitControls(camera, renderer.domElement);
       controls.enablePan = false;
       controls.enableZoom = false;
       controls.rotateSpeed = 0.5;
-      console.log('  • OrbitControls instanciado (THREE.OrbitControls).');
+      console.log('  • OrbitControls instanciado.');
 
-      // 4) GEOMETRIA DA ESFERA (invertendo normais pra olhar de dentro)
+      // 4) GEOMETRIA DA ESFERA (normais invertidas pra dentro)
       const geometry = new THREE.SphereGeometry(500, 60, 40);
       geometry.scale(-1, 1, 1);
       console.log('  • Geometria da esfera criada e normais invertidas.');
 
-      // 5) CARREGA A TEXTURA 360 (mono/estéreo top-bottom)
+      // 5) TEXTURA 360 (IMAGEM ESTÉREO TOP-BOTTOM EM media/A2_Stereo.jpg)
       const loader = new THREE.TextureLoader();
-      console.log('  • Carregando texto 360 de “media/A2_Stereo.jpg”...');
+      console.log('  • Carregando textura 360 de "media/A2_Stereo.jpg"...');
       texture360 = loader.load(
         'media/A2_Stereo.jpg',
         (tex) => {
           tex.minFilter = THREE.LinearFilter;
           tex.magFilter = THREE.LinearFilter;
           tex.format = THREE.RGBFormat;
-          console.log('    ✅ Textura carregada com sucesso:', tex.image.width, 'x', tex.image.height);
+          console.log('    ✅ Textura 360 carregada: ', tex.image.width, 'x', tex.image.height);
         },
         undefined,
         (err) => {
@@ -119,7 +115,7 @@
         varying vec2 vUv;
         uniform sampler2D tex;
         void main() {
-          // Mostra só metade superior (vUv.y entre 0.5 e 1.0)
+          // Mostra só metade superior (vUv.y ∈ [0.5,1.0])
           vec2 uv = vec2(vUv.x, vUv.y * 0.5 + 0.5);
           gl_FragColor = texture2D(tex, uv);
         }
@@ -128,7 +124,7 @@
         varying vec2 vUv;
         uniform sampler2D tex;
         void main() {
-          // Mostra só metade inferior (vUv.y entre 0.0 e 0.5)
+          // Mostra só metade inferior (vUv.y ∈ [0.0,0.5])
           vec2 uv = vec2(vUv.x, vUv.y * 0.5);
           gl_FragColor = texture2D(tex, uv);
         }
@@ -142,7 +138,7 @@
       `;
       console.log('  • Shaders criados.');
 
-      // 7) MATERIAIS: Mono (metade superior), Left e Right (topo/baixo)
+      // 7) MATERIAIS: Mono (metade superior), Left (topo) e Right (baixo)
       const materialMono = new THREE.ShaderMaterial({
         uniforms: { tex: { value: texture360 } },
         vertexShader,
@@ -163,55 +159,55 @@
       });
       console.log('  • Materiais Mono, Left e Right prontos.');
 
-      // 8) CRIA OS MESHS E DEFINE CAMADAS
+      // 8) CRIA OS MESHS e configura camadas
       sphereMono = new THREE.Mesh(geometry, materialMono);
-      sphereMono.layers.set(0);       // layer 0 = MODO PLANO (metade superior)
+      sphereMono.layers.set(0);      // layer 0 = MODO PLANO (metade superior)
       scene.add(sphereMono);
 
       sphereLeft = new THREE.Mesh(geometry, materialLeft);
-      sphereLeft.layers.set(1);       // layer 1 = olho esquerdo VR (metade superior)
+      sphereLeft.layers.set(1);      // layer 1 = olho esquerdo VR (topo)
       sphereLeft.visible = false;
       scene.add(sphereLeft);
 
       sphereRight = new THREE.Mesh(geometry, materialRight);
-      sphereRight.layers.set(2);      // layer 2 = olho direito VR (metade inferior)
+      sphereRight.layers.set(2);     // layer 2 = olho direito VR (baixo)
       sphereRight.visible = false;
       scene.add(sphereRight);
 
       console.log('  • Meshes adicionadas: sphereMono(layer0), sphereLeft(layer1), sphereRight(layer2).');
 
-      // 9) CONFIGURA CÂMERA PARA VER SÓ A LAYER 0 NO INÍCIO
+      // 9) Configura câmera para ver só a layer 0 inicialmente
       camera.layers.enable(0);
       console.log('  • Câmera configurada para layer 0 (modo plano).');
 
-      // 10) ADICIONA LISTENER DE RESIZE
+      // 10) Listener de resize
       window.addEventListener('resize', onWindowResize);
-      console.log('  • Listener para window resize adicionado.');
+      console.log('  • Listener de resize adicionado.');
     }
 
-    // ==============================================
-    // FUNÇÃO DE RESIZE
-    // ==============================================
+    // =========================================
+    // FUNÇÃO DE REDIMENSIONAMENTO
+    // =========================================
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      console.log('📐 Janela redimensionada para', window.innerWidth, 'x', window.innerHeight);
+      console.log('📐 Janela redimensionada: ', window.innerWidth, 'x', window.innerHeight);
     }
 
-    // ==============================================
+    // =========================================
     // LOOP DE ANIMAÇÃO
-    // ==============================================
+    // =========================================
     function animate() {
       renderer.setAnimationLoop(render);
     }
 
-    // ==============================================
-    // FUNÇÃO DE RENDER (chamada a cada frame)
-    // ==============================================
+    // =========================================
+    // FUNÇÃO DE RENDER (chamada todo frame)
+    // =========================================
     function render() {
       if (renderer.xr.isPresenting) {
-        // Entrou em modo VR: exibe as esferas estéreo
+        // Entrou em modo VR: exibe o estéreo
         if (sphereMono.visible) {
           console.log('🕶️ Entrou em modo VR.');
         }
@@ -221,18 +217,18 @@
 
         const xrCamera = renderer.xr.getCamera(camera);
         if (xrCamera && xrCamera.isArrayCamera) {
-          // Desliga todas as layers
+          // Desativa todas as camadas
           xrCamera.cameras.forEach((c) => {
             c.layers.disable(0);
             c.layers.disable(1);
             c.layers.disable(2);
           });
-          // Olho esquerdo → layer 1, olho direito → layer 2
+          // Olho esquerdo -> layer 1; olho direito -> layer 2
           xrCamera.cameras[0].layers.enable(1);
           xrCamera.cameras[1].layers.enable(2);
         }
       } else {
-        // Modo plano: mostra só sphereMono
+        // Modo plano: exibe só sphereMono
         if (!sphereMono.visible) {
           console.log('📱 Voltou para modo plano (não-VR).');
         }
@@ -250,7 +246,7 @@
   </script>
 
   <style>
-    /* Tela preta, sem margens, canvas full screen */
+    /* Tela preta, zero margens, canvas full screen */
     body {
       margin: 0;
       overflow: hidden;
@@ -259,7 +255,7 @@
     canvas {
       display: block;
     }
-    /* O VRButton.js já define estilos do botão; isso só garante posição */
+    /* VRButton.js já aplica a classe .webxr-button */
     .webxr-button {
       position: absolute;
       bottom: 20px;
@@ -270,8 +266,8 @@
 </head>
 <body>
   <!--
-    O script acima injeta o <canvas> e o botão VR (se houver suporte). 
-    Não precisa pôr mais nada aqui.
+    O script acima injeta o <canvas> e o botão VR (se houver suporte).
+    Não precisa colocar nada aqui.
   -->
 </body>
 </html>
