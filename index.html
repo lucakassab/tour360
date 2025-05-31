@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>Tour360_1.2</title>
+<title>Tour360_1.4</title>
   <style>
     body {
       margin: 0;
@@ -29,10 +29,9 @@
   </style>
 </head>
 <body>
-  <div id="debug">[DEBUG] Iniciando teste de esfera completa...</div>
+  <div id="debug">[DEBUG] Iniciando teste minimalista...</div>
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-    import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/VRButton.js';
 
     const debugDiv = document.getElementById('debug');
     function debug(msg) {
@@ -45,7 +44,7 @@
 
     let camera, scene, renderer;
 
-    debug('1) Init chamado');
+    debug('1) Chamando init() minimalista');
     init();
 
     function init() {
@@ -53,33 +52,38 @@
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(0, 0, 0.1);
-      camera.layers.enable(0); // só layer 0 pra teste
 
-      debug('3) Configurando renderer');
+      debug('3) Configurando renderer (SEM VR agora)');
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
       document.body.appendChild(renderer.domElement);
-      document.body.appendChild(VRButton.createButton(renderer));
 
       debug('4) Criando geometria da esfera');
       const geometry = new THREE.SphereGeometry(500, 60, 40);
       geometry.scale(-1, 1, 1);
 
-      debug('5) Carregando textura inteira (sem split)');
+      debug('5) Carregando textura com força no LinearFilter e sem mipmaps');
       const loader = new THREE.TextureLoader();
       loader.load(
         './media/A2_Stereo.jpg',
         (texture) => {
-          debug('6) Textura completa carregada (dimensões: ' + texture.image.width + 'x' + texture.image.height + ')');
+          debug('6) Textura carregada (dimensões: ' + texture.image.width + 'x' + texture.image.height + ')');
 
-          debug('7) Criando material e adicionando esfera à cena');
+          // Força NPOT funcionar
+          texture.minFilter = THREE.LinearFilter;
+          texture.generateMipmaps = false;
+          texture.needsUpdate = true;
+          debug('7) Ajustado minFilter=LinearFilter e generateMipmaps=false');
+
+          debug('8) Criando material com a textura');
           const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide });
+
+          debug('9) Criando mesh da esfera e adicionando à cena');
           const sphere = new THREE.Mesh(geometry, material);
           scene.add(sphere);
 
-          debug('8) Chamando animate() para renderizar');
+          debug('10) Chamando animate() para renderizar');
           animate();
         },
         undefined,
