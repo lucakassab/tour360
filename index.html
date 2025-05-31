@@ -2,202 +2,211 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>360 Media Viewer V3</title>
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+  <title>Tour360 - Visualizador 360° VR V0</title>
+
+  <!-- Importa Three.js (módulo ES6) -->
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.150.1/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.150.1/examples/jsm/controls/OrbitControls.js';
+    import { VRButton } from 'https://unpkg.com/three@0.150.1/examples/jsm/webxr/VRButton.js';
+
+    let camera, scene, renderer;
+    let controls;
+    let sphereMono, sphereLeft, sphereRight;
+    let texture360;
+
+    init();
+    animate();
+
+    function init() {
+      // 1) CENA E CÂMERA
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 0, 0.01); // Coloca dentro da esfera
+
+      // 2) RENDERER COM WebXR ATIVADO
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.xr.enabled = true; // Libera VR
+      document.body.appendChild(renderer.domElement);
+      document.body.appendChild(VRButton.createButton(renderer));
+
+      // 3) CONTROLES (mouse/touch) PARA ROLAR A VIEW NO MODO NÃO-VR
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enablePan = false;
+      controls.enableZoom = false;
+      controls.rotateSpeed = 0.5;
+
+      // 4) GEOMETRIA DA ESFERA (inverte as normais para mapa interno)
+      const geometry = new THREE.SphereGeometry(500, 60, 40);
+      geometry.scale(-1, 1, 1); // Inverter norms
+
+      // 5) CARREGA A TEXTURA 360 (mono ou stereo top-bottom)
+      //    **Aqui você pode trocar o caminho pra qualquer .jpg/.png ou vídeo na pasta media**
+      const loader = new THREE.TextureLoader();
+      texture360 = loader.load('media/A2_Stereo.jpg', () => {
+        texture360.minFilter = THREE.LinearFilter;
+        texture360.magFilter = THREE.LinearFilter;
+        texture360.format = THREE.RGBFormat;
+      });
+
+      // 6) SHADER PARA EXIBIR SOMENTE A METADE SUPERIOR (MODO PLANO OU OLHO ESQUERDO NO VR)
+      const fragmentTopo = `
+        varying vec2 vUv;
+        uniform sampler2D tex;
+        void main() {
+          // mapeia vUv.y de [0,1] pra [0.5,1] = só metade superior da textura
+          vec2 uv = vec2(vUv.x, vUv.y * 0.5 + 0.5);
+          gl_FragColor = texture2D(tex, uv);
+        }
+      `;
+
+      // 7) SHADER PARA EXIBIR SOMENTE A METADE INFERIOR (OLHO DIREITO NO VR)
+      const fragmentBaixo = `
+        varying vec2 vUv;
+        uniform sampler2D tex;
+        void main() {
+          // mapeia vUv.y de [0,1] pra [0,0.5] = só metade inferior da textura
+          vec2 uv = vec2(vUv.x, vUv.y * 0.5);
+          gl_FragColor = texture2D(tex, uv);
+        }
+      `;
+
+      // 8) VERTEX SHADER COMUM
+      const vertexShader = `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `;
+
+      // 9) MATERIAIS: MONO, LEFT (topo) e RIGHT (baixo)
+      const materialMono = new THREE.ShaderMaterial({
+        uniforms: { tex: { value: texture360 } },
+        vertexShader,
+        fragmentShader: fragmentTopo,
+        side: THREE.BackSide, // mostra dentro da esfera
+      });
+
+      const materialLeft = new THREE.ShaderMaterial({
+        uniforms: { tex: { value: texture360 } },
+        vertexShader,
+        fragmentShader: fragmentTopo,
+        side: THREE.BackSide,
+      });
+
+      const materialRight = new THREE.ShaderMaterial({
+        uniforms: { tex: { value: texture360 } },
+        vertexShader,
+        fragmentShader: fragmentBaixo,
+        side: THREE.BackSide,
+      });
+
+      // 10) CRIA OS MESHES (esferas) e define camadas
+      //    - sphereMono: aparece somente no modo “plano” (layer 0)
+      sphereMono = new THREE.Mesh(geometry, materialMono);
+      sphereMono.layers.set(0);
+      scene.add(sphereMono);
+
+      //    - sphereLeft: para olho esquerdo em VR (layer 1)
+      sphereLeft = new THREE.Mesh(geometry, materialLeft);
+      sphereLeft.layers.set(1);
+      sphereLeft.visible = false;
+      scene.add(sphereLeft);
+
+      //    - sphereRight: para olho direito em VR (layer 2)
+      sphereRight = new THREE.Mesh(geometry, materialRight);
+      sphereRight.layers.set(2);
+      sphereRight.visible = false;
+      scene.add(sphereRight);
+
+      // 11) CONFIGURA A CÂMERA para enxergar a camada 0 no início
+      camera.layers.enable(0); // só verá sphereMono no início
+
+      // 12) EVITA que, quando a janela redimensionar, dê cagada
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      // Chama render em loop, tanto VR quanto não-VR
+      renderer.setAnimationLoop(render);
+    }
+
+    function render() {
+      // Antes de desenhar, verifica se estamos em VR
+      if (renderer.xr.isPresenting) {
+        // Modo VR: Esconde o sphereMono e mostra as esferas estéreo
+        sphereMono.visible = false;
+        sphereLeft.visible = true;
+        sphereRight.visible = true;
+
+        // Pega o XR ArrayCamera (que contém as câmeras dos dois olhos)
+        const xrCamera = renderer.xr.getCamera(camera);
+        if (xrCamera.isArrayCamera) {
+          // Desliga todas as layers antes de setar
+          xrCamera.cameras.forEach((c) => {
+            c.layers.disable(0);
+            c.layers.disable(1);
+            c.layers.disable(2);
+          });
+
+          // Câmera do olho esquerdo: ver layer 1
+          const leftCam = xrCamera.cameras[0];
+          leftCam.layers.enable(1);
+
+          // Câmera do olho direito: ver layer 2
+          const rightCam = xrCamera.cameras[1];
+          rightCam.layers.enable(2);
+        }
+      } else {
+        // Modo “plano” (PC ou mobile): mostra só a esfera mono (metade superior)
+        sphereMono.visible = true;
+        sphereLeft.visible = false;
+        sphereRight.visible = false;
+
+        // Garante que a câmera tá vendo a layer 0
+        camera.layers.enable(0);
+        camera.layers.disable(1);
+        camera.layers.disable(2);
+
+        // Atualiza controles de mouse/touch
+        controls.update();
+      }
+
+      renderer.render(scene, camera);
+    }
+  </script>
+
   <style>
-    body, html {
+    /* Estilização básica: tela cheia, sem margens */
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
       overflow: hidden;
+      background-color: #000;
     }
-    #menu {
+    canvas {
+      display: block;
+    }
+    /* Botão VR (fornecido por VRButton.js) aparece no canto */
+    .webxr-button {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      bottom: 20px;
+      right: 20px;
       z-index: 1;
-      background: rgba(255,255,255,0.8);
-      padding: 8px;
-      border-radius: 4px;
-      font-family: sans-serif;
-    }
-    #mediaSelect {
-      margin-left: 8px;
     }
   </style>
 </head>
 <body>
-  <div id="menu">
-    <span id="count">0 mídia(s)</span>
-    <select id="mediaSelect"></select>
-  </div>
-
-  <!-- Cena A-Frame -->
-  <a-scene embedded id="scene">
-    <!-- Camera defaults; pro VR funcionar, não precisa botar nada extra além do enter-vr button padrão -->
-  </a-scene>
-
-  <script>
-    // Configurações do seu repositório
-    const owner = 'lucakassab';
-    const repo = 'tour360';
-    const branch = 'main';
-    const baseUrl = `https://${owner}.github.io/${repo}/media`;
-
-    let currentEntity = null;
-    let currentVideoElement = null;
-
-    // Pega lista de arquivos no GitHub
-    async function fetchMediaList() {
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
-      const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error(`GitHub API respondeu status ${res.status}`);
-      const files = await res.json();
-      return files
-        .filter(f => f.type === 'file' && /\.(jpg|jpeg|png|gif|mp4|webm)$/i.test(f.name))
-        .map(f => f.name);
-    }
-
-    // Remove entidade atual da cena e video se tiver
-    function clearScene() {
-      const scene = document.getElementById('scene');
-      if (currentEntity) {
-        scene.removeChild(currentEntity);
-        currentEntity = null;
-      }
-      if (currentVideoElement) {
-        document.body.removeChild(currentVideoElement);
-        currentVideoElement = null;
-      }
-    }
-
-    // Exibe só a metade de cima no modo 2D (mesmo pro conteúdo estéreo)
-    function applyStereoHalf(entity) {
-      // Força o material para top-bottom, mas joga o UV na metade de cima
-      entity.setAttribute('material.stereo', 'top-bottom');
-      entity.setAttribute('material.offset', '0 0.5');
-      entity.setAttribute('material.repeat', '1 0.5');
-      // Força update no Three.js
-      forceMaterialUpdate(entity);
-    }
-
-    // Reseta para mostrar estéreo completo no VR: cada olho vê a metade correta
-    function resetStereo(entity) {
-      entity.setAttribute('material.stereo', 'top-bottom');
-      entity.setAttribute('material.offset', '0 0');
-      entity.setAttribute('material.repeat', '1 1');
-      forceMaterialUpdate(entity);
-    }
-
-    // Força atualização da textura/material (Three.js)
-    function forceMaterialUpdate(entity) {
-      const mesh = entity.getObject3D('mesh');
-      if (mesh && mesh.material) {
-        if (mesh.material.map) mesh.material.map.needsUpdate = true;
-        mesh.material.needsUpdate = true;
-      }
-    }
-
-    // Carrega a mídia selecionada (imagem ou vídeo)
-    function loadMedia(filename) {
-      clearScene();
-      const url = `${baseUrl}/${filename}`;
-      const name = filename.toLowerCase();
-      const isVideo = /\.(mp4|webm)$/i.test(name);
-      const isImage = /\.(jpg|jpeg|png|gif)$/i.test(name);
-      const isStereo = /_stereo\./i.test(name);
-      const scene = document.getElementById('scene');
-
-      if (isVideo) {
-        // Cria elemento de vídeo
-        const video = document.createElement('video');
-        video.id = 'mediaVideo';
-        video.src = url;
-        video.loop = true;
-        video.autoplay = true;
-        video.crossOrigin = 'anonymous';
-        video.playsInline = true;
-        video.muted = true;
-        video.setAttribute('webkit-playsinline', '');
-        document.body.appendChild(video);
-        currentVideoElement = video;
-
-        // Cria videosphere
-        const vs = document.createElement('a-videosphere');
-        vs.setAttribute('src', '#mediaVideo');
-        vs.setAttribute('rotation', '0 -90 0'); // se quiser girar a view default, opcional
-        if (isStereo) {
-          // Configura pra top-bottom e joga UV na metade superior
-          vs.setAttribute('material.stereo', 'top-bottom');
-          vs.setAttribute('material.offset', '0 0.5');
-          vs.setAttribute('material.repeat', '1 0.5');
-        }
-        scene.appendChild(vs);
-        currentEntity = vs;
-
-      } else if (isImage) {
-        // Cria sky para imagens
-        const sky = document.createElement('a-sky');
-        sky.setAttribute('src', url);
-        sky.setAttribute('rotation', '0 -90 0'); // opcional, se quiser girar a câmera
-        if (isStereo) {
-          sky.setAttribute('material.stereo', 'top-bottom');
-          sky.setAttribute('material.offset', '0 0.5');
-          sky.setAttribute('material.repeat', '1 0.5');
-        }
-        scene.appendChild(sky);
-        currentEntity = sky;
-
-      } else {
-        console.error('Tipo de mídia não suportado:', url);
-      }
-    }
-
-    async function init() {
-      const list = await fetchMediaList();
-      const countEl = document.getElementById('count');
-      const select = document.getElementById('mediaSelect');
-      countEl.textContent = `${list.length} mídia(s)`;
-      list.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-      });
-      if (list.length) loadMedia(list[0]);
-      select.addEventListener('change', e => loadMedia(e.target.value));
-
-      // Eventos de VR do A-Frame
-      const sceneEl = document.getElementById('scene');
-      sceneEl.addEventListener('enter-vr', () => {
-        if (currentEntity) {
-          // Dá um tempinho pro A-Frame entrar no VR antes de resetar
-          setTimeout(() => {
-            const filename = document.getElementById('mediaSelect').value.toLowerCase();
-            if (/_stereo\./i.test(filename)) {
-              // Se for estéreo, exibe tudo top-bottom
-              resetStereo(currentEntity);
-            }
-            // Se não for estéreo, nada a fazer (já tá monoscópico)
-          }, 100);
-        }
-      });
-      sceneEl.addEventListener('exit-vr', () => {
-        if (currentEntity) {
-          setTimeout(() => {
-            const filename = document.getElementById('mediaSelect').value.toLowerCase();
-            if (/_stereo\./i.test(filename)) {
-              // Se for estéreo, volta a exibir só metade de cima no 2D
-              applyStereoHalf(currentEntity);
-            }
-          }, 100);
-        }
-      });
-    }
-
-    window.addEventListener('load', init);
-  </script>
+  <!-- O script tipo module acima já injeta o <canvas> do Three.js dinamicamente -->
 </body>
 </html>
