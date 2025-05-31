@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>Tour360_2.1</title>
+  <title>Tour360V2.1</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
     body, html {
@@ -12,6 +12,7 @@
       height: 100%;
       width: 100%;
       overflow: hidden;
+      background: #000;
     }
     #menu {
       position: absolute;
@@ -36,7 +37,7 @@
 
   <!-- Cena A-Frame -->
   <a-scene id="scene" embedded vr-mode-ui="enterVRButton: true" background="color: #000">
-    <!-- A gente vai adicionar e remover entidades dinamicamente -->
+    <!-- As entidades (a-sky, a-videosphere) serão inseridas aqui -->
   </a-scene>
 
   <script>
@@ -49,7 +50,7 @@
     let currentVideoElement = null;
     const scene = document.getElementById('scene');
 
-    // Busca lista de arquivos em /media
+    // Pega lista de arquivos na pasta /media via GitHub API
     async function fetchMediaList() {
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
       const res = await fetch(apiUrl);
@@ -61,10 +62,12 @@
     }
 
     function clearScene() {
+      // Remove a entidade anterior do A-Frame
       if (currentEntity) {
         scene.removeChild(currentEntity);
         currentEntity = null;
       }
+      // Remove elemento <video> do DOM se existir
       if (currentVideoElement) {
         document.body.removeChild(currentVideoElement);
         currentVideoElement = null;
@@ -80,7 +83,7 @@
       const isStereo = /_stereo\./i.test(filename);
 
       if (isVideo) {
-        // Cria vídeo elemento escondido
+        // Cria <video> offscreen
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = url;
@@ -93,27 +96,31 @@
         document.body.appendChild(video);
         currentVideoElement = video;
 
-        // Cria a-videosphere com material que tem stereo
+        // Cria a-videosphere
         const vs = document.createElement('a-videosphere');
-        // Em material, define src e se for estéreo, define stereo-format como top-bottom
+        // Material flat para garantir sem iluminação, e src apontando para o <video>
+        vs.setAttribute('shader', 'flat');
+        vs.setAttribute('src', '#mediaVideo');
         if (isStereo) {
-          vs.setAttribute('material', `shader: flat; src: #mediaVideo; stereo: top-bottom`);
-        } else {
-          vs.setAttribute('material', `shader: flat; src: #mediaVideo`);
+          // Aqui é o pulo do gato: coloca o stereo direto no a-videosphere
+          vs.setAttribute('stereo', 'top-bottom');
         }
         scene.appendChild(vs);
         currentEntity = vs;
 
       } else if (isImage) {
-        // Cria a-sky com material que tem stereo
+        // Cria a-sky
         const sky = document.createElement('a-sky');
+        sky.setAttribute('shader', 'flat');
+        // Usa url(...) no src pro A-Frame processar direito
+        sky.setAttribute('src', `url(${url})`);
         if (isStereo) {
-          sky.setAttribute('material', `shader: flat; src: url(${url}); stereo: top-bottom`);
-        } else {
-          sky.setAttribute('material', `shader: flat; src: url(${url})`);
+          // Define split top-bottom direto no <a-sky>
+          sky.setAttribute('stereo', 'top-bottom');
         }
         scene.appendChild(sky);
         currentEntity = sky;
+
       } else {
         console.error('Tipo de mídia não suportado:', filename);
       }
@@ -130,7 +137,6 @@
         opt.textContent = name;
         select.appendChild(opt);
       });
-      // Carrega primeiro item por padrão
       if (list.length) loadMedia(list[0]);
       select.addEventListener('change', e => loadMedia(e.target.value));
     }
