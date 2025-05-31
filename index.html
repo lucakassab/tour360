@@ -54,6 +54,10 @@
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(0, 0, 0.1);
 
+      debug('Passo 2.1: Habilitando layers 1 e 2 na câmera');
+      camera.layers.enable(1);
+      camera.layers.enable(2);
+
       debug('Passo 3: Configurando renderer');
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio);
