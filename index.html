@@ -58,20 +58,17 @@
     }
 
     function applyStereoHalf(entity) {
-      // Mostra metade superior (um olho) no modo não-VR
-      entity.setAttribute('material', 'offset', '0 0.5');
-      entity.setAttribute('material', 'repeat', '1 0.5');
+      // Sem VR: desabilita material.stereo e mostra só a metade superior
+      entity.setAttribute('material', 'stereo: none; offset: 0 0.5; repeat: 1 0.5');
     }
 
     function resetStereo(entity) {
-      // Restaura mapeamento estéreo top-bottom para VR
-      entity.setAttribute('stereo', 'top-bottom');
-      entity.setAttribute('material', 'offset', '0 0');
-      entity.setAttribute('material', 'repeat', '1 1');
+      // No VR: habilita material.stereo top-bottom e reseta offset/repeat pra 1x1
+      entity.setAttribute('material', 'stereo: top-bottom; offset: 0 0; repeat: 1 1');
     }
 
     function forceMaterialUpdate(entity) {
-      // Força o A-Frame / Three.js a atualizar o texture/mat depois de mudar atributos
+      // Força atualização do material/textura no Three.js
       const mesh = entity.getObject3D('mesh');
       if (mesh && mesh.material) {
         if (mesh.material.map) mesh.material.map.needsUpdate = true;
@@ -106,30 +103,22 @@
         const vs = document.createElement('a-videosphere');
         vs.setAttribute('src', '#mediaVideo');
         if (isStereo) {
-          vs.setAttribute('stereo', 'top-bottom');
+          // Já define material.stereo pra top-bottom (mas vamos logo aplicar a metade pra 2D)
+          vs.setAttribute('material', 'stereo: top-bottom; offset: 0 0.5; repeat: 1 0.5');
         }
         scene.appendChild(vs);
         currentEntity = vs;
-
-        if (isStereo) {
-          // Inicia com somente metade pra tela 2D
-          applyStereoHalf(vs);
-        }
 
       } else if (isImage) {
         // Cria a-sky
         const sky = document.createElement('a-sky');
         sky.setAttribute('src', url);
         if (isStereo) {
-          sky.setAttribute('stereo', 'top-bottom');
+          // Define material.stereo e aplica metade superior direto
+          sky.setAttribute('material', 'stereo: top-bottom; offset: 0 0.5; repeat: 1 0.5');
         }
         scene.appendChild(sky);
         currentEntity = sky;
-
-        if (isStereo) {
-          // Inicia com somente metade pra tela 2D
-          applyStereoHalf(sky);
-        }
 
       } else {
         console.error('Tipo de mídia não suportado:', url);
@@ -150,11 +139,11 @@
       select.addEventListener('change', e => loadMedia(e.target.value));
       if (list.length) loadMedia(list[0]);
 
-      // Registra eventos de VR uma única vez (não toda vez que trocar mídia)
+      // Eventos de VR
       const sceneEl = document.getElementById('scene');
       sceneEl.addEventListener('enter-vr', () => {
-        if (currentEntity && currentEntity.hasAttribute('stereo')) {
-          // Dá um tempinho pro A-Frame realmente entrar no VR antes de resetar
+        if (currentEntity && currentEntity.hasAttribute('material')) {
+          // Dá um tempinho pro A-Frame entrar no VR antes de resetar
           setTimeout(() => {
             resetStereo(currentEntity);
             forceMaterialUpdate(currentEntity);
@@ -162,10 +151,14 @@
         }
       });
       sceneEl.addEventListener('exit-vr', () => {
-        if (currentEntity && currentEntity.hasAttribute('stereo')) {
+        if (currentEntity && currentEntity.hasAttribute('material')) {
           setTimeout(() => {
-            applyStereoHalf(currentEntity);
-            forceMaterialUpdate(currentEntity);
+            // Se for estereoscópico, volta a metade superior; se não, nada a fazer
+            const filename = document.getElementById('mediaSelect').value.toLowerCase();
+            if (/_stereo\./i.test(filename)) {
+              applyStereoHalf(currentEntity);
+              forceMaterialUpdate(currentEntity);
+            }
           }, 50);
         }
       });
