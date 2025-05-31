@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360V2.1</title>
+<title>Tour360_3.3</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <!-- Componente que faz o split estereoscópico corretamente -->
+  <script src="https://unpkg.com/aframe-stereo-component/dist/aframe-stereo-component.min.js"></script>
   <style>
     body, html {
       margin: 0;
@@ -37,7 +39,7 @@
 
   <!-- Cena A-Frame -->
   <a-scene id="scene" embedded vr-mode-ui="enterVRButton: true" background="color: #000">
-    <!-- As entidades (a-sky, a-videosphere) serão inseridas aqui -->
+    <!-- Aqui vamos injetar e remover entidades dinamicamente -->
   </a-scene>
 
   <script>
@@ -46,11 +48,12 @@
     const branch = 'main';
     const baseUrl = `https://${owner}.github.io/${repo}/media`;
 
-    let currentEntity = null;
-    let currentVideoElement = null;
+    let currentMonoSky = null;
+    let leftSky = null;
+    let rightSky = null;
+    let currentVideoEl = null;
     const scene = document.getElementById('scene');
 
-    // Pega lista de arquivos na pasta /media via GitHub API
     async function fetchMediaList() {
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
       const res = await fetch(apiUrl);
@@ -61,69 +64,139 @@
         .map(f => f.name);
     }
 
-    function clearScene() {
-      // Remove a entidade anterior do A-Frame
-      if (currentEntity) {
-        scene.removeChild(currentEntity);
-        currentEntity = null;
+    function clearSkies() {
+      // Remove qualquer entidade de 360 que estiver na cena antes
+      if (currentMonoSky) {
+        scene.removeChild(currentMonoSky);
+        currentMonoSky = null;
       }
-      // Remove elemento <video> do DOM se existir
-      if (currentVideoElement) {
-        document.body.removeChild(currentVideoElement);
-        currentVideoElement = null;
+      if (leftSky) {
+        scene.removeChild(leftSky);
+        leftSky = null;
+      }
+      if (rightSky) {
+        scene.removeChild(rightSky);
+        rightSky = null;
+      }
+      // Remove <video> se existir
+      if (currentVideoEl) {
+        document.body.removeChild(currentVideoEl);
+        currentVideoEl = null;
       }
     }
 
-    function loadMedia(filename) {
-      clearScene();
-      const url = `${baseUrl}/${filename}`;
-      const lower = filename.toLowerCase();
-      const isVideo = /\.(mp4|webm)$/i.test(lower);
-      const isImage = /\.(jpg|jpeg|png|gif)$/i.test(lower);
-      const isStereo = /_stereo\./i.test(filename);
-
+    function showMono(url, isVideo) {
+      clearSkies();
       if (isVideo) {
-        // Cria <video> offscreen
+        // Cria elemento <video> escondido
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = url;
         video.crossOrigin = 'anonymous';
         video.loop = true;
         video.autoplay = true;
-        video.muted = true; 
+        video.muted = true;
         video.playsInline = true;
         video.setAttribute('webkit-playsinline', '');
         document.body.appendChild(video);
-        currentVideoElement = video;
+        currentVideoEl = video;
 
-        // Cria a-videosphere
+        // Sky de vídeo mono
         const vs = document.createElement('a-videosphere');
-        // Material flat para garantir sem iluminação, e src apontando para o <video>
         vs.setAttribute('shader', 'flat');
         vs.setAttribute('src', '#mediaVideo');
-        if (isStereo) {
-          // Aqui é o pulo do gato: coloca o stereo direto no a-videosphere
-          vs.setAttribute('stereo', 'top-bottom');
-        }
         scene.appendChild(vs);
-        currentEntity = vs;
-
-      } else if (isImage) {
-        // Cria a-sky
+        currentMonoSky = vs;
+      } else {
+        // Sky de imagem estática mono
         const sky = document.createElement('a-sky');
         sky.setAttribute('shader', 'flat');
-        // Usa url(...) no src pro A-Frame processar direito
         sky.setAttribute('src', `url(${url})`);
-        if (isStereo) {
-          // Define split top-bottom direto no <a-sky>
-          sky.setAttribute('stereo', 'top-bottom');
-        }
         scene.appendChild(sky);
-        currentEntity = sky;
-
-      } else {
-        console.error('Tipo de mídia não suportado:', filename);
+        currentMonoSky = sky;
       }
+    }
+
+    function showStereo(url, isVideo) {
+      // Remove mono
+      if (currentMonoSky) {
+        scene.removeChild(currentMonoSky);
+        currentMonoSky = null;
+      }
+
+      if (isVideo) {
+        // Mesma lógica de criar <video>
+        const video = document.createElement('video');
+        video.id = 'mediaVideo';
+        video.src = url;
+        video.crossOrigin = 'anonymous';
+        video.loop = true;
+        video.autoplay = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.setAttribute('webkit-playsinline', '');
+        document.body.appendChild(video);
+        currentVideoEl = video;
+
+        // Criamos DOIS a-videosphere: um pra cada olho
+        leftSky = document.createElement('a-videosphere');
+        leftSky.setAttribute('shader', 'flat');
+        leftSky.setAttribute('src', '#mediaVideo');
+        // Stereo componente: olho esquerdo, split vertical (top-bottom)
+        leftSky.setAttribute('stereo', 'eye:left; split:vertical');
+        scene.appendChild(leftSky);
+
+        rightSky = document.createElement('a-videosphere');
+        rightSky.setAttribute('shader', 'flat');
+        rightSky.setAttribute('src', '#mediaVideo');
+        // Stereo componente: olho direito
+        rightSky.setAttribute('stereo', 'eye:right; split:vertical');
+        scene.appendChild(rightSky);
+      } else {
+        // Imagem
+        leftSky = document.createElement('a-sky');
+        leftSky.setAttribute('shader', 'flat');
+        leftSky.setAttribute('src', `url(${url})`);
+        leftSky.setAttribute('stereo', 'eye:left; split:vertical');
+        scene.appendChild(leftSky);
+
+        rightSky = document.createElement('a-sky');
+        rightSky.setAttribute('shader', 'flat');
+        rightSky.setAttribute('src', `url(${url})`);
+        rightSky.setAttribute('stereo', 'eye:right; split:vertical');
+        scene.appendChild(rightSky);
+      }
+    }
+
+    function loadMedia(filename) {
+      clearSkies();
+      const url = `${baseUrl}/${filename}`;
+      const lower = filename.toLowerCase();
+      const isVideo = /\.(mp4|webm)$/i.test(lower);
+      const isImage = /\.(jpg|jpeg|png|gif)$/i.test(lower);
+      const isStereo = /_stereo\./i.test(filename);
+
+      if (isStereo) {
+        // Começa mostrando mono (para testarmos fora do VR)
+        showMono(url, isVideo);
+      } else {
+        // Se não for stereo, fica mono sempre
+        showMono(url, isVideo);
+      }
+
+      // Quando o usuário entrar em VR, troca para estéreo
+      scene.addEventListener('enter-vr', () => {
+        if (isStereo) {
+          showStereo(url, isVideo);
+        }
+      });
+
+      // Quando sair do VR, volta para mono
+      scene.addEventListener('exit-vr', () => {
+        if (isStereo) {
+          showMono(url, isVideo);
+        }
+      });
     }
 
     async function init() {
