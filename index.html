@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360X7 – Stereo 360 Viewer</title>
+  <title>Tour360_1.0</title>
   <style>
     body {
       margin: 0;
@@ -13,23 +13,48 @@
     canvas {
       display: block;
     }
+    #debug {
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: #0f0;
+      background: rgba(0, 0, 0, 0.7);
+      font-family: monospace;
+      font-size: 12px;
+      padding: 5px;
+      z-index: 999;
+      max-height: 200px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
+  <div id="debug">[DEBUG] Iniciando...</div>
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
     import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/VRButton.js';
 
+    const debugDiv = document.getElementById('debug');
+    function debug(msg) {
+      console.log(msg);
+      const p = document.createElement('div');
+      p.textContent = `[DEBUG] ${msg}`;
+      debugDiv.appendChild(p);
+      debugDiv.scrollTop = debugDiv.scrollHeight;
+    }
+
     let camera, scene, renderer;
 
+    debug('Passo 1: Iniciando init()');
     init();
 
     function init() {
+      debug('Passo 2: Criando cena e câmera');
       scene = new THREE.Scene();
-
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(0, 0, 0.1);
 
+      debug('Passo 3: Configurando renderer');
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -37,16 +62,21 @@
       document.body.appendChild(renderer.domElement);
       document.body.appendChild(VRButton.createButton(renderer));
 
+      debug('Passo 4: Criando geometria da esfera');
       const geometry = new THREE.SphereGeometry(500, 60, 40);
-      geometry.scale(-1, 1, 1); // Esfera invertida pra imersão
+      geometry.scale(-1, 1, 1);
 
+      debug('Passo 5: Preparando carregamento da imagem');
       const img = new Image();
-      img.crossOrigin = 'anonymous'; // Importante pro GitHub Pages
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
+        debug('Passo 6: Imagem carregada com sucesso (zoom: ' + img.width + 'x' + img.height + ')');
+
+        // Calcula metade da altura
+        const halfHeight = img.height / 2;
+        debug('Passo 7: Criando canvases para cada olho (metade da altura: ' + halfHeight + ')');
         const canvasLeft = document.createElement('canvas');
         const canvasRight = document.createElement('canvas');
-
-        const halfHeight = img.height / 2;
         canvasLeft.width = img.width;
         canvasLeft.height = halfHeight;
         canvasRight.width = img.width;
@@ -55,37 +85,44 @@
         const ctxLeft = canvasLeft.getContext('2d');
         const ctxRight = canvasRight.getContext('2d');
 
-        // Recorta metade de cima (olho esquerdo)
+        debug('Passo 8: Recortando metade de cima (olho esquerdo)');
         ctxLeft.drawImage(img, 0, 0, img.width, halfHeight, 0, 0, img.width, halfHeight);
-        // Recorta metade de baixo (olho direito)
+
+        debug('Passo 9: Recortando metade de baixo (olho direito)');
         ctxRight.drawImage(img, 0, halfHeight, img.width, halfHeight, 0, 0, img.width, halfHeight);
 
+        debug('Passo 10: Criando texturas a partir dos canvases');
         const textureLeft = new THREE.Texture(canvasLeft);
         const textureRight = new THREE.Texture(canvasRight);
         textureLeft.needsUpdate = true;
         textureRight.needsUpdate = true;
 
+        debug('Passo 11: Criando materiais para cada olho');
         const materialLeft = new THREE.MeshBasicMaterial({ map: textureLeft, side: THREE.BackSide });
         const materialRight = new THREE.MeshBasicMaterial({ map: textureRight, side: THREE.BackSide });
 
+        debug('Passo 12: Criando meshes (esferas) e adicionando layers');
         const meshLeft = new THREE.Mesh(geometry, materialLeft);
+        meshLeft.layers.set(1);
         const meshRight = new THREE.Mesh(geometry, materialRight);
-
-        meshLeft.layers.set(1);  // LEFT EYE
-        meshRight.layers.set(2); // RIGHT EYE
-
+        meshRight.layers.set(2);
         scene.add(meshLeft);
         scene.add(meshRight);
 
+        debug('Passo 13: Tudo configurado, chamando animate()');
         animate();
       };
-
+      img.onerror = (err) => {
+        debug('Erro ao carregar imagem: ' + err);
+      };
+      debug('Passo 14: Definindo src da imagem: ./media/A2_Stereo.jpg');
       img.src = './media/A2_Stereo.jpg';
 
       window.addEventListener('resize', onWindowResize);
     }
 
     function onWindowResize() {
+      debug('Passo 15: Resize detectado, ajustando câmera e renderer');
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
