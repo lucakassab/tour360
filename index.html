@@ -3,21 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360 A-FrameV1</title>
+  <title>Tour360 A-Frame – Stereo Certo</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
-  <a-scene>
+
+  <a-scene vr-mode-ui="enabled: true">
     <a-assets>
-      <!-- URL absoluto pro raw do GitHub -->
-      <img id="stereo360" src="https://raw.githubusercontent.com/lucakassab/tour360/main/media/A2_Stereo.jpg" crossorigin="anonymous">
-      <!-- Debug: mostra erro no console se falhar -->
+      <!-- Sua imagem estéreo top-bottom -->
+      <img id="stereo360" src="./media/A2_Stereo.jpg" crossorigin="anonymous" />
     </a-assets>
 
-    <!-- a-sky com DEBUG: se a imagem não carregar, aparece msg no console da A-Frame -->
-    <a-sky src="#stereo360" stereo="top-bottom" rotation="0 -90 0"></a-sky>
+    <!--
+      ATENÇÃO:
+      - material="shader: flat;" garante que ele não aplique iluminação ou reflexo.
+      - stereo: top-bottom divide a textura entre os olhos.
+      - rotation="0 -90 0" é opcional, só pra alinhar se a imagem vier torta.
+    -->
+    <a-sky 
+      material="src: #stereo360; shader: flat; stereo: top-bottom" 
+      rotation="0 -90 0">
+    </a-sky>
 
+    <!-- Câmera fixa no centro, com controles de olhar (mouse/gyro) e sem WASD (não quer andar) -->
     <a-entity camera look-controls wasd-controls-enabled="false"></a-entity>
   </a-scene>
+
 </body>
 </html>
