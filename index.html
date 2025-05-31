@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360 – Visualizador 360° Estéreo (CDN UMD final)</title>
+  <title>Tour360X</title>
 
-  <!-- ====================================================
-       1) Carrega Three.js UMD r147 via JSDelivr 
-       (define global THREE)
-     ==================================================== -->
+  <!-- 1) Three.js UMD r147 via JSDelivr (define global THREE) -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
   <script>
     if (typeof THREE === 'undefined') {
@@ -18,10 +15,7 @@
     }
   </script>
 
-  <!-- ====================================================
-       2) Carrega OrbitControls UMD r147 via JSDelivr 
-       (define global THREE.OrbitControls)
-     ==================================================== -->
+  <!-- 2) OrbitControls UMD r147 via JSDelivr (define global THREE.OrbitControls) -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
   <script>
     if (typeof THREE.OrbitControls === 'undefined') {
@@ -31,10 +25,7 @@
     }
   </script>
 
-  <!-- ====================================================
-       3) Carrega VRButton UMD r147 via JSDelivr 
-       (define global VRButton)
-     ==================================================== -->
+  <!-- 3) VRButton UMD r147 via JSDelivr (define global VRButton) -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/webxr/VRButton.js"></script>
   <script>
     if (typeof VRButton === 'undefined') {
@@ -57,7 +48,7 @@
     // AO CARREGAR A PÁGINA, INICIA O VISUALIZADOR
     // ====================================================
     window.addEventListener('load', () => {
-      console.log('⚙️ [onload] Iniciando visualizador 360° estéreo (CDN UMD final)...');
+      console.log('⚙️ [onload] Iniciando visualizador 360° (teste flat)...');
       init();
       animate();
     });
@@ -70,8 +61,7 @@
       // ----------------------------------------------------
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      // Posiciona quase no centro da esfera (raio 500)
-      camera.position.set(0, 0, 0.01); 
+      camera.position.set(0, 0, 0.01);
       console.log('  • Cena e câmera criadas.');
 
       // ----------------------------------------------------
@@ -96,7 +86,7 @@
       console.log('  • Renderer criado. WebXR habilitado =', renderer.xr.enabled);
 
       // ----------------------------------------------------
-      // 4) OrbitControls para modo “plano” (PC/celular sem VR)
+      // 4) OrbitControls para modo “plano”
       // ----------------------------------------------------
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enablePan = false;
@@ -105,10 +95,10 @@
       console.log('  • OrbitControls instanciado.');
 
       // ----------------------------------------------------
-      // 5) GEOMETRIA DA ESFERA (normais invertidas pra olhar de dentro)
+      // 5) GEOMETRIA DA ESFERA (normais invertidas pra ver de dentro)
       // ----------------------------------------------------
       const geometry = new THREE.SphereGeometry(500, 60, 40);
-      geometry.scale(-1, 1, 1); 
+      geometry.scale(-1, 1, 1);
       console.log('  • Geometria da esfera criada e normais invertidas.');
 
       // ----------------------------------------------------
@@ -120,10 +110,9 @@
       texture360 = loader.load(
         'media/A2_Stereo.jpg',
         (tex) => {
-          // O RGBFormat foi removido em r147 → usar RGBAFormat
           tex.minFilter = THREE.LinearFilter;
           tex.magFilter = THREE.LinearFilter;
-          tex.format = THREE.RGBAFormat;
+          tex.format = THREE.RGBAFormat; // RGBFormat foi removido
           console.log('    ✅ Textura carregada:', tex.image.width + '×' + tex.image.height);
         },
         undefined,
@@ -133,26 +122,17 @@
       );
 
       // ----------------------------------------------------
-      // 7) SHADERS: fragmentTopo exibe metade superior; fragmentBaixo exibe metade inferior
+      // 7) SHADERS TEMPORÁRIOS: flat, para testar se a esfera aparece
       // ----------------------------------------------------
       const fragmentTopo = `
         varying vec2 vUv;
         uniform sampler2D tex;
         void main() {
-          // mapeia vUv.y ∈ [0,1] → [0.5,1] (metade superior)
-          vec2 uv = vec2(vUv.x, vUv.y * 0.5 + 0.5);
-          gl_FragColor = texture2D(tex, uv);
+          // shader “flat” que mapeia toda a textura (monoscópico 360°)
+          gl_FragColor = texture2D(tex, vUv);
         }
       `;
-      const fragmentBaixo = `
-        varying vec2 vUv;
-        uniform sampler2D tex;
-        void main() {
-          // mapeia vUv.y ∈ [0,1] → [0,0.5] (metade inferior)
-          vec2 uv = vec2(vUv.x, vUv.y * 0.5);
-          gl_FragColor = texture2D(tex, uv);
-        }
-      `;
+      const fragmentBaixo = fragmentTopo; // igual para teste
       const vertexShader = `
         varying vec2 vUv;
         void main() {
@@ -160,13 +140,10 @@
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `;
-      console.log('  • Shaders criados.');
+      console.log('  • Shaders “flat” criados para teste.');
 
       // ----------------------------------------------------
-      // 8) CRIA OS MATERIAIS:
-      //    - Mono = metade superior (modo plano)
-      //    - Left = metade superior (olho esquerdo VR)
-      //    - Right = metade inferior (olho direito VR)
+      // 8) MATERIAIS: usando shader flat (para garantir que a textura apareça)
       // ----------------------------------------------------
       const materialMono = new THREE.ShaderMaterial({
         uniforms: { tex: { value: texture360 } },
@@ -183,16 +160,16 @@
       const materialRight = new THREE.ShaderMaterial({
         uniforms: { tex: { value: texture360 } },
         vertexShader,
-        fragmentShader: fragmentBaixo,
+        fragmentShader: fragmentTopo,
         side: THREE.BackSide
       });
-      console.log('  • Materiais Mono, Left e Right prontos.');
+      console.log('  • Materiais “flat” prontos (teste).');
 
       // ----------------------------------------------------
-      // 9) CRIA OS MESHS e atribui camadas
-      //    - sphereMono → layer 0 (modo plano)
-      //    - sphereLeft → layer 1 (olho esquerdo VR)
-      //    - sphereRight → layer 2 (olho direito VR)
+      // 9) CRIA OS MESHS e define camadas
+      //    → layer 0 = sphereMono (monoscopia flat)
+      //    → layer 1 = sphereLeft (para VR depois)
+      //    → layer 2 = sphereRight (para VR depois)
       // ----------------------------------------------------
       sphereMono = new THREE.Mesh(geometry, materialMono);
       sphereMono.layers.set(0);
@@ -211,20 +188,20 @@
       console.log('  • Meshes adicionadas: sphereMono(layer0), sphereLeft(layer1), sphereRight(layer2).');
 
       // ----------------------------------------------------
-      // 10) Inicialmente, a câmera vê apenas a layer 0 (modo plano)
+      // 10) Inicialmente, câmera vê apenas layer 0 (modo plano)
       // ----------------------------------------------------
       camera.layers.enable(0);
       console.log('  • Câmera configurada para layer 0 (modo plano).');
 
       // ----------------------------------------------------
-      // 11) ADICIONA LISTENER PARA REDIMENSIONAMENTO
+      // 11) Listener para redimensionamento
       // ----------------------------------------------------
       window.addEventListener('resize', onWindowResize);
       console.log('  • Listener de resize adicionado.');
     }
 
     // ====================================================
-    // FUNÇÃO DE REDIMENSIONAMENTO DA JANELA
+    // REDIMENSIONAMENTO DA JANELA
     // ====================================================
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -234,18 +211,18 @@
     }
 
     // ====================================================
-    // LOOP DE ANIMAÇÃO (promise chamada a cada frame)
+    // LOOP DE ANIMAÇÃO
     // ====================================================
     function animate() {
       renderer.setAnimationLoop(render);
     }
 
     // ====================================================
-    // FUNÇÃO DE RENDER (executada todo frame)
+    // RENDERIZA CADA FRAME
     // ====================================================
     function render() {
       if (renderer.xr.isPresenting) {
-        // Está em VR: exibe as esferas estéreo
+        // Entrou em VR: exibe as esferas estéreo
         if (sphereMono.visible) {
           console.log('🕶️ Entrou em modo VR.');
         }
