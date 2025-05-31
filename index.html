@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360 – Teste Básico da Esfera 360°</title>
+  <title>Tour360XXX2</title>
 
-  <!-- Carrega Three.js UMD r147 via JSDelivr -->
+  <!-- 1) Carrega Three.js UMD r147 via JSDelivr -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
   <script>
     if (typeof THREE === 'undefined') {
@@ -14,8 +14,8 @@
       console.log('✅ Three.js version', THREE.REVISION, 'carregado (UMD/CDN).');
     }
   </script>
-  
-  <!-- Carrega OrbitControls UMD r147 via JSDelivr (só para permitir você girar a cena) -->
+
+  <!-- 2) Carrega OrbitControls UMD r147 via JSDelivr (para girar a cena) -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
   <script>
     if (typeof THREE.OrbitControls === 'undefined') {
@@ -43,48 +43,44 @@
     function init() {
       console.log('🔧 [init] iniciado.');
 
-      // ----------------------------
+      // ----------------------------------------------------
       // 1) CENA E CÂMERA
-      // ----------------------------
+      // ----------------------------------------------------
       scene = new THREE.Scene();
-      // Configura câmera: FOV 75°, aspect = tela, near=0.1, far=2000
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-      // Posiciona quase no centro da esfera (raio 500): 
-      camera.position.set(0, 0, 0.01); 
+      // Posiciona quase no centro da esfera (raio 500)
+      camera.position.set(0, 0, 0.01);
       console.log('  • Cena e câmera criadas.');
 
-      // ----------------------------
+      // ----------------------------------------------------
       // 2) RENDERER
-      // ----------------------------
+      // ----------------------------------------------------
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
-      // Não precisamos de WebXR aqui, só mostraremos monoscopia
       document.body.appendChild(renderer.domElement);
-
       console.log('  • Renderer criado.');
 
-      // ----------------------------
-      // 3) OrbitControls (para girar o mouse/touch)
-      // ----------------------------
+      // ----------------------------------------------------
+      // 3) OrbitControls (para girar com mouse/touch)
+      // ----------------------------------------------------
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enablePan = false;
       controls.enableZoom = false;
       controls.rotateSpeed = 0.5;
       console.log('  • OrbitControls instanciado.');
 
-      // ----------------------------
-      // 4) GEOMETRIA DA ESFERA
-      //    (raio 500, 60×40 segmentos, normais invertidas)
-      // ----------------------------
+      // ----------------------------------------------------
+      // 4) GEOMETRIA DA ESFERA (raio=500, segmentos 60x40)
+      //    Inverte as normais para olhar de dentro
+      // ----------------------------------------------------
       const geometry = new THREE.SphereGeometry(500, 60, 40);
-      geometry.scale(-1, 1, 1); // inverte para olhar de dentro
+      geometry.scale(-1, 1, 1);
       console.log('  • Geometria da esfera criada e normais invertidas.');
 
-      // ----------------------------
-      // 5) CARREGA A TEXTURA
-      //    mídia em media/A2_Stereo.jpg
-      // ----------------------------
+      // ----------------------------------------------------
+      // 5) CARREGA A TEXTURA 360° (mídia em media/A2_Stereo.jpg)
+      // ----------------------------------------------------
       const loader = new THREE.TextureLoader();
       console.log('  • Carregando textura 360 de "./media/A2_Stereo.jpg"...');
       loader.load(
@@ -92,22 +88,23 @@
         (tex) => {
           tex.minFilter = THREE.LinearFilter;
           tex.magFilter = THREE.LinearFilter;
-          tex.format = THREE.RGBAFormat; // RGBFormat removido em r147
+          tex.format = THREE.RGBAFormat; // Este format funciona em r147+
           console.log('    ✅ Textura carregada com sucesso:', tex.image.width + '×' + tex.image.height);
 
-          // ----------------------------
-          // 6) CRIA O MATERIAL BÁSICO (MeshBasicMaterial)
-          //    que joga a textura inteira no interior da esfera
-          // ----------------------------
+          // ----------------------------------------------------
+          // 6) CRIA O MATERIAL BÁSICO (MeshBasicMaterial),
+          //    que renderiza o lado padrão (FrontSide). 
+          //    Como já invertemos as normais, ele vai desenhar o interior da esfera.
+          // ----------------------------------------------------
           const material = new THREE.MeshBasicMaterial({
             map: tex,
-            side: THREE.BackSide, // renderiza o interior da esfera
+            side: THREE.FrontSide, // Aqui é o padrão; serve porque a geometria já foi invertida
           });
-          console.log('    • Material básico criado.');
+          console.log('    • Material básico criado (FrontSide, já que a geometria está invertida).');
 
-          // ----------------------------
-          // 7) CRIA O MESH e adiciona à cena
-          // ----------------------------
+          // ----------------------------------------------------
+          // 7) CRIA O MESH com essa geometria + material
+          // ----------------------------------------------------
           sphere = new THREE.Mesh(geometry, material);
           scene.add(sphere);
           console.log('    • Mesh da esfera adicionada à cena.');
@@ -118,9 +115,9 @@
         }
       );
 
-      // ----------------------------
+      // ----------------------------------------------------
       // 8) LISTENER PARA REDIMENSIONAMENTO
-      // ----------------------------
+      // ----------------------------------------------------
       window.addEventListener('resize', onWindowResize);
       console.log('  • Listener de resize adicionado.');
     }
@@ -136,7 +133,7 @@
     // Loop de animação
     function animate() {
       requestAnimationFrame(animate);
-      controls.update(); // atualiza controles se houver movimento do mouse
+      controls.update(); // atualiza controles do mouse/touch
       renderer.render(scene, camera);
     }
   </script>
@@ -154,6 +151,9 @@
   </style>
 </head>
 <body>
-  <!-- O script acima injeta o <canvas> e faz todo o resto. -->
+  <!-- 
+    O JavaScript acima já injeta o <canvas> e renderiza tudo.
+    Não precisa colocar nada dentro do <body>.
+  -->
 </body>
 </html>
