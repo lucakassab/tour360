@@ -3,143 +3,243 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360XXX2</title>
+  <title>Tour360 – Monoscopia e Estéreo VR</title>
 
   <!-- 1) Carrega Three.js UMD r147 via JSDelivr -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
   <script>
     if (typeof THREE === 'undefined') {
-      console.error('❌ Three.js NÃO foi carregado! Verifique conexão ou CDN.');
+      console.error('❌ Three.js NÃO carregou! Verifica CDN.');
     } else {
-      console.log('✅ Three.js version', THREE.REVISION, 'carregado (UMD/CDN).');
+      console.log('✅ Three.js r' + THREE.REVISION + ' carregado.');
     }
   </script>
 
-  <!-- 2) Carrega OrbitControls UMD r147 via JSDelivr (para girar a cena) -->
+  <!-- 2) Carrega OrbitControls UMD r147 via JSDelivr -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
   <script>
     if (typeof THREE.OrbitControls === 'undefined') {
-      console.error('❌ OrbitControls NÃO está disponível (verifique CDN).');
+      console.error('❌ OrbitControls NÃO carregou! Verifica CDN.');
     } else {
-      console.log('✅ OrbitControls carregado (UMD/CDN).');
+      console.log('✅ OrbitControls carregado.');
+    }
+  </script>
+
+  <!-- 3) Carrega VRButton UMD r147 via JSDelivr (definição global VRButton) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/webxr/VRButton.js"></script>
+  <script>
+    if (typeof VRButton === 'undefined') {
+      console.error('❌ VRButton NÃO carregou! Verifica CDN.');
+    } else {
+      console.log('✅ VRButton carregado.');
     }
   </script>
 
   <script>
-    // ===============================================
-    // VARIÁVEIS GLOBAIS PARA O TESTE BÁSICO
-    // ===============================================
+    // ====================================================
+    // VARIÁVEIS GLOBAIS DO VISUALIZADOR 360° ESTÉREO/MONO
+    // ====================================================
     let camera, scene, renderer;
     let controls;
-    let sphere;
+    let sphereMono, sphereLeft, sphereRight;
+    let texture360;
 
-    // Quando a página carregar, roda init() e animate()
     window.addEventListener('load', () => {
-      console.log('⚙️ [onload] Iniciando teste básico da esfera 360°...');
+      console.log('⚙️ Iniciando visualizador 360° com monoscopia e VR estéreo...');
       init();
       animate();
     });
 
     function init() {
-      console.log('🔧 [init] iniciado.');
+      console.log('🔧 [init] chamado.');
 
-      // ----------------------------------------------------
-      // 1) CENA E CÂMERA
-      // ----------------------------------------------------
+      // ------------ 1) CENA E CÂMERA ------------
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-      // Posiciona quase no centro da esfera (raio 500)
       camera.position.set(0, 0, 0.01);
       console.log('  • Cena e câmera criadas.');
 
-      // ----------------------------------------------------
-      // 2) RENDERER
-      // ----------------------------------------------------
+      // ------------ 2) RENDERER COM WebXR ------------
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.xr.enabled = true;
       document.body.appendChild(renderer.domElement);
-      console.log('  • Renderer criado.');
 
-      // ----------------------------------------------------
-      // 3) OrbitControls (para girar com mouse/touch)
-      // ----------------------------------------------------
+      // ------------ 3) VRButton (se suportar WebXR) ------------
+      if (typeof VRButton === 'function') {
+        document.body.appendChild(VRButton.createButton(renderer));
+        console.log('  • VRButton adicionado.');
+      } else {
+        console.warn('  • VRButton ausente — sem “Enter VR”.');
+      }
+      console.log('  • Renderer criado. WebXR habilitado =', renderer.xr.enabled);
+
+      // ------------ 4) OrbitControls (modo plano) ------------
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enablePan = false;
       controls.enableZoom = false;
       controls.rotateSpeed = 0.5;
       console.log('  • OrbitControls instanciado.');
 
-      // ----------------------------------------------------
-      // 4) GEOMETRIA DA ESFERA (raio=500, segmentos 60x40)
-      //    Inverte as normais para olhar de dentro
-      // ----------------------------------------------------
+      // ------------ 5) GEOMETRIA DA ESFERA ------------
       const geometry = new THREE.SphereGeometry(500, 60, 40);
-      geometry.scale(-1, 1, 1);
-      console.log('  • Geometria da esfera criada e normais invertidas.');
+      geometry.scale(-1, 1, 1); // inverte normais para olhar de dentro
+      console.log('  • Geometria da esfera criada e invertida.');
 
-      // ----------------------------------------------------
-      // 5) CARREGA A TEXTURA 360° (mídia em media/A2_Stereo.jpg)
-      // ----------------------------------------------------
+      // ------------ 6) CARREGA A TEXTURA 360° ESTÉREO (TOP-BOTTOM) ------------
       const loader = new THREE.TextureLoader();
       console.log('  • Carregando textura 360 de "./media/A2_Stereo.jpg"...');
-      loader.load(
+      texture360 = loader.load(
         'media/A2_Stereo.jpg',
         (tex) => {
           tex.minFilter = THREE.LinearFilter;
           tex.magFilter = THREE.LinearFilter;
-          tex.format = THREE.RGBAFormat; // Este format funciona em r147+
-          console.log('    ✅ Textura carregada com sucesso:', tex.image.width + '×' + tex.image.height);
+          tex.format = THREE.RGBAFormat;
+          console.log('    ✅ Textura carregada:', tex.image.width + '×' + tex.image.height);
 
-          // ----------------------------------------------------
-          // 6) CRIA O MATERIAL BÁSICO (MeshBasicMaterial),
-          //    que renderiza o lado padrão (FrontSide). 
-          //    Como já invertemos as normais, ele vai desenhar o interior da esfera.
-          // ----------------------------------------------------
-          const material = new THREE.MeshBasicMaterial({
-            map: tex,
-            side: THREE.FrontSide, // Aqui é o padrão; serve porque a geometria já foi invertida
-          });
-          console.log('    • Material básico criado (FrontSide, já que a geometria está invertida).');
-
-          // ----------------------------------------------------
-          // 7) CRIA O MESH com essa geometria + material
-          // ----------------------------------------------------
-          sphere = new THREE.Mesh(geometry, material);
-          scene.add(sphere);
-          console.log('    • Mesh da esfera adicionada à cena.');
+          // Agora que a textura carregou, criamos os materiais e meshes:
+          createSpheres(geometry);
         },
         undefined,
         (err) => {
-          console.error('    ❌ Erro ao carregar a textura 360 (404 ou outro):', err);
+          console.error('    ❌ Erro ao carregar textura (404 ou outro):', err);
         }
       );
 
-      // ----------------------------------------------------
-      // 8) LISTENER PARA REDIMENSIONAMENTO
-      // ----------------------------------------------------
+      // ------------ 7) RESIZE HANDLER ------------
       window.addEventListener('resize', onWindowResize);
       console.log('  • Listener de resize adicionado.');
     }
 
-    // Ajusta câmera e renderer quando a janela muda de tamanho
+    function createSpheres(geometry) {
+      // ------------ SHADERS ------------
+      const vertexShader = `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `;
+      const fragmentTopo = `
+        varying vec2 vUv;
+        uniform sampler2D tex;
+        void main() {
+          // Mapeia [0,1] → [0.5,1]: metade superior
+          vec2 uv = vec2(vUv.x, vUv.y * 0.5 + 0.5);
+          gl_FragColor = texture2D(tex, uv);
+        }
+      `;
+      const fragmentBaixo = `
+        varying vec2 vUv;
+        uniform sampler2D tex;
+        void main() {
+          // Mapeia [0,1] → [0,0.5]: metade inferior
+          vec2 uv = vec2(vUv.x, vUv.y * 0.5);
+          gl_FragColor = texture2D(tex, uv);
+        }
+      `;
+
+      console.log('    • Shaders criados.');
+
+      // ------------ MATERIAIS ------------
+      const materialMono = new THREE.ShaderMaterial({
+        uniforms: { tex: { value: texture360 } },
+        vertexShader,
+        fragmentShader: fragmentTopo,
+        side: THREE.FrontSide // geometria invertida faz o interior aparecer
+      });
+
+      const materialLeft = new THREE.ShaderMaterial({
+        uniforms: { tex: { value: texture360 } },
+        vertexShader,
+        fragmentShader: fragmentTopo,
+        side: THREE.FrontSide
+      });
+
+      const materialRight = new THREE.ShaderMaterial({
+        uniforms: { tex: { value: texture360 } },
+        vertexShader,
+        fragmentShader: fragmentBaixo,
+        side: THREE.FrontSide
+      });
+
+      console.log('    • Materiais Mono, Left e Right prontos.');
+
+      // ------------ CRIAÇÃO DOS MESHS ------------
+      sphereMono = new THREE.Mesh(geometry, materialMono);
+      sphereMono.layers.set(0); // layer 0 = modo plano
+      scene.add(sphereMono);
+
+      sphereLeft = new THREE.Mesh(geometry, materialLeft);
+      sphereLeft.layers.set(1); // layer 1 = olho esquerdo VR
+      sphereLeft.visible = false;
+      scene.add(sphereLeft);
+
+      sphereRight = new THREE.Mesh(geometry, materialRight);
+      sphereRight.layers.set(2); // layer 2 = olho direito VR
+      sphereRight.visible = false;
+      scene.add(sphereRight);
+
+      console.log('    • Meshes adicionadas: sphereMono(layer0), sphereLeft(layer1), sphereRight(layer2).');
+
+      // ------------ CONFIGURAÇÃO INICIAL DA CÂMERA ------------
+      camera.layers.enable(0); // só vê layer 0 (mono) no início
+      console.log('    • Câmera configurada para layer 0 (mono).');
+    }
+
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      console.log('📐 Janela redimensionada para', window.innerWidth + '×' + window.innerHeight);
+      console.log('📐 Redimensionado para', window.innerWidth + '×' + window.innerHeight);
     }
 
-    // Loop de animação
     function animate() {
-      requestAnimationFrame(animate);
-      controls.update(); // atualiza controles do mouse/touch
+      renderer.setAnimationLoop(render);
+    }
+
+    function render() {
+      if (renderer.xr.isPresenting) {
+        // ----------- MODO VR: usa estereoscopia top-bottom -----------
+        if (sphereMono.visible) {
+          console.log('🕶️ Entrou em modo VR.');
+        }
+        sphereMono.visible = false;
+        sphereLeft.visible = true;
+        sphereRight.visible = true;
+
+        const xrCam = renderer.xr.getCamera(camera);
+        if (xrCam && xrCam.isArrayCamera) {
+          xrCam.cameras.forEach((c) => {
+            c.layers.disable(0);
+            c.layers.disable(1);
+            c.layers.disable(2);
+          });
+          // olho esquerdo → layer1 / olho direito → layer2
+          xrCam.cameras[0].layers.enable(1);
+          xrCam.cameras[1].layers.enable(2);
+        }
+      } else {
+        // ----------- MODO PLANO: usa metade superior (mono) -----------
+        if (!sphereMono.visible) {
+          console.log('📱 Voltou para modo plano.');
+        }
+        sphereMono.visible = true;
+        sphereLeft.visible = false;
+        sphereRight.visible = false;
+        camera.layers.enable(0);
+        camera.layers.disable(1);
+        camera.layers.disable(2);
+        controls.update();
+      }
+
       renderer.render(scene, camera);
     }
   </script>
 
   <style>
-    /* Tela preta, sem margens, canvas full-screen */
     body {
       margin: 0;
       overflow: hidden;
@@ -148,12 +248,19 @@
     canvas {
       display: block;
     }
+    /* O VRButton injeta .webxr-button automaticamente */
+    .webxr-button {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1;
+    }
   </style>
 </head>
 <body>
   <!-- 
-    O JavaScript acima já injeta o <canvas> e renderiza tudo.
-    Não precisa colocar nada dentro do <body>.
+    O script acima já injeta o <canvas> e o botão “Enter VR” (se suportado).
+    Não precisa colocar mais nada aqui.
   -->
 </body>
 </html>
