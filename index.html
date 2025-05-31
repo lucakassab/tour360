@@ -1,23 +1,31 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>360 Media Viewer</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Tour360_2.1</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
     #menu {
       position: absolute;
       top: 10px;
       left: 10px;
-      z-index: 1;
+      z-index: 999;
       background: rgba(255,255,255,0.8);
       padding: 8px;
       border-radius: 4px;
       font-family: sans-serif;
     }
-    #mediaSelect { margin-left: 8px; }
+    #mediaSelect {
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
@@ -25,16 +33,23 @@
     <span id="count">0 mídia(s)</span>
     <select id="mediaSelect"></select>
   </div>
-  <a-scene embedded id="scene"></a-scene>
+
+  <!-- Cena A-Frame -->
+  <a-scene id="scene" embedded vr-mode-ui="enterVRButton: true" background="color: #000">
+    <!-- A gente vai adicionar e remover entidades dinamicamente -->
+  </a-scene>
 
   <script>
     const owner = 'lucakassab';
     const repo = 'tour360';
     const branch = 'main';
     const baseUrl = `https://${owner}.github.io/${repo}/media`;
+
     let currentEntity = null;
     let currentVideoElement = null;
+    const scene = document.getElementById('scene');
 
+    // Busca lista de arquivos em /media
     async function fetchMediaList() {
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
       const res = await fetch(apiUrl);
@@ -46,7 +61,6 @@
     }
 
     function clearScene() {
-      const scene = document.getElementById('scene');
       if (currentEntity) {
         scene.removeChild(currentEntity);
         currentEntity = null;
@@ -57,70 +71,51 @@
       }
     }
 
-    function applyStereoHalf(entity) {
-      // Mostra metade superior (um olho) no modo não-VR
-      entity.setAttribute('material', 'offset', '0 0.5');
-      entity.setAttribute('material', 'repeat', '1 0.5');
-    }
-
-    function resetStereo(entity) {
-      // Restaura mapeamento estéreo top-bottom para VR
-      entity.setAttribute('stereo', 'top-bottom');
-      entity.setAttribute('material', 'offset', '0 0');
-      entity.setAttribute('material', 'repeat', '1 1');
-    }
-
     function loadMedia(filename) {
       clearScene();
       const url = `${baseUrl}/${filename}`;
-      const name = filename.toLowerCase();
-      const isVideo = /\.(mp4|webm)$/i.test(name);
-      const isImage = /\.(jpg|jpeg|png|gif)$/i.test(name);
-      const isStereo = /_stereo\./i.test(name);
-      const scene = document.getElementById('scene');
+      const lower = filename.toLowerCase();
+      const isVideo = /\.(mp4|webm)$/i.test(lower);
+      const isImage = /\.(jpg|jpeg|png|gif)$/i.test(lower);
+      const isStereo = /_stereo\./i.test(filename);
 
       if (isVideo) {
+        // Cria vídeo elemento escondido
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = url;
+        video.crossOrigin = 'anonymous';
         video.loop = true;
         video.autoplay = true;
-        video.crossOrigin = 'anonymous';
+        video.muted = true; 
         video.playsInline = true;
-        video.muted = true;
         video.setAttribute('webkit-playsinline', '');
         document.body.appendChild(video);
         currentVideoElement = video;
 
+        // Cria a-videosphere com material que tem stereo
         const vs = document.createElement('a-videosphere');
-        vs.setAttribute('src', '#mediaVideo');
-        if (isStereo) vs.setAttribute('stereo', 'top-bottom');
+        // Em material, define src e se for estéreo, define stereo-format como top-bottom
+        if (isStereo) {
+          vs.setAttribute('material', `shader: flat; src: #mediaVideo; stereo: top-bottom`);
+        } else {
+          vs.setAttribute('material', `shader: flat; src: #mediaVideo`);
+        }
         scene.appendChild(vs);
         currentEntity = vs;
 
-        if (isStereo) {
-          // Inicia com metade para PC
-          applyStereoHalf(vs);
-          scene.addEventListener('enter-vr', () => resetStereo(vs));
-          scene.addEventListener('exit-vr', () => applyStereoHalf(vs));
-        }
-
       } else if (isImage) {
+        // Cria a-sky com material que tem stereo
         const sky = document.createElement('a-sky');
-        sky.setAttribute('src', url);
-        if (isStereo) sky.setAttribute('stereo', 'top-bottom');
+        if (isStereo) {
+          sky.setAttribute('material', `shader: flat; src: url(${url}); stereo: top-bottom`);
+        } else {
+          sky.setAttribute('material', `shader: flat; src: url(${url})`);
+        }
         scene.appendChild(sky);
         currentEntity = sky;
-
-        if (isStereo) {
-          // Inicia com metade para PC
-          applyStereoHalf(sky);
-          scene.addEventListener('enter-vr', () => resetStereo(sky));
-          scene.addEventListener('exit-vr', () => applyStereoHalf(sky));
-        }
-
       } else {
-        console.error('Tipo de mídia não suportado:', url);
+        console.error('Tipo de mídia não suportado:', filename);
       }
     }
 
@@ -135,8 +130,9 @@
         opt.textContent = name;
         select.appendChild(opt);
       });
-      select.addEventListener('change', e => loadMedia(e.target.value));
+      // Carrega primeiro item por padrão
       if (list.length) loadMedia(list[0]);
+      select.addEventListener('change', e => loadMedia(e.target.value));
     }
 
     window.addEventListener('load', init);
