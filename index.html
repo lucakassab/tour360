@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>360 Media Viewer V2</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>360 Media Viewer V3</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
     #menu {
       position: absolute;
       top: 10px;
@@ -17,7 +23,9 @@
       border-radius: 4px;
       font-family: sans-serif;
     }
-    #mediaSelect { margin-left: 8px; }
+    #mediaSelect {
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
@@ -25,16 +33,23 @@
     <span id="count">0 mídia(s)</span>
     <select id="mediaSelect"></select>
   </div>
-  <a-scene embedded id="scene"></a-scene>
+
+  <!-- Cena A-Frame -->
+  <a-scene embedded id="scene">
+    <!-- Camera defaults; pro VR funcionar, não precisa botar nada extra além do enter-vr button padrão -->
+  </a-scene>
 
   <script>
+    // Configurações do seu repositório
     const owner = 'lucakassab';
     const repo = 'tour360';
     const branch = 'main';
     const baseUrl = `https://${owner}.github.io/${repo}/media`;
+
     let currentEntity = null;
     let currentVideoElement = null;
 
+    // Pega lista de arquivos no GitHub
     async function fetchMediaList() {
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
       const res = await fetch(apiUrl);
@@ -45,6 +60,7 @@
         .map(f => f.name);
     }
 
+    // Remove entidade atual da cena e video se tiver
     function clearScene() {
       const scene = document.getElementById('scene');
       if (currentEntity) {
@@ -57,18 +73,26 @@
       }
     }
 
+    // Exibe só a metade de cima no modo 2D (mesmo pro conteúdo estéreo)
     function applyStereoHalf(entity) {
-      // Sem VR: desabilita material.stereo e mostra só a metade superior
-      entity.setAttribute('material', 'stereo: none; offset: 0 0.5; repeat: 1 0.5');
+      // Força o material para top-bottom, mas joga o UV na metade de cima
+      entity.setAttribute('material.stereo', 'top-bottom');
+      entity.setAttribute('material.offset', '0 0.5');
+      entity.setAttribute('material.repeat', '1 0.5');
+      // Força update no Three.js
+      forceMaterialUpdate(entity);
     }
 
+    // Reseta para mostrar estéreo completo no VR: cada olho vê a metade correta
     function resetStereo(entity) {
-      // No VR: habilita material.stereo top-bottom e reseta offset/repeat pra 1x1
-      entity.setAttribute('material', 'stereo: top-bottom; offset: 0 0; repeat: 1 1');
+      entity.setAttribute('material.stereo', 'top-bottom');
+      entity.setAttribute('material.offset', '0 0');
+      entity.setAttribute('material.repeat', '1 1');
+      forceMaterialUpdate(entity);
     }
 
+    // Força atualização da textura/material (Three.js)
     function forceMaterialUpdate(entity) {
-      // Força atualização do material/textura no Three.js
       const mesh = entity.getObject3D('mesh');
       if (mesh && mesh.material) {
         if (mesh.material.map) mesh.material.map.needsUpdate = true;
@@ -76,6 +100,7 @@
       }
     }
 
+    // Carrega a mídia selecionada (imagem ou vídeo)
     function loadMedia(filename) {
       clearScene();
       const url = `${baseUrl}/${filename}`;
@@ -86,7 +111,7 @@
       const scene = document.getElementById('scene');
 
       if (isVideo) {
-        // Cria <video> para a-videosphere
+        // Cria elemento de vídeo
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = url;
@@ -102,20 +127,25 @@
         // Cria videosphere
         const vs = document.createElement('a-videosphere');
         vs.setAttribute('src', '#mediaVideo');
+        vs.setAttribute('rotation', '0 -90 0'); // se quiser girar a view default, opcional
         if (isStereo) {
-          // Já define material.stereo pra top-bottom (mas vamos logo aplicar a metade pra 2D)
-          vs.setAttribute('material', 'stereo: top-bottom; offset: 0 0.5; repeat: 1 0.5');
+          // Configura pra top-bottom e joga UV na metade superior
+          vs.setAttribute('material.stereo', 'top-bottom');
+          vs.setAttribute('material.offset', '0 0.5');
+          vs.setAttribute('material.repeat', '1 0.5');
         }
         scene.appendChild(vs);
         currentEntity = vs;
 
       } else if (isImage) {
-        // Cria a-sky
+        // Cria sky para imagens
         const sky = document.createElement('a-sky');
         sky.setAttribute('src', url);
+        sky.setAttribute('rotation', '0 -90 0'); // opcional, se quiser girar a câmera
         if (isStereo) {
-          // Define material.stereo e aplica metade superior direto
-          sky.setAttribute('material', 'stereo: top-bottom; offset: 0 0.5; repeat: 1 0.5');
+          sky.setAttribute('material.stereo', 'top-bottom');
+          sky.setAttribute('material.offset', '0 0.5');
+          sky.setAttribute('material.repeat', '1 0.5');
         }
         scene.appendChild(sky);
         currentEntity = sky;
@@ -136,30 +166,33 @@
         opt.textContent = name;
         select.appendChild(opt);
       });
-      select.addEventListener('change', e => loadMedia(e.target.value));
       if (list.length) loadMedia(list[0]);
+      select.addEventListener('change', e => loadMedia(e.target.value));
 
-      // Eventos de VR
+      // Eventos de VR do A-Frame
       const sceneEl = document.getElementById('scene');
       sceneEl.addEventListener('enter-vr', () => {
-        if (currentEntity && currentEntity.hasAttribute('material')) {
+        if (currentEntity) {
           // Dá um tempinho pro A-Frame entrar no VR antes de resetar
           setTimeout(() => {
-            resetStereo(currentEntity);
-            forceMaterialUpdate(currentEntity);
-          }, 50);
+            const filename = document.getElementById('mediaSelect').value.toLowerCase();
+            if (/_stereo\./i.test(filename)) {
+              // Se for estéreo, exibe tudo top-bottom
+              resetStereo(currentEntity);
+            }
+            // Se não for estéreo, nada a fazer (já tá monoscópico)
+          }, 100);
         }
       });
       sceneEl.addEventListener('exit-vr', () => {
-        if (currentEntity && currentEntity.hasAttribute('material')) {
+        if (currentEntity) {
           setTimeout(() => {
-            // Se for estereoscópico, volta a metade superior; se não, nada a fazer
             const filename = document.getElementById('mediaSelect').value.toLowerCase();
             if (/_stereo\./i.test(filename)) {
+              // Se for estéreo, volta a exibir só metade de cima no 2D
               applyStereoHalf(currentEntity);
-              forceMaterialUpdate(currentEntity);
             }
-          }, 50);
+          }, 100);
         }
       });
     }
