@@ -21,7 +21,6 @@
     import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/VRButton.js';
 
     let camera, scene, renderer;
-    let sphereLeft, sphereRight;
 
     init();
 
@@ -39,46 +38,49 @@
       document.body.appendChild(VRButton.createButton(renderer));
 
       const geometry = new THREE.SphereGeometry(500, 60, 40);
-      geometry.scale(-1, 1, 1); // esfera invertida pro 360 funcionar
+      geometry.scale(-1, 1, 1); // Esfera invertida pra imersão
 
-      const loader = new THREE.TextureLoader();
-      loader.load('./media/A2_Stereo.jpg', (texture) => {
-        texture.minFilter = THREE.LinearFilter;
-        texture.magFilter = THREE.LinearFilter;
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; // Importante pro GitHub Pages
+      img.onload = () => {
+        const canvasLeft = document.createElement('canvas');
+        const canvasRight = document.createElement('canvas');
 
-        // Mapeamento manual pra cada olho
-        const leftEyeMaterial = new THREE.MeshBasicMaterial({
-          map: texture,
-          side: THREE.BackSide
-        });
+        const halfHeight = img.height / 2;
+        canvasLeft.width = img.width;
+        canvasLeft.height = halfHeight;
+        canvasRight.width = img.width;
+        canvasRight.height = halfHeight;
 
-        const rightEyeMaterial = new THREE.MeshBasicMaterial({
-          map: texture,
-          side: THREE.BackSide
-        });
+        const ctxLeft = canvasLeft.getContext('2d');
+        const ctxRight = canvasRight.getContext('2d');
 
-        // Olho esquerdo = metade de cima
-        leftEyeMaterial.map.offset.y = 0.5;
-        leftEyeMaterial.map.repeat.y = 0.5;
-        leftEyeMaterial.map.needsUpdate = true;
+        // Recorta metade de cima (olho esquerdo)
+        ctxLeft.drawImage(img, 0, 0, img.width, halfHeight, 0, 0, img.width, halfHeight);
+        // Recorta metade de baixo (olho direito)
+        ctxRight.drawImage(img, 0, halfHeight, img.width, halfHeight, 0, 0, img.width, halfHeight);
 
-        // Olho direito = metade de baixo
-        rightEyeMaterial.map.offset.y = 0.0;
-        rightEyeMaterial.map.repeat.y = 0.5;
-        rightEyeMaterial.map.needsUpdate = true;
+        const textureLeft = new THREE.Texture(canvasLeft);
+        const textureRight = new THREE.Texture(canvasRight);
+        textureLeft.needsUpdate = true;
+        textureRight.needsUpdate = true;
 
-        // Mesh pra olho esquerdo
-        sphereLeft = new THREE.Mesh(geometry, leftEyeMaterial);
-        sphereLeft.layers.set(1); // LEFT EYE
-        scene.add(sphereLeft);
+        const materialLeft = new THREE.MeshBasicMaterial({ map: textureLeft, side: THREE.BackSide });
+        const materialRight = new THREE.MeshBasicMaterial({ map: textureRight, side: THREE.BackSide });
 
-        // Mesh pra olho direito
-        sphereRight = new THREE.Mesh(geometry, rightEyeMaterial);
-        sphereRight.layers.set(2); // RIGHT EYE
-        scene.add(sphereRight);
+        const meshLeft = new THREE.Mesh(geometry, materialLeft);
+        const meshRight = new THREE.Mesh(geometry, materialRight);
+
+        meshLeft.layers.set(1);  // LEFT EYE
+        meshRight.layers.set(2); // RIGHT EYE
+
+        scene.add(meshLeft);
+        scene.add(meshRight);
 
         animate();
-      });
+      };
+
+      img.src = './media/A2_Stereo.jpg';
 
       window.addEventListener('resize', onWindowResize);
     }
