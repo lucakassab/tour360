@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Tour360 – Visualizador 360° Estéreo (CDN UMD corrigido)</title>
 
-  <!-- 1) Three.js UMD r147 via unpkg (variável global THREE) -->
+  <!-- 1) Carrega Three.js UMD r147 via Unpkg (define global THREE) -->
   <script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
   <script>
     if (typeof THREE === 'undefined') {
@@ -15,7 +15,7 @@
     }
   </script>
 
-  <!-- 2) OrbitControls UMD r147 via unpkg (variável global THREE.OrbitControls) -->
+  <!-- 2) Carrega OrbitControls UMD r147 via Unpkg (define global THREE.OrbitControls) -->
   <script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
   <script>
     if (typeof THREE.OrbitControls === 'undefined') {
@@ -25,13 +25,13 @@
     }
   </script>
 
-  <!-- 3) VRButton UMD r147 puxado direto do GitHub raw → resolve o 404 do Unpkg -->
-  <script src="https://raw.githubusercontent.com/mrdoob/three.js/r147/examples/js/webxr/VRButton.js"></script>
+  <!-- 3) Carrega VRButton UMD r147 via Unpkg (define global VRButton) -->
+  <script src="https://unpkg.com/three@0.147.0/examples/js/webxr/VRButton.js"></script>
   <script>
     if (typeof VRButton === 'undefined') {
-      console.error('❌ VRButton NÃO está disponível (verifique raw.githubusercontent).');
+      console.error('❌ VRButton NÃO está disponível (verifique CDN).');
     } else {
-      console.log('✅ VRButton carregado (UMD/raw.githubusercontent r147).');
+      console.log('✅ VRButton carregado (UMD/CDN).');
     }
   </script>
 
