@@ -70,6 +70,15 @@
       entity.setAttribute('material', 'repeat', '1 1');
     }
 
+    function forceMaterialUpdate(entity) {
+      // Força o A-Frame / Three.js a atualizar o texture/mat depois de mudar atributos
+      const mesh = entity.getObject3D('mesh');
+      if (mesh && mesh.material) {
+        if (mesh.material.map) mesh.material.map.needsUpdate = true;
+        mesh.material.needsUpdate = true;
+      }
+    }
+
     function loadMedia(filename) {
       clearScene();
       const url = `${baseUrl}/${filename}`;
@@ -80,6 +89,7 @@
       const scene = document.getElementById('scene');
 
       if (isVideo) {
+        // Cria <video> para a-videosphere
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = url;
@@ -92,31 +102,33 @@
         document.body.appendChild(video);
         currentVideoElement = video;
 
+        // Cria videosphere
         const vs = document.createElement('a-videosphere');
         vs.setAttribute('src', '#mediaVideo');
-        if (isStereo) vs.setAttribute('stereo', 'top-bottom');
+        if (isStereo) {
+          vs.setAttribute('stereo', 'top-bottom');
+        }
         scene.appendChild(vs);
         currentEntity = vs;
 
         if (isStereo) {
-          // Inicia com metade para PC
+          // Inicia com somente metade pra tela 2D
           applyStereoHalf(vs);
-          scene.addEventListener('enter-vr', () => resetStereo(vs));
-          scene.addEventListener('exit-vr', () => applyStereoHalf(vs));
         }
 
       } else if (isImage) {
+        // Cria a-sky
         const sky = document.createElement('a-sky');
         sky.setAttribute('src', url);
-        if (isStereo) sky.setAttribute('stereo', 'top-bottom');
+        if (isStereo) {
+          sky.setAttribute('stereo', 'top-bottom');
+        }
         scene.appendChild(sky);
         currentEntity = sky;
 
         if (isStereo) {
-          // Inicia com metade para PC
+          // Inicia com somente metade pra tela 2D
           applyStereoHalf(sky);
-          scene.addEventListener('enter-vr', () => resetStereo(sky));
-          scene.addEventListener('exit-vr', () => applyStereoHalf(sky));
         }
 
       } else {
@@ -137,6 +149,26 @@
       });
       select.addEventListener('change', e => loadMedia(e.target.value));
       if (list.length) loadMedia(list[0]);
+
+      // Registra eventos de VR uma única vez (não toda vez que trocar mídia)
+      const sceneEl = document.getElementById('scene');
+      sceneEl.addEventListener('enter-vr', () => {
+        if (currentEntity && currentEntity.hasAttribute('stereo')) {
+          // Dá um tempinho pro A-Frame realmente entrar no VR antes de resetar
+          setTimeout(() => {
+            resetStereo(currentEntity);
+            forceMaterialUpdate(currentEntity);
+          }, 50);
+        }
+      });
+      sceneEl.addEventListener('exit-vr', () => {
+        if (currentEntity && currentEntity.hasAttribute('stereo')) {
+          setTimeout(() => {
+            applyStereoHalf(currentEntity);
+            forceMaterialUpdate(currentEntity);
+          }, 50);
+        }
+      });
     }
 
     window.addEventListener('load', init);
