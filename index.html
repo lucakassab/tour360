@@ -3,31 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360 A-Frame – Stereo Certo</title>
+  <title>ToZZZZ</title>
+
+  <!-- 1) Carrega A-Frame (v1.4.0) -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+
+  <!-- 2) Carrega A-Frame Extras (que traz o componente "stereo") -->
+  <script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+  <!-- Esse “aframe-extras” registra vários componentes: extras.env, extras.geometry, e principalmente “extras.stereo” -->
+
 </head>
 <body style="margin: 0; overflow: hidden;">
 
   <a-scene vr-mode-ui="enabled: true">
+    <!-- 3) Assets: sua imagem estéreo top-bottom em media/A2_Stereo.jpg -->
     <a-assets>
-      <!-- Sua imagem estéreo top-bottom -->
       <img id="stereo360" src="./media/A2_Stereo.jpg" crossorigin="anonymous" />
     </a-assets>
 
-    <!--
-      ATENÇÃO:
-      - material="shader: flat;" garante que ele não aplique iluminação ou reflexo.
-      - stereo: top-bottom divide a textura entre os olhos.
-      - rotation="0 -90 0" é opcional, só pra alinhar se a imagem vier torta.
+    <!-- 
+      4) <a-sky> usando o componente “stereo” do A-Frame Extras:
+      - stereo="mode: top-bottom": divide a textura de cima e de baixo para cada olho
+      - shader: flat para não aplicar iluminação
+      - rotation: opcional, só pra alinhar se a imagem vier torta
     -->
     <a-sky 
-      material="src: #stereo360; shader: flat; stereo: top-bottom" 
+      src="#stereo360" 
+      shader="flat" 
+      stereo="mode: top-bottom" 
       rotation="0 -90 0">
     </a-sky>
 
-    <!-- Câmera fixa no centro, com controles de olhar (mouse/gyro) e sem WASD (não quer andar) -->
+    <!-- Câmera fixa no centro, somente look-controls (mouse/gyro), sem WASD pra não andar -->
     <a-entity camera look-controls wasd-controls-enabled="false"></a-entity>
   </a-scene>
+
+  <!-- Debug final: confirma que a imagem local está sendo carregada sem 404 -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const imgEl = document.querySelector('#stereo360');
+      imgEl.addEventListener('error', () => {
+        console.error('❌ Deu ruim: não carregou ./media/A2_Stereo.jpg (404?).');
+      });
+      imgEl.addEventListener('load', () => {
+        console.log('✅ Imagem stereo carregada sem erro (./media/A2_Stereo.jpg).');
+      });
+    });
+  </script>
 
 </body>
 </html>
