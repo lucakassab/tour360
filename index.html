@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Tour360X7 – VR Viewer</title>
+  <title>Tour360X7 – Stereo 360 Viewer</title>
   <style>
     body {
       margin: 0;
@@ -21,6 +21,7 @@
     import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/VRButton.js';
 
     let camera, scene, renderer;
+    let sphereLeft, sphereRight;
 
     init();
 
@@ -38,26 +39,46 @@
       document.body.appendChild(VRButton.createButton(renderer));
 
       const geometry = new THREE.SphereGeometry(500, 60, 40);
-      geometry.scale(-1, 1, 1);
+      geometry.scale(-1, 1, 1); // esfera invertida pro 360 funcionar
 
       const loader = new THREE.TextureLoader();
-      loader.load(
-        './media/A2_Stereo.jpg', // caminho relativo da imagem
-        function (texture) {
-          texture.mapping = THREE.UVMapping;
-          texture.minFilter = THREE.LinearFilter;
+      loader.load('./media/A2_Stereo.jpg', (texture) => {
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
 
-          const material = new THREE.MeshBasicMaterial({ map: texture });
-          const sphere = new THREE.Mesh(geometry, material);
-          scene.add(sphere);
+        // Mapeamento manual pra cada olho
+        const leftEyeMaterial = new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.BackSide
+        });
 
-          animate(); // Só anima quando a textura tiver carregada
-        },
-        undefined,
-        function (err) {
-          console.error('Erro ao carregar textura:', err);
-        }
-      );
+        const rightEyeMaterial = new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.BackSide
+        });
+
+        // Olho esquerdo = metade de cima
+        leftEyeMaterial.map.offset.y = 0.5;
+        leftEyeMaterial.map.repeat.y = 0.5;
+        leftEyeMaterial.map.needsUpdate = true;
+
+        // Olho direito = metade de baixo
+        rightEyeMaterial.map.offset.y = 0.0;
+        rightEyeMaterial.map.repeat.y = 0.5;
+        rightEyeMaterial.map.needsUpdate = true;
+
+        // Mesh pra olho esquerdo
+        sphereLeft = new THREE.Mesh(geometry, leftEyeMaterial);
+        sphereLeft.layers.set(1); // LEFT EYE
+        scene.add(sphereLeft);
+
+        // Mesh pra olho direito
+        sphereRight = new THREE.Mesh(geometry, rightEyeMaterial);
+        sphereRight.layers.set(2); // RIGHT EYE
+        scene.add(sphereRight);
+
+        animate();
+      });
 
       window.addEventListener('resize', onWindowResize);
     }
