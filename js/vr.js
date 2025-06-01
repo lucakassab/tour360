@@ -17,12 +17,10 @@ import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js
 renderer.xr.enabled = true;
 document.body.appendChild(VRButton.createButton(renderer));
 
-/* ───── Helper pra detectar nome “_stereo” ───── */
 function isStereoName(name) {
   return /_stereo/i.test(name);
 }
 
-/* ───── Carrega lista + primeira textura ───── */
 const sel = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
@@ -38,14 +36,12 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       });
     sel.selectedIndex = 0;
 
-    // Carregamento inicial sem HUD (só imagem)
     const opt0    = sel.options[0];
     const name0   = opt0.dataset.name;
     const stereo0 = isStereoName(name0);
     loadTexture(opt0.value, stereo0, (tex, isSt) => createSphere(tex, isSt));
   });
 
-/* ───── Handler para clicar em “Carregar 360” ───── */
 document.getElementById('btnLoad').onclick = () => {
   const opt    = sel.options[sel.selectedIndex];
   const name   = opt.dataset.name;
@@ -53,9 +49,8 @@ document.getElementById('btnLoad').onclick = () => {
   loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
 };
 
-/* ───── Detecção de botões com HUDs dinâmicos ───── */
-let prevButtons = []; // armazena estado anterior de cada botão
-let currentButtonIndex = null; // controla o botão que disparou a imagem
+let prevButtons = [];
+let currentButtonIndex = null;
 
 renderer.setAnimationLoop(() => {
   updateLoadingPosition();
@@ -84,7 +79,7 @@ renderer.setAnimationLoop(() => {
               const opt = sel.options[sel.selectedIndex];
               const name = opt.dataset.name;
               const stereo = isStereoName(name);
-              showLoading(name);  // mostra HUD de imagem
+              showLoading(name);
               loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
               currentButtonIndex = i;
             } else if (i === 5) {
@@ -93,7 +88,7 @@ renderer.setAnimationLoop(() => {
               const opt = sel.options[sel.selectedIndex];
               const name = opt.dataset.name;
               const stereo = isStereoName(name);
-              showLoading(name);  // mostra HUD de imagem
+              showLoading(name);
               loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
               currentButtonIndex = i;
             }
@@ -101,6 +96,15 @@ renderer.setAnimationLoop(() => {
             showButtonHUD(`${buttonName} → ${actionText}`);
             break;
           }
+        }
+
+        // Mostrar nome da mídia atual enquanto botão 1 estiver pressionado
+        if (nowPressed[1] && !prevButtons[1]) {
+          const opt = sel.options[sel.selectedIndex];
+          const name = opt.dataset.name;
+          showLoading(name);
+        } else if (!nowPressed[1] && prevButtons[1]) {
+          hideLoading();
         }
 
         // Esconde HUDs se o botão que iniciou foi solto
