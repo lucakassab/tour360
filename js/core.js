@@ -56,13 +56,17 @@ export function hideLoading() {
   loadingSprite = null;
 }
 
-/* ───────── Atualiza posição do sprite de Loading ───────── */
+/* ---------- Atualiza posição do sprite de Loading ---------- */
 export function updateLoadingPosition() {
   if (!loadingSprite) return;
+
   const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
-  const tmp = new THREE.Vector3(0, 0, -1)
-    .applyQuaternion(headCam.quaternion)
-    .multiplyScalar(1);
+
+  const DIST = 2;          // ⇦ distância (em metros) do sprite em relação à cabeça
+  const tmp  = new THREE.Vector3(0, 0, -1)
+                    .applyQuaternion(headCam.quaternion)
+                    .multiplyScalar(DIST);
+
   loadingSprite.position.copy(headCam.position).add(tmp);
   loadingSprite.quaternion.copy(headCam.quaternion);
 }
