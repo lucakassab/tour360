@@ -30,7 +30,7 @@ let loadingSprite = null;
  * para caber textos longos. msg é opcional; se não passar nada, usa "Loading…".
  */
 export function showLoading(msg = 'Loading…') {
-  // Se já existe um sprite, remove ele antes de criar um novo com texto atualizado
+  // Se já existe um sprite, remove pra recriar com texto atualizado
   if (loadingSprite) {
     scene.remove(loadingSprite);
     loadingSprite.material.map.dispose();
@@ -81,7 +81,7 @@ const _loadQuat = new THREE.Quaternion();
 
 export function updateLoadingPosition() {
   if (!loadingSprite) return;
-  // Se tiver em VR, pega a câmera XR; senão, a câmera normal
+  // Se estiver em VR, pega a câmera XR; senão, a câmera normal
   const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
   headCam.updateMatrixWorld();
   headCam.getWorldPosition(_loadPos);
@@ -174,14 +174,15 @@ export function createSphere(tex, isStereo) {
 
 /* ───────── carrega texture e chama callback com atraso para hideLoading ───────── */
 export function loadTexture(url, isStereo, cb) {
-  // Chama showLoading sem parâmetro, que vai mostrar "Loading…" padrão
-  showLoading();
+  // Só chama showLoading se não houver um loadingSprite ativo (preserva texto customizado)
+  if (!loadingSprite) showLoading();
+
   new THREE.TextureLoader().load(
     url,
     tex => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS      = tex.wrapT = THREE.ClampToEdgeWrapping;
-      tex.minFilter  = THREE.LinearFilter;
+      tex.colorSpace      = THREE.SRGBColorSpace;
+      tex.wrapS           = tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.minFilter       = THREE.LinearFilter;
       tex.generateMipmaps = false;
       try {
         cb(tex, isStereo);
