@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-<title>Tour360_1.2</title>
+<title>Tour360_1.4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- A-Frame CDN -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -37,7 +37,6 @@
 
   <a-scene vr-mode-ui="enabled: true">
     <a-assets id="assetContainer"></a-assets>
-    <!-- <a-sky> projeta corretamente a textura 360 no entorno -->
     <a-sky id="sky" rotation="0 -90 0"></a-sky>
     <a-camera wasd-controls-enabled="false" look-controls="true"></a-camera>
   </a-scene>
@@ -46,12 +45,14 @@
     // URL base onde as mídias ficam hospedadas
     var BASE_MEDIA_URL = 'https://lucakassab.github.io/tour360/media';
 
-    // Endpoint GitHub API para listar o conteúdo de /media no repositório
-    var GITHUB_API_MEDIA =
-      'https://api.github.com/repos/lucakassab/tour360/contents/media';
-
-    // Extensões válidas (se quiser vídeo depois, adicione '.mp4')
-    var VALID_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
+    // Lista estática de arquivos em media/
+    // Quando você adicionar mais imagens, inclua aqui:
+    var MEDIA_FILES = [
+      'A2_Stereo.jpg',
+      'B1_Mono.jpg',
+      'C3_Stereo.png'
+      // 'Outro_Stereo.jpg', 'MaisCoisa_Mono.png', etc.
+    ];
 
     window.addEventListener('load', function() {
       populateMediaList();
@@ -59,52 +60,27 @@
 
     function populateMediaList() {
       var selectEl = document.getElementById('mediaSelect');
+      // Limpa só para garantir
+      selectEl.innerHTML = '';
 
-      fetch(GITHUB_API_MEDIA)
-        .then(function(res) {
-          if (!res.ok) throw new Error('API retornou ' + res.status);
-          return res.json();
-        })
-        .then(function(data) {
-          // Filtra só nomes que terminem em _Mono ou _Stereo e com extensão válida
-          var validFiles = data
-            .map(function(item) { return item.name; })
-            .filter(function(name) {
-              var lower = name.toLowerCase();
-              var hasSuffix =
-                lower.indexOf('_mono') !== -1 || lower.indexOf('_stereo') !== -1;
-              var hasExt = VALID_EXTENSIONS.some(function(ext) {
-                return lower.endsWith(ext);
-              });
-              return hasSuffix && hasExt;
-            });
+      if (MEDIA_FILES.length === 0) {
+        var optNone = document.createElement('option');
+        optNone.value = '';
+        optNone.textContent = 'Nenhuma mídia configurada';
+        selectEl.appendChild(optNone);
+        return;
+      }
 
-          if (validFiles.length === 0) {
-            var optNone = document.createElement('option');
-            optNone.value = '';
-            optNone.textContent = 'Nenhuma mídia encontrada';
-            selectEl.appendChild(optNone);
-            return;
-          }
+      MEDIA_FILES.forEach(function(filename) {
+        var opt = document.createElement('option');
+        opt.value = filename;
+        // Remove extensão pra exibir só o nome “base”
+        var label = filename.replace(/(\.jpg|\.jpeg|\.png)$/i, '');
+        opt.textContent = label;
+        selectEl.appendChild(opt);
+      });
 
-          validFiles.forEach(function(filename) {
-            var opt = document.createElement('option');
-            opt.value = filename;
-            // Remove a extensão pra exibir só o nome “base”
-            var label = filename.replace(/(\.jpg|\.jpeg|\.png)$/i, '');
-            opt.textContent = label;
-            selectEl.appendChild(opt);
-          });
-
-          selectEl.selectedIndex = 0;
-        })
-        .catch(function(err) {
-          console.error('Erro ao buscar lista de mídias:', err);
-          var optErr = document.createElement('option');
-          optErr.value = '';
-          optErr.textContent = 'Erro ao carregar mídias';
-          selectEl.appendChild(optErr);
-        });
+      selectEl.selectedIndex = 0;
     }
 
     function loadMedia() {
@@ -112,7 +88,7 @@
       var selected = selectEl.value;
       if (!selected) return;
 
-      var isStereo = selected.toLowerCase().indexOf('_stereo') !== -1;
+      var isStereo = (selected.toLowerCase().indexOf('_stereo') !== -1);
       var skyEl = document.getElementById('sky');
       var assetContainer = document.getElementById('assetContainer');
 
@@ -122,17 +98,16 @@
       skyEl.removeAttribute('stereo');
       skyEl.removeAttribute('offset');
 
-      // Constroi a URL completa para a mídia
+      // Monta a URL completa da mídia
       var mediaUrl = BASE_MEDIA_URL + '/' + selected;
 
-      // Cria um <img> dentro de <a-assets> para o A-Frame pré-carregar a textura
+      // Cria <img> dentro de <a-assets> para o A-Frame pré-carregar a textura
       var imgEl = document.createElement('img');
       imgEl.setAttribute('id', 'media360');
       imgEl.setAttribute('src', mediaUrl);
       assetContainer.appendChild(imgEl);
 
       imgEl.onload = function() {
-        // Verifica se estamos em VR (pode não existir renderer.xr se não carregou ainda)
         var scene = document.querySelector('a-scene');
         var isVR = false;
         try {
@@ -143,16 +118,14 @@
 
         if (isStereo) {
           if (isVR) {
-            // -------- VR + Stereo Top-Bottom --------
-            // No VR, usamos stereoscopia top-bottom diretamente
+            // VR + Stereo Top-Bottom: cada olho pega metade certa
             skyEl.setAttribute(
               'material',
               'shader: flat; src: #media360; side: back; npot: true; stereo: top-bottom'
             );
-            // NENHUM repeat ou offset em VR: cada olho pega sua metade automaticamente.
+            // Sem repeat/offset em VR, A-Frame separa pra cada olho
           } else {
-            // -------- 2D + Stereo (fake mono) --------
-            // Em 2D, mostramos apenas a metade de cima (offset 0 0.5 e repeat 1 0.5)
+            // 2D + Stereo (fake mono): mostra só metade de cima
             skyEl.setAttribute(
               'material',
               'shader: flat; src: #media360; side: back; npot: true; repeat: 1 0.5'
@@ -160,8 +133,7 @@
             skyEl.setAttribute('offset', '0 0.5');
           }
         } else {
-          // -------- Mono (2D ou VR) --------
-          // Exibe a imagem inteira: repeat 1 1
+          // Mono (2D ou VR): exibe a imagem inteira
           skyEl.setAttribute(
             'material',
             'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1'
@@ -169,7 +141,7 @@
           skyEl.removeAttribute('stereo');
         }
 
-        // Se você precisar rodar a imagem (virar “de cabeça para baixo”), ajuste aqui:
+        // Se a imagem ainda vier torta, ajuste aqui:
         // skyEl.setAttribute('rotation', '0 -90 0');
       };
 
