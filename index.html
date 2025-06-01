@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Tour360X – Visualizador VR</title>
+  <title>Tour360X – Visualizador VR V</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="js/logic.js" defer></script>
@@ -30,18 +30,14 @@
   <div class="menu">
     <label for="mediaSelect">Escolha uma mídia:</label>
     <select id="mediaSelect">
-      <option value="praia_Stereo.jpg">Praia (Stereo)</option>
-      <option value="banheiro_Mono.jpg">Banheiro (Mono)</option>
+      <!-- As opções vão ser inseridas pelo logic.js -->
     </select>
     <button onclick="loadMedia()">Carregar</button>
   </div>
 
   <a-scene vr-mode-ui="enabled: true">
     <a-assets id="assetContainer"></a-assets>
-
-    <!-- Skybox para imagem -->
     <a-entity id="sky"></a-entity>
-
     <a-camera wasd-controls-enabled="false" look-controls="true"></a-camera>
   </a-scene>
 </body>
