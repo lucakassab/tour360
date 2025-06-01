@@ -4,7 +4,9 @@ import {
   camera,
   renderer,
   loadTexture,
-  createSphere
+  createSphere,
+  showLoading,
+  hideLoading
 } from './core.js';
 
 /* ───── CONTROLES TOUCH (drag) ───── */
@@ -49,7 +51,7 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
         sel.appendChild(o);
       });
     sel.selectedIndex = 0;
-    // AQUI A GENTE DEFINIU opt CORRETAMENTE
+    // AQUI A GENTE DEFINE o primeiro arquivo
     const opt = sel.options[0];
     const stereo = isStereoName(opt.dataset.name);
     loadTexture(opt.value, stereo, (tex, st) => createSphere(tex, st));
@@ -61,7 +63,6 @@ document.getElementById('btnLoad').onclick = () => {
   loadTexture(opt.value, stereo, (tex, st) => createSphere(tex, st));
 };
 
-/* ───── render loop (camera fixa + touch orbit) ───── */
 renderer.setAnimationLoop(() => {
   const phi = THREE.MathUtils.degToRad(90 - lat);
   const theta = THREE.MathUtils.degToRad(lon);
