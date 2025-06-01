@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- A-Frame CDN -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <!-- Inclui o componente de estereoscopia -->
+  <script src="https://unpkg.com/aframe-stereo-component/dist/aframe-stereo-component.min.js"></script> :contentReference[oaicite:0]{index=0}
   <style>
     body { margin: 0; background: #000; }
     .menu {
@@ -37,12 +39,12 @@
 
   <a-scene vr-mode-ui="enabled: true">
     <a-assets id="assetContainer"></a-assets>
-    <!-- 
-      a-sky vai receber src e stereo dinamicamente no JS.
-      rotation evita a imagem ficar “de lado”.
-    -->
-    <a-sky id="sky" rotation="0 -90 0"></a-sky>
-    <a-camera wasd-controls-enabled="false" look-controls="true"></a-camera>
+    <!-- As duas skies para estereoscopia em VR vão ser criadas dinamicamente via JS -->
+    <a-sky id="skyMono" rotation="0 -90 0"></a-sky>
+    <!-- skyLeft e skyRight só existirão em VR + Stereo -->
+    <a-sky id="skyLeft" rotation="0 -90 0" visible="false"></a-sky>
+    <a-sky id="skyRight" rotation="0 -90 0" visible="false"></a-sky>
+    <a-camera id="cam" wasd-controls-enabled="false" look-controls="true"></a-camera>
   </a-scene>
 
   <script>
@@ -51,10 +53,9 @@
 
     // Lista estática de arquivos na pasta media/
     var MEDIA_FILES = [
-      'A2_Stereo.jpg',
-      'B1_Mono.jpg',
+      'A2_Stereo.jpg',  // imagem 360 top-bottom
+      'B1_Mono.jpg',    // imagem 360 mono
       'C3_Stereo.png'
-      // Se adicionar mais arquivos, inclua aqui
     ];
 
     window.addEventListener('load', function() {
@@ -90,19 +91,30 @@
       if (!selected) return;
 
       var isStereo = (selected.toLowerCase().indexOf('_stereo') !== -1);
-      var skyEl = document.getElementById('sky');
+      var skyMono = document.getElementById('skyMono');
+      var skyLeft = document.getElementById('skyLeft');
+      var skyRight = document.getElementById('skyRight');
       var assetContainer = document.getElementById('assetContainer');
 
-      // Limpa assets antigos e atributos do sky
+      // Limpa assets antigos e esconde as skies de VR + Stereo
       assetContainer.innerHTML = '';
-      skyEl.removeAttribute('material');
-      skyEl.removeAttribute('stereo');
-      skyEl.removeAttribute('offset');
+      skyMono.removeAttribute('stereo');
+      skyLeft.setAttribute('visible', 'false');
+      skyRight.setAttribute('visible', 'false');
+      skyLeft.removeAttribute('material');
+      skyRight.removeAttribute('material');
+      skyLeft.removeAttribute('stereo');
+      skyRight.removeAttribute('stereo');
+      skyLeft.removeAttribute('src');
+      skyRight.removeAttribute('src');
+      skyMono.removeAttribute('material');
+      skyMono.removeAttribute('src');
+      skyMono.removeAttribute('offset');
 
-      // URL completa da imagem 360
+      // URL completa da mídia
       var mediaUrl = BASE_MEDIA_URL + '/' + selected;
 
-      // Cria <img> dentro de <a-assets> para o A-Frame pré-carregar
+      // Cria <img> dentro de <a-assets> para o A-Frame pré-carregar a textura
       var imgEl = document.createElement('img');
       imgEl.setAttribute('id', 'media360');
       imgEl.setAttribute('src', mediaUrl);
@@ -119,29 +131,45 @@
 
         if (isStereo) {
           if (isVR) {
-            // -------- VR + Stereo Top-Bottom --------
-            // Deixe o A-Frame usar o split interno “top-bottom”:
-            skyEl.setAttribute('src', '#media360');
-            skyEl.setAttribute('stereo', 'top-bottom');
-            // Não precisa de repeat/offset em VR, pois o A-Frame já faz internamente
+            // -------- VR + Stereo Top-Bottom usando aframe-stereo-component --------
+            // Sky Mono invisível para não interferir
+            skyMono.setAttribute('visible', 'false');
+
+            // skyLeft: metade superior para olho esquerdo
+            skyLeft.setAttribute('visible', 'true');
+            skyLeft.setAttribute('src', '#media360');
+            skyLeft.setAttribute('stereo', 'eye:left; split:vertical');
+
+            // skyRight: metade inferior para olho direito
+            skyRight.setAttribute('visible', 'true');
+            skyRight.setAttribute('src', '#media360');
+            skyRight.setAttribute('stereo', 'eye:right; split:vertical');
+
           } else {
             // -------- 2D + Stereo (fake mono) --------
-            // Mostra só a metade de cima (repeat:1 0.5 e offset:0 0.5)
-            skyEl.setAttribute('material',
-              'shader: flat; src: #media360; side: back; npot: true; repeat: 1 0.5');
-            skyEl.setAttribute('offset', '0 0.5');
+            // Mostra só a metade de cima no skyMono
+            skyMono.setAttribute(
+              'material',
+              'shader: flat; src: #media360; side: back; npot: true; repeat: 1 0.5'
+            );
+            skyMono.setAttribute('offset', '0 0.5');
+            skyMono.setAttribute('visible', 'true');
           }
         } else {
           // -------- Mono (2D ou VR) --------
-          // Exibe a imagem inteira:
-          skyEl.setAttribute('src', '#media360');
-          skyEl.setAttribute('material',
-            'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1');
-          skyEl.removeAttribute('stereo');
+          // SkyMono exibe a imagem inteira
+          skyMono.setAttribute('visible', 'true');
+          skyMono.setAttribute('material',
+            'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1'
+          );
+          // Garante que VR não tente stereo
+          skyMono.removeAttribute('stereo');
         }
 
-        // Ajuste de rotação se a imagem ainda estiver meio torta:
-        // skyEl.setAttribute('rotation', '0 -90 0');
+        // (Opcional) Se a textura vertical vier torta, ajuste a rotação:
+        // skyMono.setAttribute('rotation', '0 -90 0');
+        // skyLeft.setAttribute('rotation', '0 -90 0');
+        // skyRight.setAttribute('rotation', '0 -90 0');
       };
 
       imgEl.onerror = function() {
