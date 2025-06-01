@@ -25,24 +25,31 @@ window.addEventListener('resize', () => {
 /* ───────── HUD LOADING (um único sprite) ───────── */
 let loadingSprite = null;
 
-export function showLoading() {
-  // Se já existe um sprite, apenas reposiciona
+/**
+ * Agora showLoading pode receber uma mensagem personalizada.
+ * Se não passar nada, fica só “Loading…”.
+ */
+export function showLoading(msg = 'Loading…') {
+  // Se já existe um sprite, apenas reposiciona (mantém o mesmo texto)
   if (loadingSprite) {
     updateLoadingPosition();
     return;
   }
 
+  // Criar canvas pra desenhar o texto dinâmico
   const s  = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
   const ctx = cv.getContext('2d');
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(0, 0, s, s);
-  ctx.font = 'bold 48px sans-serif';
+  ctx.font = 'bold 32px sans-serif';
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Loading…', s / 2, s / 2);
+
+  // Desenha a mensagem passada (ou “Loading…” se msg não foi fornecido)
+  ctx.fillText(msg, s / 2, s / 2);
 
   const tex   = new THREE.CanvasTexture(cv);
   const mat   = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false });
@@ -52,7 +59,7 @@ export function showLoading() {
   loadingSprite = sprite;
   scene.add(sprite);
 
-  // Posiciona imediatamente “na frente” da câmera para ficar visível no primeiro frame
+  // Posiciona “na frente” da câmera no primeiro frame
   updateLoadingPosition();
 }
 
@@ -169,7 +176,9 @@ export function createSphere(tex, isStereo) {
 
 /* ───────── carrega texture e chama callback com atraso para hideLoading ───────── */
 export function loadTexture(url, isStereo, cb) {
-  showLoading();
+  // Note: No VR, a gente já chamou showLoading com texto customizado no vr.js.
+  // Caso desktop/mobile chamem sem parâmetro, showLoading() desenha “Loading…”.
+  showLoading(); 
   new THREE.TextureLoader().load(
     url,
     tex => {
