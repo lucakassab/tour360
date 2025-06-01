@@ -1,3 +1,4 @@
+
 import {
   THREE,
   scene,
@@ -15,6 +16,18 @@ import {
 import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
 
 renderer.xr.enabled = true;
+
+// Modifica o botão de VR para forçar hand-tracking como optional feature
+navigator.xr.requestSession = ((original) => async (...args) => {
+  if (args[0] === 'immersive-vr' && typeof args[1] === 'object') {
+    args[1].optionalFeatures = args[1].optionalFeatures || [];
+    if (!args[1].optionalFeatures.includes('hand-tracking')) {
+      args[1].optionalFeatures.push('hand-tracking');
+    }
+  }
+  return original(...args);
+})(navigator.xr.requestSession.bind(navigator.xr));
+
 document.body.appendChild(VRButton.createButton(renderer));
 
 function isStereoName(name) {
@@ -98,7 +111,6 @@ renderer.setAnimationLoop(() => {
           }
         }
 
-        // Mostrar nome da mídia atual enquanto botão 1 estiver pressionado
         if (nowPressed[1] && !prevButtons[1]) {
           const opt = sel.options[sel.selectedIndex];
           const name = opt.dataset.name;
@@ -107,7 +119,6 @@ renderer.setAnimationLoop(() => {
           hideLoading();
         }
 
-        // Esconde HUDs se o botão que iniciou foi solto
         if (currentButtonIndex !== null && !nowPressed[currentButtonIndex]) {
           hideLoading();
           currentButtonIndex = null;
@@ -121,6 +132,13 @@ renderer.setAnimationLoop(() => {
         }
 
         prevButtons = nowPressed;
+
+      } else if (src.hand) {
+        const indexTip = src.hand.get("index-finger-tip");
+        if (indexTip && indexTip.transform) {
+          const pos = indexTip.transform.position;
+          console.log("🖐️ Mão detectada – dedo indicador em:", pos.x, pos.y, pos.z);
+        }
       }
     });
   } else {
