@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>Tour360_3.7</title>
+<title>Tour360_3.8</title>
   <!-- A-Frame normal -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <!-- Componente de estéreo → faz o split top-bottom corretamente -->
@@ -53,7 +53,7 @@
   </div>
 
   <!-- Debug overlay mínimo -->
-  <div id="debugConsole">[DEBUG] Iniciando Tour360_3.6...</div>
+  <div id="debugConsole">[DEBUG] Iniciando Tour360_3.7...</div>
 
   <!-- Cena A-Frame -->
   <a-scene id="scene"
@@ -245,9 +245,6 @@
 
     // ——— Funções expostas para testar no console ———
 
-    /**
-     * Mostra no console quais entidades estão ativas (mono, leftEye, rightEye, vídeo).
-     */
     function listEntities() {
       console.log('currentMono →', currentMono);
       console.log('leftEyeEntity →', leftEyeEntity);
@@ -256,22 +253,14 @@
       debug('listEntities() chamado. Confira o console.');
     }
 
-    /**
-     * Inspeciona a câmera principal e seu atributo stereocam.
-     */
     function inspectCamera() {
       const camEntity = document.getElementById('cam');
       console.log('Camera entity →', camEntity);
       console.log('getAttribute("stereocam") →', camEntity.getAttribute('stereocam'));
-      // Tenta mostrar o objeto THREE.Camera dentro do <a-entity>
       console.log('A-Frame THREE.Camera →', camEntity.getObject3D('camera'));
       debug('inspectCamera() chamado. Confira o console.');
     }
 
-    /**
-     * Mostra no console todos os <a-sky> ou <a-videosphere> que têm atributo stereo,
-     * junto com o valor de stereo="" que cada um carrega.
-     */
     function checkStereoAttributes() {
       const elems = document.querySelectorAll('a-sky[stereo], a-videosphere[stereo]');
       if (!elems.length) console.warn('Não há elementos com atributo stereo.');
@@ -279,20 +268,14 @@
       debug('checkStereoAttributes() chamado. Confira o console.');
     }
 
-    /**
-     * Mostra no console o estado atual de VR: se a cena está em VR ou não,
-     * e quais câmeras-filhas existem no renderer.xr.getCamera().
-     */
     function printXrCameras() {
       const isVR = scene.is('vr-mode');
       console.log('Scene.is("vr-mode"): ', isVR);
-      // Pega a THREE.WebGLRenderer a partir do a-scene
       const renderer = scene.renderer;
       if (!renderer) {
         console.warn('renderer ainda não está disponível (aguarde a cena completar).');
         return;
       }
-      // Pega a câmera XR (um Group que inclui as duas subcâmeras de olho esquerdo + direito)
       const xrCam = renderer.xr.getCamera(scene.camera);
       console.log('XR Camera Group →', xrCam);
       if (xrCam.cameras) {
@@ -303,33 +286,23 @@
       debug('printXrCameras() chamado. Confira o console.');
     }
 
-    /**
-     * Força “entrar em VR” no console (útil para testar fora de headset)
-     */
     function simulateEnterVR() {
       debug('Tentando chamar scene.enterVR()');
       if (scene.enterVR) scene.enterVR();
       else console.warn('scene.enterVR() não disponível.');
     }
 
-    /**
-     * Força “sair de VR” no console (útil se ficar preso em VR)
-     */
     function simulateExitVR() {
       debug('Tentando chamar scene.exitVR()');
       if (scene.exitVR) scene.exitVR();
       else console.warn('scene.exitVR() não disponível.');
     }
 
-    /**
-     * Limpa toda a cena de entidades (sem recarregar mídia).
-     */
     function clearAll() {
       clearEntities();
       debug('clearAll() chamado.');
     }
 
-    // Expõe as funções no objeto global (window) para uso no console:
     window.listEntities = listEntities;
     window.inspectCamera = inspectCamera;
     window.checkStereoAttributes = checkStereoAttributes;
