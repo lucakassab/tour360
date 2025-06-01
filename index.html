@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-<title>Tour360_1.4</title>
+<title>Tour360_1.5</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- A-Frame CDN -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -37,6 +37,10 @@
 
   <a-scene vr-mode-ui="enabled: true">
     <a-assets id="assetContainer"></a-assets>
+    <!-- 
+      a-sky projeta o 360° ao redor. 
+      Não coloque stereo aqui; vamos atribuir dinamicamente via JS.
+    -->
     <a-sky id="sky" rotation="0 -90 0"></a-sky>
     <a-camera wasd-controls-enabled="false" look-controls="true"></a-camera>
   </a-scene>
@@ -60,8 +64,7 @@
 
     function populateMediaList() {
       var selectEl = document.getElementById('mediaSelect');
-      // Limpa só para garantir
-      selectEl.innerHTML = '';
+      selectEl.innerHTML = ''; // limpa
 
       if (MEDIA_FILES.length === 0) {
         var optNone = document.createElement('option');
@@ -92,16 +95,16 @@
       var skyEl = document.getElementById('sky');
       var assetContainer = document.getElementById('assetContainer');
 
-      // Limpa qualquer asset anterior
+      // Limpa qualquer asset anterior 
       assetContainer.innerHTML = '';
       skyEl.removeAttribute('material');
       skyEl.removeAttribute('stereo');
       skyEl.removeAttribute('offset');
 
-      // Monta a URL completa da mídia
+      // URL completa da mídia
       var mediaUrl = BASE_MEDIA_URL + '/' + selected;
 
-      // Cria <img> dentro de <a-assets> para o A-Frame pré-carregar a textura
+      // Cria <img> em <a-assets> para o A-Frame pré-carregar a textura
       var imgEl = document.createElement('img');
       imgEl.setAttribute('id', 'media360');
       imgEl.setAttribute('src', mediaUrl);
@@ -118,14 +121,17 @@
 
         if (isStereo) {
           if (isVR) {
-            // VR + Stereo Top-Bottom: cada olho pega metade certa
+            // -------- VR + Stereo Top-Bottom --------
+            // Define material normal (imagem inteira) e stereo separadamente:
             skyEl.setAttribute(
               'material',
-              'shader: flat; src: #media360; side: back; npot: true; stereo: top-bottom'
+              'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1'
             );
-            // Sem repeat/offset em VR, A-Frame separa pra cada olho
+            // Agora passa stereo top-bottom explicitamente:
+            skyEl.setAttribute('stereo', 'top-bottom');
           } else {
-            // 2D + Stereo (fake mono): mostra só metade de cima
+            // -------- 2D + Stereo (fake mono) --------
+            // Mostra só a metade de cima (repeat:1 0.5 + offset:0 0.5)
             skyEl.setAttribute(
               'material',
               'shader: flat; src: #media360; side: back; npot: true; repeat: 1 0.5'
@@ -133,15 +139,16 @@
             skyEl.setAttribute('offset', '0 0.5');
           }
         } else {
-          // Mono (2D ou VR): exibe a imagem inteira
+          // -------- Mono (2D ou VR) --------
           skyEl.setAttribute(
             'material',
             'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1'
           );
+          // Não precisa de stereo no mono
           skyEl.removeAttribute('stereo');
         }
 
-        // Se a imagem ainda vier torta, ajuste aqui:
+        // Se a imagem ainda vier torta no VR, ajuste rotação aqui:
         // skyEl.setAttribute('rotation', '0 -90 0');
       };
 
