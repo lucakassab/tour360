@@ -87,12 +87,12 @@ renderer.setAnimationLoop(() => {
             let buttonName = `Botão ${i}`;
             let actionText = 'sem ação';
 
-            // Ações padronizadas para índices 3 e 4 (ou 1), mas sem renomear o botão
-            if (i === 3) {
+            // Mapeia A e B reais (índice 4 e 5)
+            if (i === 4) {
               actionText = 'próxima mídia';
               sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
               document.getElementById('btnLoad').click();
-            } else if (i === 4 || i === 1) {
+            } else if (i === 5) {
               actionText = 'mídia anterior';
               sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
               document.getElementById('btnLoad').click();
