@@ -24,7 +24,7 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       o.value=f.download_url; o.text=f.name; o.dataset.name=f.name; sel.appendChild(o);
     });
     sel.selectedIndex=0;
-    loadTexture(sel.value,false, (tex)=>createSphere(tex,false));
+    loadTexture(opt.value,isStereoName(opt.dataset.name),(tex,st)=>createSphere(tex,st));
   });
 document.getElementById('btnLoad').onclick=()=> loadTexture(sel.value,false,(tex)=>createSphere(tex,false));
 

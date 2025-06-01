@@ -12,35 +12,24 @@ renderer.domElement.addEventListener('mousemove', e => {
 renderer.domElement.addEventListener('mouseup', ()=> dragging=false);
 
 /* ---- carrega lista & primeira textura ---- */
-const sel = document.getElementById('mediaSelect');
+const sel=document.getElementById('mediaSelect');
+
+function isStereoName(name){ return /_stereo/i.test(name); }
+
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
-  .then(r=>r.json())
-  .then(files=>{
-    files.filter(f=>f.type==='file'&&/\.(jpe?g|png)$/i.test(f.name)).forEach(f=>{
-      const o=document.createElement('option');
-      o.value=f.download_url; o.text=f.name; sel.appendChild(o);
-    });
-    sel.selectedIndex=0;
-    loadTexture(sel.value, false, tex=>createSphere(tex,false));   // assume mono no desktop
-  });
+ .then(r=>r.json())
+ .then(files=>{
+   files.filter(f=>f.type==='file'&&/\.(jpe?g|png)$/i.test(f.name)).forEach(f=>{
+     const o=document.createElement('option');
+     o.value=f.download_url; o.text=f.name; o.dataset.name=f.name;
+     sel.appendChild(o);
+   });
+   sel.selectedIndex=0;
+   const opt=sel.options[0];
+   loadTexture(opt.value,isStereoName(opt.dataset.name),(tex,st)=>createSphere(tex,st));
+ });
 
-document.getElementById('btnLoad').onclick = () => {
-  loadTexture(sel.value, false, tex=>createSphere(tex,false));
+document.getElementById('btnLoad').onclick=()=>{
+  const opt=sel.options[sel.selectedIndex];
+  loadTexture(opt.value,isStereoName(opt.dataset.name),(tex,st)=>createSphere(tex,st));
 };
-
-/* ---- render loop ---- */
-renderer.setAnimationLoop(()=>{
-  // cam orbit básica
-  const phi = THREE.MathUtils.degToRad(90 - lat);
-  const theta = THREE.MathUtils.degToRad(lon);
-  if(camDist>0){
-    camera.position.set(
-      camDist*Math.sin(phi)*Math.cos(theta),
-      camDist*Math.cos(phi),
-      camDist*Math.sin(phi)*Math.sin(theta)
-    );
-  } else camera.position.set(0,0,0);
-  const x=Math.sin(phi)*Math.cos(theta), y=Math.cos(phi), z=Math.sin(phi)*Math.sin(theta);
-  camera.lookAt(x,y,z);
-  renderer.render(scene,camera);
-});
