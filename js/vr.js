@@ -17,7 +17,6 @@ import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js
 
 renderer.xr.enabled = true;
 
-// Modifica o botão de VR para forçar hand-tracking como optional feature
 navigator.xr.requestSession = ((original) => async (...args) => {
   if (args[0] === 'immersive-vr' && typeof args[1] === 'object') {
     args[1].optionalFeatures = args[1].optionalFeatures || [];
@@ -64,13 +63,17 @@ document.getElementById('btnLoad').onclick = () => {
 
 let prevButtons = [];
 let currentButtonIndex = null;
+let lastPinchTime = { left: 0, right: 0 };
+const pinchCooldown = 1000;
 
-renderer.setAnimationLoop(() => {
+renderer.setAnimationLoop((time, frame) => {
   updateLoadingPosition();
   updateButtonPosition();
 
   const session = renderer.xr.getSession();
-  if (session) {
+  const referenceSpace = renderer.xr.getReferenceSpace();
+
+  if (session && frame) {
     session.inputSources.forEach(src => {
       if (src.gamepad && src.handedness === 'right') {
         const gp = src.gamepad;
@@ -134,10 +137,40 @@ renderer.setAnimationLoop(() => {
         prevButtons = nowPressed;
 
       } else if (src.hand) {
-        const indexTip = src.hand.get("index-finger-tip");
-        if (indexTip && indexTip.transform) {
-          const pos = indexTip.transform.position;
-          console.log("🖐️ Mão detectada – dedo indicador em:", pos.x, pos.y, pos.z);
+        const hand = src.hand;
+        const handedness = src.handedness;
+
+        const thumb = hand.get("thumb-tip");
+        const index = hand.get("index-finger-tip");
+
+        if (thumb && index) {
+          const thumbPose = frame.getJointPose(thumb, referenceSpace);
+          const indexPose = frame.getJointPose(index, referenceSpace);
+
+          if (thumbPose && indexPose) {
+            const dx = indexPose.transform.position.x - thumbPose.transform.position.x;
+            const dy = indexPose.transform.position.y - thumbPose.transform.position.y;
+            const dz = indexPose.transform.position.z - thumbPose.transform.position.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (dist < 0.015 && (time - lastPinchTime[handedness]) > pinchCooldown) {
+              lastPinchTime[handedness] = time;
+
+              if (handedness === 'right') {
+                sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+              } else {
+                sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+              }
+
+              const opt = sel.options[sel.selectedIndex];
+              const name = opt.dataset.name;
+              const stereo = isStereoName(name);
+              showLoading(name);
+              loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
+
+              showButtonHUD(`🤏 Pinça (${handedness})`);
+            }
+          }
         }
       }
     });
