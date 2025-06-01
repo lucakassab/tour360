@@ -1,4 +1,3 @@
-
 import {
   THREE,
   scene,
@@ -16,23 +15,17 @@ import {
 import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
 
 renderer.xr.enabled = true;
-
-navigator.xr.requestSession = ((original) => async (...args) => {
-  if (args[0] === 'immersive-vr' && typeof args[1] === 'object') {
-    args[1].optionalFeatures = args[1].optionalFeatures || [];
-    if (!args[1].optionalFeatures.includes('hand-tracking')) {
-      args[1].optionalFeatures.push('hand-tracking');
-    }
-  }
-  return original(...args);
-})(navigator.xr.requestSession.bind(navigator.xr));
-
 document.body.appendChild(VRButton.createButton(renderer));
 
+/* ───── Helper pra detectar nome “_stereo” ───── */
 function isStereoName(name) {
   return /_stereo/i.test(name);
 }
 
+/* ───── Armazena qual botão (A/B/init) acionou o load ───── */
+let lastButton = 'init'; // no início, vem do fetch automático
+
+/* ───── Carrega lista + primeira textura ───── */
 const sel = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
@@ -48,85 +41,78 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       });
     sel.selectedIndex = 0;
 
+    // Carregamento inicial (botão “init”)
     const opt0    = sel.options[0];
     const name0   = opt0.dataset.name;
     const stereo0 = isStereoName(name0);
+
+    // Mostra loading com nome da mídia e “init”
+    lastButton = 'init';
+    showLoading(`${name0} [botão ${lastButton}]`);
     loadTexture(opt0.value, stereo0, (tex, isSt) => createSphere(tex, isSt));
   });
 
+/* ───── Handler para clicar em “Carregar 360” ───── */
 document.getElementById('btnLoad').onclick = () => {
   const opt    = sel.options[sel.selectedIndex];
   const name   = opt.dataset.name;
   const stereo = isStereoName(name);
+
+  // Aqui chamamos showLoading com texto customizado
+  showLoading(`${name} [botão ${lastButton}]`);
   loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
 };
 
-let prevButtons = [];
-let currentButtonIndex = null;
-let lastPinchTime = { left: 0, right: 0 };
-const pinchCooldown = 1000;
+/* ───── Detecção e exibição de todos os botões ───── */
+let prevButtons = []; // armazena estado anterior de cada botão
 
-renderer.setAnimationLoop((time, frame) => {
+renderer.setAnimationLoop(() => {
+  // 1) Atualiza posição do HUD Loading (se existir)
   updateLoadingPosition();
+
+  // 1.1) Atualiza posição do HUD de botão (se existir)
   updateButtonPosition();
 
+  // 2) Se estiver em VR, lê gamepad do controle direito
   const session = renderer.xr.getSession();
-  const referenceSpace = renderer.xr.getReferenceSpace();
-
-  if (session && frame) {
+  if (session) {
     session.inputSources.forEach(src => {
       if (src.gamepad && src.handedness === 'right') {
         const gp = src.gamepad;
         const nowPressed = gp.buttons.map(btn => btn.pressed);
-        let anyNewPress = false;
 
+        // Itera todos os botões pra detectar novos presses
+        let anyNewPress = false;
         for (let i = 0; i < nowPressed.length; i++) {
           const isPressed  = nowPressed[i];
           const wasPressed = prevButtons[i] || false;
-
           if (isPressed && !wasPressed) {
             anyNewPress = true;
             let buttonName = `Botão ${i}`;
             let actionText = 'sem ação';
 
-            if (i === 4) {
+            // Mapeia A e B “oficiais” (índice 3 e 4 ou 1)
+            if (i === 3) {
+              buttonName = 'Botão A';
               actionText = 'próxima mídia';
               sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-              const opt = sel.options[sel.selectedIndex];
-              const name = opt.dataset.name;
-              const stereo = isStereoName(name);
-              showLoading(name);
-              loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
-              currentButtonIndex = i;
-            } else if (i === 5) {
+              lastButton = 'A';
+              document.getElementById('btnLoad').click();
+            } else if (i === 4 || i === 1) {
+              buttonName = 'Botão B';
               actionText = 'mídia anterior';
+              lastButton = 'B';
               sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-              const opt = sel.options[sel.selectedIndex];
-              const name = opt.dataset.name;
-              const stereo = isStereoName(name);
-              showLoading(name);
-              loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
-              currentButtonIndex = i;
+              document.getElementById('btnLoad').click();
             }
 
+            // Exibe no HUD de botão: "Botão X → açãoTexto"
             showButtonHUD(`${buttonName} → ${actionText}`);
-            break;
+            break; // mostra só o primeiro botão detectado nessa frame
           }
         }
 
-        if (nowPressed[1] && !prevButtons[1]) {
-          const opt = sel.options[sel.selectedIndex];
-          const name = opt.dataset.name;
-          showLoading(name);
-        } else if (!nowPressed[1] && prevButtons[1]) {
-          hideLoading();
-        }
-
-        if (currentButtonIndex !== null && !nowPressed[currentButtonIndex]) {
-          hideLoading();
-          currentButtonIndex = null;
-        }
-
+        // Se não houve nenhum novo pressione, esconde o HUD se nenhum botão estiver segurado
         if (!anyNewPress) {
           const stillPressed = nowPressed.some(p => p);
           if (!stillPressed) {
@@ -134,52 +120,15 @@ renderer.setAnimationLoop((time, frame) => {
           }
         }
 
+        // Atualiza prevButtons para a próxima iteração
         prevButtons = nowPressed;
-
-      } else if (src.hand) {
-        const hand = src.hand;
-        const handedness = src.handedness;
-
-        const thumb = hand.get("thumb-tip");
-        const index = hand.get("index-finger-tip");
-
-        if (thumb && index) {
-          const thumbPose = frame.getJointPose(thumb, referenceSpace);
-          const indexPose = frame.getJointPose(index, referenceSpace);
-
-          if (thumbPose && indexPose) {
-            const dx = indexPose.transform.position.x - thumbPose.transform.position.x;
-            const dy = indexPose.transform.position.y - thumbPose.transform.position.y;
-            const dz = indexPose.transform.position.z - thumbPose.transform.position.z;
-            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-            if (dist < 0.015 && (time - lastPinchTime[handedness]) > pinchCooldown) {
-              lastPinchTime[handedness] = time;
-
-              if (handedness === 'right') {
-                sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-              } else {
-                sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-              }
-
-              const opt = sel.options[sel.selectedIndex];
-              const name = opt.dataset.name;
-              const stereo = isStereoName(name);
-              showLoading(name);
-              loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
-
-              showButtonHUD(`🤏 Pinça (${handedness})`);
-            }
-          }
-        }
       }
     });
   } else {
     prevButtons = [];
     hideButtonHUD();
-    hideLoading();
-    currentButtonIndex = null;
   }
 
+  // 3) Renderiza cena VR
   renderer.render(scene, camera);
 });
