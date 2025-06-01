@@ -22,12 +22,15 @@ window.addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-/* ───────── HUD LOADING (ref-count, evita sprites duplicados) ───────── */
-let loadingSprite = null,
-    loadingCnt    = 0;
+/* ───────── HUD LOADING (um único sprite) ───────── */
+let loadingSprite = null;
 
 export function showLoading() {
-  if (++loadingCnt > 1) return;
+  // Se já existe um sprite, apenas reposiciona
+  if (loadingSprite) {
+    updateLoadingPosition();
+    return;
+  }
 
   const s  = 256;
   const cv = document.createElement('canvas');
@@ -54,7 +57,7 @@ export function showLoading() {
 }
 
 export function hideLoading() {
-  if (--loadingCnt > 0 || !loadingSprite) return;
+  if (!loadingSprite) return;
   scene.remove(loadingSprite);
   loadingSprite.material.map.dispose();
   loadingSprite.material.dispose();
@@ -176,20 +179,19 @@ export function loadTexture(url, isStereo, cb) {
       tex.minFilter  = THREE.LinearFilter;
       tex.generateMipmaps = false;
 
-      // Tenta executar a callback, mas garante que hideLoading seja chamado mesmo que cb jogue erro:
+      // Executa a callback (com try/catch apenas para capturar erros
       try {
         cb(tex, isStereo);
       } catch (e) {
         console.error(e);
-      } finally {
-        // Espera 0.2 s antes de esconder o sprite (para não ficar piscando muito rápido)
-        setTimeout(hideLoading, 200);
       }
+      // Garante que o “Loading…” seja removido 0,2 s após o callback
+      setTimeout(hideLoading, 200);
     },
     undefined,
     err => {
       console.error(err);
-      // Em caso de erro de carregamento, ainda assim fecha o Loading após 0.2 s
+      // Mesmo em erro, remove o “Loading…” após 0,2 s
       setTimeout(hideLoading, 200);
     }
   );
