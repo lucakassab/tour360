@@ -12,39 +12,42 @@ import {
 
 /* ───── CONTROLES MOUSE + WHEEL ───── */
 let camDist = 0,
-    lon = 0,
-    lat = 0,
-    onDx = 0,
-    onDy = 0,
+    lon     = 0,
+    lat     = 0,
+    onDx    = 0,
+    onDy    = 0,
     dragging = false;
 
 window.addEventListener('wheel', e => {
   camDist = Math.max(0, Math.min(2000, camDist - e.deltaY * 0.5));
 });
 renderer.domElement.addEventListener('mousedown', e => {
-  dragging = true; onDx = e.clientX; onDy = e.clientY;
+  dragging = true;
+  onDx = e.clientX;
+  onDy = e.clientY;
 });
 renderer.domElement.addEventListener('mousemove', e => {
   if (!dragging) return;
   lon += (onDx - e.clientX) * 0.1;
   lat += (e.clientY - onDy) * 0.1;
-  onDx = e.clientX; onDy = e.clientY;
+  onDx = e.clientX;
+  onDy = e.clientY;
 });
 renderer.domElement.addEventListener('mouseup', () => dragging = false);
 
-/* ───── helper pra detectar nome 「_stereo」 ───── */
+/* ───── Helper pra detectar nome “_stereo” ───── */
 function isStereoName(name) {
   return /_stereo/i.test(name);
 }
 
-/* ───── carrega lista de mídias e primeira textura ───── */
+/* ───── Carrega lista de mídias e primeira textura ───── */
 const sel = document.getElementById('mediaSelect');
 
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
-    // filtra só arquivos jpg/png
-    files.filter(f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name))
+    files
+      .filter(f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name))
       .forEach(f => {
         const o = document.createElement('option');
         o.value = f.download_url;
@@ -64,13 +67,13 @@ document.getElementById('btnLoad').onclick = () => {
   loadTexture(opt.value, stereo, (tex, st) => createSphere(tex, st));
 };
 
-/* ───── render loop (camera orbit) ───── */
+/* ───── Render loop (camera orbit) ───── */
 renderer.setAnimationLoop(() => {
-  // atualiza posição/rotação do sprite de loading (se existir)
+  // 1) Reposiciona sprite de loading (se existir)
   updateLoadingPosition();
 
-  // cam orbit básica
-  const phi = THREE.MathUtils.degToRad(90 - lat);
+  // 2) Calcula órbita da câmera
+  const phi   = THREE.MathUtils.degToRad(90 - lat);
   const theta = THREE.MathUtils.degToRad(lon);
 
   if (camDist > 0) {
@@ -86,7 +89,9 @@ renderer.setAnimationLoop(() => {
   const x = Math.sin(phi) * Math.cos(theta),
         y = Math.cos(phi),
         z = Math.sin(phi) * Math.sin(theta);
+
   camera.lookAt(x, y, z);
 
+  // 3) Render
   renderer.render(scene, camera);
 });

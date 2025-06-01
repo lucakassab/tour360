@@ -11,10 +11,10 @@ import {
 } from './core.js';
 
 /* ───── CONTROLES TOUCH (drag) ───── */
-let lon = 0,
-    lat = 0,
-    onX = 0,
-    onY = 0,
+let lon      = 0,
+    lat      = 0,
+    onX      = 0,
+    onY      = 0,
     dragging = false;
 
 renderer.domElement.addEventListener('touchstart', e => {
@@ -32,18 +32,19 @@ renderer.domElement.addEventListener('touchmove', e => {
 });
 renderer.domElement.addEventListener('touchend', () => dragging = false);
 
-/* ───── helper pra detectar nome 「_stereo」 ───── */
+/* ───── Helper pra detectar nome “_stereo” ───── */
 function isStereoName(name) {
   return /_stereo/i.test(name);
 }
 
-/* ───── carrega lista de mídias e primeira textura ───── */
+/* ───── Carrega lista de mídias e primeira textura ───── */
 const sel = document.getElementById('mediaSelect');
 
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
-    files.filter(f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name))
+    files
+      .filter(f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name))
       .forEach(f => {
         const o = document.createElement('option');
         o.value = f.download_url;
@@ -63,12 +64,13 @@ document.getElementById('btnLoad').onclick = () => {
   loadTexture(opt.value, stereo, (tex, st) => createSphere(tex, st));
 };
 
-/* ───── render loop ───── */
+/* ───── Render loop ───── */
 renderer.setAnimationLoop(() => {
-  // atualiza posição/rotação do sprite de loading (se existir)
+  // 1) Reposiciona sprite de loading (se existir)
   updateLoadingPosition();
 
-  const phi = THREE.MathUtils.degToRad(90 - lat);
+  // 2) Calcula ângulos e posiciona câmera para mobile
+  const phi   = THREE.MathUtils.degToRad(90 - lat);
   const theta = THREE.MathUtils.degToRad(lon);
   camera.position.set(0, 0, 0);
   camera.lookAt(
@@ -76,5 +78,7 @@ renderer.setAnimationLoop(() => {
     Math.cos(phi),
     Math.sin(phi) * Math.sin(theta)
   );
+
+  // 3) Render
   renderer.render(scene, camera);
 });

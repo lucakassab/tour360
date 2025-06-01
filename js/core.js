@@ -22,33 +22,32 @@ window.addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-/* ───────── HUD LOADING (ref-count, evita sprites duplos) ───────── */
+/* ───────── HUD LOADING (ref-count, evita sprites duplicados) ───────── */
 let loadingSprite = null, loadingCnt = 0;
+
 export function showLoading() {
   if (++loadingCnt > 1) return;
   const s = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
-  const c = cv.getContext('2d');
-  c.fillStyle = 'rgba(0,0,0,0.6)';
-  c.fillRect(0, 0, s, s);
-  c.font = 'bold 48px sans-serif';
-  c.fillStyle = '#fff';
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  c.fillText('Loading…', s/2, s/2);
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, s, s);
+  ctx.font = 'bold 48px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Loading…', s / 2, s / 2);
 
-  const sprMat = new THREE.SpriteMaterial({
-    map: new THREE.CanvasTexture(cv),
-    depthTest: false,
-    depthWrite: false
-  });
-  const spr = new THREE.Sprite(sprMat);
-  spr.scale.set(1, 1, 1);
-  spr.renderOrder = 9999;
-  loadingSprite = spr;
-  scene.add(spr);
+  const tex   = new THREE.CanvasTexture(cv);
+  const mat   = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(1, 1, 1);
+  sprite.renderOrder = 9999;
+  loadingSprite = sprite;
+  scene.add(sprite);
 }
+
 export function hideLoading() {
   if (--loadingCnt > 0 || !loadingSprite) return;
   scene.remove(loadingSprite);
@@ -60,10 +59,10 @@ export function hideLoading() {
 /* ───────── Atualiza posição do sprite de Loading ───────── */
 export function updateLoadingPosition() {
   if (!loadingSprite) return;
-  // Se estiver em VR e sessão ativa, use câmera XR; caso contrário, use a câmera normal
   const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
-  // Posição 1 metro à frente no eixo -Z da câmera
-  const tmp = new THREE.Vector3(0, 0, -1).applyQuaternion(headCam.quaternion).multiplyScalar(1);
+  const tmp = new THREE.Vector3(0, 0, -1)
+    .applyQuaternion(headCam.quaternion)
+    .multiplyScalar(1);
   loadingSprite.position.copy(headCam.position).add(tmp);
   loadingSprite.quaternion.copy(headCam.quaternion);
 }
@@ -73,8 +72,11 @@ export const layerMono  = 0;
 export const layerLeft  = 1;
 export const layerRight = 2;
 
-/* ───────── helpers para destruir esferas ───────── */
-let sphereMono = null, sphereLeft = null, sphereRight = null;
+/* ───────── Helpers para destruir esferas ───────── */
+let sphereMono  = null,
+    sphereLeft  = null,
+    sphereRight = null;
+
 function disposeSphere(s) {
   if (!s) return;
   scene.remove(s);
@@ -82,7 +84,7 @@ function disposeSphere(s) {
   s.material.dispose();
 }
 
-/* ───────── cria esfera (mono OU stereo) ───────── */
+/* ───────── Cria esfera (mono OU stereo) ───────── */
 export function createSphere(tex, isStereo) {
   disposeSphere(sphereMono);
   disposeSphere(sphereLeft);
@@ -91,8 +93,14 @@ export function createSphere(tex, isStereo) {
 
   const geo = new THREE.SphereGeometry(500, 64, 32);
 
+  function setupTex(t) {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS      = t.wrapT = THREE.ClampToEdgeWrapping;
+    t.minFilter  = THREE.LinearFilter;
+    t.generateMipmaps = false;
+  }
+
   if (!isStereo) {
-    // MONO puro: usa a textura inteira
     setupTex(tex);
     sphereMono = new THREE.Mesh(
       geo,
@@ -103,9 +111,11 @@ export function createSphere(tex, isStereo) {
     return;
   }
 
-  // ───── ESTÉREO: gera “fake mono” (metade de baixo) + layers L e R ─────
-  // 1) metade de baixo → fake mono + olho esquerdo
-  const bot = cloneHalf(tex, 0);
+  // ───── ESTÉREO: metade de baixo → fake mono + olho esquerdo ─────
+  const bot = tex.clone();
+  setupTex(bot);
+  bot.repeat.set(1, 0.5);
+  bot.offset.set(0, 0);
   sphereMono = new THREE.Mesh(
     geo,
     new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide })
@@ -120,8 +130,11 @@ export function createSphere(tex, isStereo) {
   sphereLeft.layers.set(layerLeft);
   scene.add(sphereLeft);
 
-  // 2) metade de cima → olho direito
-  const top = cloneHalf(tex, 0.5);
+  // ───── metade de cima → olho direito ─────
+  const top = tex.clone();
+  setupTex(top);
+  top.repeat.set(1, 0.5);
+  top.offset.set(0, 0.5);
   sphereRight = new THREE.Mesh(
     geo.clone(),
     new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide })
@@ -130,28 +143,17 @@ export function createSphere(tex, isStereo) {
   scene.add(sphereRight);
 }
 
-/* ───────── HELPERS ───────── */
-function setupTex(t) {
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-  t.minFilter = THREE.LinearFilter;
-  t.generateMipmaps = false;
-}
-function cloneHalf(base, offsetY) {
-  const t = base.clone();
-  setupTex(t);
-  t.repeat.set(1, 0.5);
-  t.offset.set(0, offsetY);
-  return t;
-}
-
 /* ───────── carrega texture e chama callback ───────── */
 export function loadTexture(url, isStereo, cb) {
   showLoading();
   new THREE.TextureLoader().load(
     url,
     tex => {
-      setupTex(tex);
+      // Ajusta cor e wrapping antes de usar
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS      = tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.minFilter  = THREE.LinearFilter;
+      tex.generateMipmaps = false;
       cb(tex, isStereo);
       hideLoading();
     },
