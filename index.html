@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-<title>Tour360_1.1</title>
+<title>Tour360_1.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- A-Frame CDN -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -37,6 +37,7 @@
 
   <a-scene vr-mode-ui="enabled: true">
     <a-assets id="assetContainer"></a-assets>
+    <!-- O a-sky mapeia 360; a rotação evita imagem “virada” -->
     <a-sky id="sky" rotation="0 -90 0"></a-sky>
     <a-camera wasd-controls-enabled="false" look-controls="true"></a-camera>
   </a-scene>
@@ -46,7 +47,7 @@
     var BASE_MEDIA_URL = 'https://lucakassab.github.io/tour360/media';
 
     // Endpoint da GitHub API para listar conteúdo da pasta media
-    var GITHUB_API_MEDIA = 
+    var GITHUB_API_MEDIA =
       'https://api.github.com/repos/lucakassab/tour360/contents/media';
 
     // Extensões válidas (pode adicionar '.mp4' etc depois)
@@ -65,7 +66,7 @@
           return res.json();
         })
         .then(function(data) {
-          // Filtra só nomes que terminam em _Mono ou _Stereo e com extensão válida
+          // Filtra só nomes que terminem em _Mono ou _Stereo e com extensão válida
           var validFiles = data
             .map(function(item) { return item.name; })
             .filter(function(name) {
@@ -88,7 +89,6 @@
           validFiles.forEach(function(filename) {
             var opt = document.createElement('option');
             opt.value = filename;
-            // Remove extensão para exibir mais limpo
             var label = filename.replace(/(\.jpg|\.jpeg|\.png)$/i, '');
             opt.textContent = label;
             selectEl.appendChild(opt);
@@ -118,11 +118,12 @@
       assetContainer.innerHTML = '';
       skyEl.removeAttribute('material');
       skyEl.removeAttribute('stereo');
+      skyEl.removeAttribute('offset');
 
       // Concatena a URL da mídia
       var mediaUrl = BASE_MEDIA_URL + '/' + selected;
 
-      // Cria <img> dentro de <a-assets>
+      // Cria <img> dentro de <a-assets> para pré-carregar a textura 360
       var imgEl = document.createElement('img');
       imgEl.setAttribute('id', 'media360');
       imgEl.setAttribute('src', mediaUrl);
@@ -137,18 +138,31 @@
           isVR = false;
         }
 
-        // Se for estéreo e NÃO VR, repete só metade da textura (corta na largura)
-        var repeatValue = (isStereo && !isVR) ? '0.5 1' : '1 1';
+        // Se for estéreo e NÃO VR, cortamos a textura no eixo Y:
+        // repeat: 1 0.5 (metade vertical);
+        // offset: 0 0.5 (mostrando a metade de cima)
+        if (isStereo && !isVR) {
+          skyEl.setAttribute(
+            'material',
+            'shader: flat; src: #media360; side: back; npot: true; repeat: 1 0.5'
+          );
+          skyEl.setAttribute('offset', '0 0.5');
+        } else {
+          // Caso contrário (mono ou VR) exibimos a imagem inteira
+          skyEl.setAttribute(
+            'material',
+            'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1'
+          );
+        }
 
-        skyEl.setAttribute('material', 'shader: flat; src: #media360; side: back; npot: true; repeat: ' + repeatValue);
-
+        // Se for estéreo e estiver em VR, ativa o stereo top-bottom
         if (isStereo && isVR) {
           skyEl.setAttribute('stereo', 'true');
         } else {
           skyEl.removeAttribute('stereo');
         }
 
-        // Caso precise ajustar rotação, descomenta e altere:
+        // Se precisar ajustar rotação manualmente, descomente e mude aqui:
         // skyEl.setAttribute('rotation', '0 -90 0');
       };
 
