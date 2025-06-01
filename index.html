@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>Tour360_3.6</title>
-  <!-- Carrega A-Frame -->
+<title>Tour360_3.7</title>
+  <!-- A-Frame normal -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <!-- Componente de estéreo -->
+  <!-- Componente de estéreo → faz o split top-bottom corretamente -->
   <script src="https://unpkg.com/aframe-stereo-component/dist/aframe-stereo-component.min.js"></script>
   <style>
     body, html {
@@ -52,8 +52,8 @@
     <select id="mediaSelect"></select>
   </div>
 
-  <!-- Elemento para mostrar logs mínimos de debug -->
-  <div id="debugConsole">[DEBUG] Iniciando Tour360_3.5...</div>
+  <!-- Debug overlay mínimo -->
+  <div id="debugConsole">[DEBUG] Iniciando Tour360_3.6...</div>
 
   <!-- Cena A-Frame -->
   <a-scene id="scene"
@@ -65,7 +65,7 @@
   </a-scene>
 
   <script>
-    // -------------- VARIÁVEIS GLOBAIS --------------
+    // ——— Variáveis globais ———
     const owner = 'lucakassab';
     const repo = 'tour360';
     const branch = 'main';
@@ -78,7 +78,6 @@
     let rightEyeEntity = null;
     let currentVideoEl = null;
 
-    // Função utilitária para escrever no debug console
     function debug(msg) {
       console.log(`[DEBUG] ${msg}`);
       const p = document.createElement('div');
@@ -87,11 +86,8 @@
       debugDiv.scrollTop = debugDiv.scrollHeight;
     }
 
-    // -------------- FUNÇÕES DE CENA --------------
+    // ——— Funções de manipulação da cena ———
 
-    /**
-     * Limpa a cena removendo entidades atuais (mono ou estéreo) e vídeo element, se existir.
-     */
     function clearEntities() {
       if (currentMono) {
         scene.removeChild(currentMono);
@@ -116,9 +112,9 @@
     }
 
     /**
-     * Exibe UMA entidade (sky ou videosphere) em modo mono. 
-     * @param {string} url – URL da mídia (imagem ou vídeo).
-     * @param {boolean} isVideo – se a mídia for vídeo, true; caso contrário, false.
+     * Exibe UMA entidade (sky ou videosphere) em modo mono.
+     * @param {string} url – URL da mídia.
+     * @param {boolean} isVideo – true se for vídeo, false se imagem.
      */
     function showMono(url, isVideo) {
       clearEntities();
@@ -136,7 +132,6 @@
         currentVideoEl = video;
         debug(`Criado <video> para ${url}`);
 
-        // Um único videosphere (mono)
         const vs = document.createElement('a-videosphere');
         vs.setAttribute('shader', 'flat');
         vs.setAttribute('src', '#mediaVideo');
@@ -144,7 +139,6 @@
         currentMono = vs;
         debug('Adicionado <a-videosphere> em modo mono.');
       } else {
-        // Um único sky (mono)
         const sky = document.createElement('a-sky');
         sky.setAttribute('shader', 'flat');
         sky.setAttribute('src', `url(${url})`);
@@ -156,9 +150,9 @@
 
     /**
      * Exibe DUAS entidades (sky ou videosphere) em modo estéreo (top-bottom).
-     * Cada entidade é marcada com stereo="eye:left" ou "eye:right" para o componente.
-     * @param {string} url – URL da mídia (imagem ou vídeo).
-     * @param {boolean} isVideo – se a mídia for vídeo, true; caso contrário, false.
+     * Cada entidade recebe atributo stereo="eye:left" ou "eye:right".
+     * @param {string} url – URL da mídia.
+     * @param {boolean} isVideo – true se for vídeo, false se imagem.
      */
     function showStereo(url, isVideo) {
       clearEntities();
@@ -207,8 +201,7 @@
     }
 
     /**
-     * Carrega uma mídia pela regra de nome (mono ou estéreo) e
-     * configura listeners de entrar/exit VR para alternar.
+     * Carrega a mídia pelo nome, exibe em mono e registra listeners para entrar/sair de VR.
      * @param {string} filename – nome do arquivo em /media.
      */
     function loadMedia(filename) {
@@ -220,19 +213,18 @@
       const isImage = /\.(jpg|jpeg|png|gif)$/i.test(lower);
       const isStereo = /_stereo\./i.test(filename);
 
-      // Começa mostrando mono
+      // Inicia mostrando mono
       showMono(url, isVideo);
 
-      // Ao entrar em VR, troca para estéreo (se for arquivo _stereo_)
+      // Handler para entrada em VR
       const onEnterVR = () => {
         if (isStereo) {
           debug('enter-vr detectado e arquivo é estéreo → showStereo()');
           showStereo(url, isVideo);
-          // Força câmera pra renderizar eye:left e eye:right
           document.getElementById('cam').setAttribute('stereocam', 'eye:left');
         }
       };
-      // Ao sair do VR, volta para mono
+      // Handler para saída de VR
       const onExitVR = () => {
         if (isStereo) {
           debug('exit-vr detectado e arquivo é estéreo → showMono()');
@@ -240,88 +232,124 @@
         }
       };
 
-      // Remova listeners anteriores (evita registrar duplicado)
+      // Remove listeners antigos para não registrar duplicado
       scene.removeEventListener('enter-vr', scene._enterVrHandler);
       scene.removeEventListener('exit-vr', scene._exitVrHandler);
 
-      // Registra novos listeners e guarda referências para remoção futura
+      // Registra novos
       scene._enterVrHandler = onEnterVR;
       scene._exitVrHandler = onExitVR;
       scene.addEventListener('enter-vr', onEnterVR);
       scene.addEventListener('exit-vr', onExitVR);
     }
 
-    // -------------- FUNÇÕES EXPOSAS NO CONSOLE --------------
+    // ——— Funções expostas para testar no console ———
 
     /**
-     * Lista as entidades criadas atualmente: mono, leftEye e rightEye.
+     * Mostra no console quais entidades estão ativas (mono, leftEye, rightEye, vídeo).
      */
     function listEntities() {
-      console.log('currentMono:', currentMono);
-      console.log('leftEyeEntity:', leftEyeEntity);
-      console.log('rightEyeEntity:', rightEyeEntity);
-      console.log('currentVideoEl:', currentVideoEl);
-      debug('listEntities() chamado → ver console.');
+      console.log('currentMono →', currentMono);
+      console.log('leftEyeEntity →', leftEyeEntity);
+      console.log('rightEyeEntity →', rightEyeEntity);
+      console.log('currentVideoEl →', currentVideoEl);
+      debug('listEntities() chamado. Confira o console.');
     }
 
     /**
-     * Retorna informações sobre a câmera e seu atributo stereocam atual.
+     * Inspeciona a câmera principal e seu atributo stereocam.
      */
     function inspectCamera() {
-      const cam = document.getElementById('cam');
-      console.log('Camera entity:', cam);
-      console.log('Atributos desta câmera:', cam.getAttribute('stereocam'));
-      debug('inspectCamera() chamado → ver console.');
+      const camEntity = document.getElementById('cam');
+      console.log('Camera entity →', camEntity);
+      console.log('getAttribute("stereocam") →', camEntity.getAttribute('stereocam'));
+      // Tenta mostrar o objeto THREE.Camera dentro do <a-entity>
+      console.log('A-Frame THREE.Camera →', camEntity.getObject3D('camera'));
+      debug('inspectCamera() chamado. Confira o console.');
     }
 
     /**
-     * Testa apenas a função showMono no console:
-     * → showMonoConsole('A2_Stereo.jpg', false);
-     * (vai exibir a imagem como mono).
-     * @param {string} filename
-     * @param {boolean} isVideo
+     * Mostra no console todos os <a-sky> ou <a-videosphere> que têm atributo stereo,
+     * junto com o valor de stereo="" que cada um carrega.
      */
-    function showMonoConsole(filename, isVideo) {
-      const url = `${baseUrl}/${filename}`;
-      showMono(url, isVideo);
-      debug(`showMonoConsole('${filename}', ${isVideo}) chamado.`);
+    function checkStereoAttributes() {
+      const elems = document.querySelectorAll('a-sky[stereo], a-videosphere[stereo]');
+      if (!elems.length) console.warn('Não há elementos com atributo stereo.');
+      elems.forEach(el => console.log(el.tagName, el.getAttribute('stereo')));
+      debug('checkStereoAttributes() chamado. Confira o console.');
     }
 
     /**
-     * Testa apenas a função showStereo no console:
-     * → showStereoConsole('A2_Stereo.jpg', false);
-     * (vai exibir a imagem como estéreo).
-     * @param {string} filename
-     * @param {boolean} isVideo
+     * Mostra no console o estado atual de VR: se a cena está em VR ou não,
+     * e quais câmeras-filhas existem no renderer.xr.getCamera().
      */
-    function showStereoConsole(filename, isVideo) {
-      const url = `${baseUrl}/${filename}`;
-      showStereo(url, isVideo);
-      debug(`showStereoConsole('${filename}', ${isVideo}) chamado.`);
+    function printXrCameras() {
+      const isVR = scene.is('vr-mode');
+      console.log('Scene.is("vr-mode"): ', isVR);
+      // Pega a THREE.WebGLRenderer a partir do a-scene
+      const renderer = scene.renderer;
+      if (!renderer) {
+        console.warn('renderer ainda não está disponível (aguarde a cena completar).');
+        return;
+      }
+      // Pega a câmera XR (um Group que inclui as duas subcâmeras de olho esquerdo + direito)
+      const xrCam = renderer.xr.getCamera(scene.camera);
+      console.log('XR Camera Group →', xrCam);
+      if (xrCam.cameras) {
+        xrCam.cameras.forEach((cam, i) => {
+          console.log(`  subCamera[${i}] layerMask:`, cam.layers.mask, ' eye:', (i === 0 ? 'left' : 'right'));
+        });
+      }
+      debug('printXrCameras() chamado. Confira o console.');
     }
 
     /**
-     * Limpa todas as entidades da cena sem recarregar mídia.
+     * Força “entrar em VR” no console (útil para testar fora de headset)
+     */
+    function simulateEnterVR() {
+      debug('Tentando chamar scene.enterVR()');
+      if (scene.enterVR) scene.enterVR();
+      else console.warn('scene.enterVR() não disponível.');
+    }
+
+    /**
+     * Força “sair de VR” no console (útil se ficar preso em VR)
+     */
+    function simulateExitVR() {
+      debug('Tentando chamar scene.exitVR()');
+      if (scene.exitVR) scene.exitVR();
+      else console.warn('scene.exitVR() não disponível.');
+    }
+
+    /**
+     * Limpa toda a cena de entidades (sem recarregar mídia).
      */
     function clearAll() {
       clearEntities();
       debug('clearAll() chamado.');
     }
 
-    // Expondo essas funções no objeto global (window) para acesso no console:
+    // Expõe as funções no objeto global (window) para uso no console:
     window.listEntities = listEntities;
     window.inspectCamera = inspectCamera;
-    window.showMonoConsole = showMonoConsole;
-    window.showStereoConsole = showStereoConsole;
+    window.checkStereoAttributes = checkStereoAttributes;
+    window.printXrCameras = printXrCameras;
+    window.simulateEnterVR = simulateEnterVR;
+    window.simulateExitVR = simulateExitVR;
     window.clearAll = clearAll;
+    window.showMonoConsole = (fname, isVid) => {
+      const url = `${baseUrl}/${fname}`;
+      showMono(url, isVid);
+      debug(`showMonoConsole('${fname}', ${isVid}) chamado.`);
+    };
+    window.showStereoConsole = (fname, isVid) => {
+      const url = `${baseUrl}/${fname}`;
+      showStereo(url, isVid);
+      debug(`showStereoConsole('${fname}', ${isVid}) chamado.`);
+    };
     window.loadMedia = loadMedia;
 
-    // -------------- INICIALIZAÇÃO --------------
-
-    /**
-     * Busca a lista de arquivos em /media e popula o <select>.
-     * Em seguida, carrega o primeiro arquivo (se houver) em modo mono.
-     */
+    // ——— Inicialização (popula o menu e carrega o primeiro arquivo) ———
     async function init() {
       debug('init() chamado → buscando lista de mídias no GitHub API...');
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/media?ref=${branch}`;
@@ -346,7 +374,6 @@
       });
 
       if (mediaList.length) {
-        // Chama loadMedia no primeiro arquivo
         loadMedia(mediaList[0]);
       }
       select.addEventListener('change', e => loadMedia(e.target.value));
@@ -354,7 +381,6 @@
     }
 
     window.addEventListener('load', init);
-
   </script>
 </body>
 </html>
