@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Tour360X – Visualizador VR</title>
+<title>Tour360_1.1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- A-Frame CDN -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -30,128 +30,130 @@
   <div class="menu">
     <label for="mediaSelect">Escolha uma mídia:</label>
     <select id="mediaSelect">
-      <!-- Vai ser populado no script abaixo -->
+      <!-- Opções preenchidas pelo script -->
     </select>
     <button onclick="loadMedia()">Carregar</button>
   </div>
 
   <a-scene vr-mode-ui="enabled: true">
     <a-assets id="assetContainer"></a-assets>
-    <!-- O a-sky já mapeia a textura 360 corretamente -->
     <a-sky id="sky" rotation="0 -90 0"></a-sky>
     <a-camera wasd-controls-enabled="false" look-controls="true"></a-camera>
   </a-scene>
 
   <script>
     // URL base onde as mídias ficam no GitHub Pages
-    const BASE_MEDIA_URL = 'https://lucakassab.github.io/tour360/media';
+    var BASE_MEDIA_URL = 'https://lucakassab.github.io/tour360/media';
 
     // Endpoint da GitHub API para listar conteúdo da pasta media
-    const GITHUB_API_MEDIA =
+    var GITHUB_API_MEDIA = 
       'https://api.github.com/repos/lucakassab/tour360/contents/media';
 
-    // Extensões válidas (pode adicionar .mp4 se quiser vídeo depois)
-    const VALID_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
+    // Extensões válidas (pode adicionar '.mp4' etc depois)
+    var VALID_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
 
-    window.addEventListener('load', () => {
+    window.addEventListener('load', function() {
       populateMediaList();
     });
 
-    async function populateMediaList() {
-      const selectEl = document.getElementById('mediaSelect');
+    function populateMediaList() {
+      var selectEl = document.getElementById('mediaSelect');
 
-      try {
-        const res = await fetch(GITHUB_API_MEDIA);
-        if (!res.ok) throw new Error(`API retornou ${res.status}`);
-        const data = await res.json();
+      fetch(GITHUB_API_MEDIA)
+        .then(function(res) {
+          if (!res.ok) throw new Error('API retornou ' + res.status);
+          return res.json();
+        })
+        .then(function(data) {
+          // Filtra só nomes que terminam em _Mono ou _Stereo e com extensão válida
+          var validFiles = data
+            .map(function(item) { return item.name; })
+            .filter(function(name) {
+              var lower = name.toLowerCase();
+              var hasSuffix = lower.indexOf('_mono') !== -1 || lower.indexOf('_stereo') !== -1;
+              var hasExt = VALID_EXTENSIONS.some(function(ext) {
+                return lower.endsWith(ext);
+              });
+              return hasSuffix && hasExt;
+            });
 
-        // Filtra só nomes que terminam em _Mono ou _Stereo e com extensão válida
-        const validFiles = data
-          .map(item => item.name)
-          .filter(name => {
-            const lower = name.toLowerCase();
-            const hasSuffix = lower.includes('_mono') || lower.includes('_stereo');
-            const hasExt = VALID_EXTENSIONS.some(ext => lower.endsWith(ext));
-            return hasSuffix && hasExt;
+          if (validFiles.length === 0) {
+            var optNone = document.createElement('option');
+            optNone.value = '';
+            optNone.textContent = 'Nenhuma mídia encontrada';
+            selectEl.appendChild(optNone);
+            return;
+          }
+
+          validFiles.forEach(function(filename) {
+            var opt = document.createElement('option');
+            opt.value = filename;
+            // Remove extensão para exibir mais limpo
+            var label = filename.replace(/(\.jpg|\.jpeg|\.png)$/i, '');
+            opt.textContent = label;
+            selectEl.appendChild(opt);
           });
 
-        if (validFiles.length === 0) {
-          const opt = document.createElement('option');
-          opt.value = '';
-          opt.textContent = 'Nenhuma mídia encontrada';
-          selectEl.appendChild(opt);
-          return;
-        }
-
-        validFiles.forEach(filename => {
-          const opt = document.createElement('option');
-          opt.value = filename;
-          const label = filename.replace(/(\.jpg|\.jpeg|\.png)$/i, '');
-          opt.textContent = label;
-          selectEl.appendChild(opt);
+          selectEl.selectedIndex = 0;
+        })
+        .catch(function(err) {
+          console.error('Erro ao buscar lista de mídias:', err);
+          var optErr = document.createElement('option');
+          optErr.value = '';
+          optErr.textContent = 'Erro ao carregar mídias';
+          selectEl.appendChild(optErr);
         });
-
-        selectEl.selectedIndex = 0;
-      } catch (err) {
-        console.error('Erro ao buscar lista de mídias:', err);
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = 'Erro ao carregar mídias';
-        selectEl.appendChild(opt);
-      }
     }
 
-    async function loadMedia() {
-      const selectEl = document.getElementById('mediaSelect');
-      const selected = selectEl.value;
-      if (!selected) return; // Se não escolheu nada, sai
+    function loadMedia() {
+      var selectEl = document.getElementById('mediaSelect');
+      var selected = selectEl.value;
+      if (!selected) return;
 
-      const isStereo = selected.toLowerCase().includes('_stereo');
-      const skyEl = document.getElementById('sky');
-      const assetContainer = document.getElementById('assetContainer');
+      var isStereo = selected.toLowerCase().indexOf('_stereo') !== -1;
+      var skyEl = document.getElementById('sky');
+      var assetContainer = document.getElementById('assetContainer');
 
-      // Limpa qualquer asset antigo
+      // Limpa assets antigos
       assetContainer.innerHTML = '';
       skyEl.removeAttribute('material');
       skyEl.removeAttribute('stereo');
 
-      // Monta a URL completa da mídia
-      const mediaUrl = \`\${BASE_MEDIA_URL}/\${selected}\`;
+      // Concatena a URL da mídia
+      var mediaUrl = BASE_MEDIA_URL + '/' + selected;
 
-      // Cria o <img> dentro do <a-assets> para o A-Frame pré-carregar a textura
-      const imgEl = document.createElement('img');
+      // Cria <img> dentro de <a-assets>
+      var imgEl = document.createElement('img');
       imgEl.setAttribute('id', 'media360');
       imgEl.setAttribute('src', mediaUrl);
       assetContainer.appendChild(imgEl);
 
-      imgEl.onload = () => {
-        const scene = document.querySelector('a-scene');
-        const isVR = scene.renderer.xr?.isPresenting || false;
+      imgEl.onload = function() {
+        var scene = document.querySelector('a-scene');
+        var isVR = false;
+        try {
+          isVR = scene.renderer.xr && scene.renderer.xr.isPresenting;
+        } catch (e) {
+          isVR = false;
+        }
 
-        // Decide o repeat: se stere e NÃO VR, corta metade; senão mostra inteiro
-        const repeatValue = isStereo && !isVR ? '0.5 1' : '1 1';
+        // Se for estéreo e NÃO VR, repete só metade da textura (corta na largura)
+        var repeatValue = (isStereo && !isVR) ? '0.5 1' : '1 1';
 
-        skyEl.setAttribute('material', {
-          shader: 'flat',
-          src: '#media360',
-          side: 'back',
-          npot: true,
-          repeat: repeatValue
-        });
+        skyEl.setAttribute('material', 'shader: flat; src: #media360; side: back; npot: true; repeat: ' + repeatValue);
 
-        // Se for estéreo e VR, renderiza nos dois olhos
         if (isStereo && isVR) {
           skyEl.setAttribute('stereo', 'true');
         } else {
           skyEl.removeAttribute('stereo');
         }
 
-        // Se ainda estiver torta a imagem, ajusta aqui a rotação:
+        // Caso precise ajustar rotação, descomenta e altere:
         // skyEl.setAttribute('rotation', '0 -90 0');
       };
 
-      imgEl.onerror = () => {
-        console.error(\`Falha ao carregar mídia: \${mediaUrl}\`);
+      imgEl.onerror = function() {
+        console.error('Falha ao carregar mídia: ' + mediaUrl);
       };
     }
   </script>
