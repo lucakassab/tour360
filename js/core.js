@@ -174,9 +174,6 @@ export function createSphere(tex, isStereo) {
 
 /* ───────── carrega texture e chama callback com atraso para hideLoading ───────── */
 export function loadTexture(url, isStereo, cb) {
-  // Só chama showLoading se não houver um loadingSprite ativo (preserva texto customizado)
-  if (!loadingSprite) showLoading();
-
   new THREE.TextureLoader().load(
     url,
     tex => {
@@ -189,13 +186,10 @@ export function loadTexture(url, isStereo, cb) {
       } catch (e) {
         console.error(e);
       }
-      // Garante que o sprite de Loading suma 0,2s depois
-      setTimeout(hideLoading, 200);
     },
     undefined,
     err => {
       console.error(err);
-      setTimeout(hideLoading, 200);
     }
   );
 }
