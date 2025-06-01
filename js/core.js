@@ -23,13 +23,13 @@ window.addEventListener('resize', () => {
 });
 
 /* ───────── HUD LOADING (ref-count, evita sprites duplicados) ───────── */
-let loadingSprite = null, loadingCnt = 0;
+let loadingSprite = null,
+    loadingCnt    = 0;
 
 export function showLoading() {
   if (++loadingCnt > 1) return;
 
-  // Cria o canvas com “Loading…”
-  const s = 256;
+  const s  = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
   const ctx = cv.getContext('2d');
@@ -49,8 +49,7 @@ export function showLoading() {
   loadingSprite = sprite;
   scene.add(sprite);
 
-  // Posiciona imediatamente “na frente” da câmera,
-  // para que o usuário já veja no primeiro frame.
+  // Posiciona imediatamente “na frente” da câmera para ficar visível no primeiro frame
   updateLoadingPosition();
 }
 
@@ -62,24 +61,22 @@ export function hideLoading() {
   loadingSprite = null;
 }
 
-/* ---------- Atualiza posição / rotação do sprite “Loading…” ---------- */
+/* ───────── Atualiza posição/rotação do sprite “Loading…” ───────── */
 const _loadDir  = new THREE.Vector3(0, 0, -1);
 const _loadPos  = new THREE.Vector3();
 const _loadQuat = new THREE.Quaternion();
 
-export function updateLoadingPosition () {
+export function updateLoadingPosition() {
   if (!loadingSprite) return;
 
-  // • em VR: grupo retornado por xr.getCamera(camera)
-  // • fora do VR: a própria câmera de cena
+  // Se estiver em VR, pega a câmera XR; senão, a própria camera 2D
   const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
 
   headCam.updateMatrixWorld();
   headCam.getWorldPosition   (_loadPos);
   headCam.getWorldQuaternion (_loadQuat);
 
-  // Distância a 3.5m para ficar mais visível em VR, 
-  // em 2D também ficará à frente da câmera.
+  // Distância de 3.5 metros para não ficar colado
   const DIST = 3.5;
 
   loadingSprite.position
@@ -167,7 +164,7 @@ export function createSphere(tex, isStereo) {
   scene.add(sphereRight);
 }
 
-/* ───────── carrega texture e chama callback ───────── */
+/* ───────── carrega texture e chama callback com atraso para hideLoading ───────── */
 export function loadTexture(url, isStereo, cb) {
   showLoading();
   new THREE.TextureLoader().load(
@@ -179,13 +176,21 @@ export function loadTexture(url, isStereo, cb) {
       tex.minFilter  = THREE.LinearFilter;
       tex.generateMipmaps = false;
 
-      cb(tex, isStereo);
-      hideLoading();
+      // Tenta executar a callback, mas garante que hideLoading seja chamado mesmo que cb jogue erro:
+      try {
+        cb(tex, isStereo);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        // Espera 0.2 s antes de esconder o sprite (para não ficar piscando muito rápido)
+        setTimeout(hideLoading, 200);
+      }
     },
     undefined,
     err => {
       console.error(err);
-      hideLoading();
+      // Em caso de erro de carregamento, ainda assim fecha o Loading após 0.2 s
+      setTimeout(hideLoading, 200);
     }
   );
 }
