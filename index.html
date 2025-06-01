@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-<title>Tour360_1.5</title>
+<title>Tour360_1.6</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- A-Frame CDN -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -38,8 +38,8 @@
   <a-scene vr-mode-ui="enabled: true">
     <a-assets id="assetContainer"></a-assets>
     <!-- 
-      a-sky projeta o 360° ao redor. 
-      Não coloque stereo aqui; vamos atribuir dinamicamente via JS.
+      a-sky vai receber src e stereo dinamicamente no JS.
+      rotation evita a imagem ficar “de lado”.
     -->
     <a-sky id="sky" rotation="0 -90 0"></a-sky>
     <a-camera wasd-controls-enabled="false" look-controls="true"></a-camera>
@@ -49,13 +49,12 @@
     // URL base onde as mídias ficam hospedadas
     var BASE_MEDIA_URL = 'https://lucakassab.github.io/tour360/media';
 
-    // Lista estática de arquivos em media/
-    // Quando você adicionar mais imagens, inclua aqui:
+    // Lista estática de arquivos na pasta media/
     var MEDIA_FILES = [
       'A2_Stereo.jpg',
       'B1_Mono.jpg',
       'C3_Stereo.png'
-      // 'Outro_Stereo.jpg', 'MaisCoisa_Mono.png', etc.
+      // Se adicionar mais arquivos, inclua aqui
     ];
 
     window.addEventListener('load', function() {
@@ -77,7 +76,6 @@
       MEDIA_FILES.forEach(function(filename) {
         var opt = document.createElement('option');
         opt.value = filename;
-        // Remove extensão pra exibir só o nome “base”
         var label = filename.replace(/(\.jpg|\.jpeg|\.png)$/i, '');
         opt.textContent = label;
         selectEl.appendChild(opt);
@@ -95,16 +93,16 @@
       var skyEl = document.getElementById('sky');
       var assetContainer = document.getElementById('assetContainer');
 
-      // Limpa qualquer asset anterior 
+      // Limpa assets antigos e atributos do sky
       assetContainer.innerHTML = '';
       skyEl.removeAttribute('material');
       skyEl.removeAttribute('stereo');
       skyEl.removeAttribute('offset');
 
-      // URL completa da mídia
+      // URL completa da imagem 360
       var mediaUrl = BASE_MEDIA_URL + '/' + selected;
 
-      // Cria <img> em <a-assets> para o A-Frame pré-carregar a textura
+      // Cria <img> dentro de <a-assets> para o A-Frame pré-carregar
       var imgEl = document.createElement('img');
       imgEl.setAttribute('id', 'media360');
       imgEl.setAttribute('src', mediaUrl);
@@ -122,33 +120,27 @@
         if (isStereo) {
           if (isVR) {
             // -------- VR + Stereo Top-Bottom --------
-            // Define material normal (imagem inteira) e stereo separadamente:
-            skyEl.setAttribute(
-              'material',
-              'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1'
-            );
-            // Agora passa stereo top-bottom explicitamente:
+            // Deixe o A-Frame usar o split interno “top-bottom”:
+            skyEl.setAttribute('src', '#media360');
             skyEl.setAttribute('stereo', 'top-bottom');
+            // Não precisa de repeat/offset em VR, pois o A-Frame já faz internamente
           } else {
             // -------- 2D + Stereo (fake mono) --------
-            // Mostra só a metade de cima (repeat:1 0.5 + offset:0 0.5)
-            skyEl.setAttribute(
-              'material',
-              'shader: flat; src: #media360; side: back; npot: true; repeat: 1 0.5'
-            );
+            // Mostra só a metade de cima (repeat:1 0.5 e offset:0 0.5)
+            skyEl.setAttribute('material',
+              'shader: flat; src: #media360; side: back; npot: true; repeat: 1 0.5');
             skyEl.setAttribute('offset', '0 0.5');
           }
         } else {
           // -------- Mono (2D ou VR) --------
-          skyEl.setAttribute(
-            'material',
-            'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1'
-          );
-          // Não precisa de stereo no mono
+          // Exibe a imagem inteira:
+          skyEl.setAttribute('src', '#media360');
+          skyEl.setAttribute('material',
+            'shader: flat; src: #media360; side: back; npot: true; repeat: 1 1');
           skyEl.removeAttribute('stereo');
         }
 
-        // Se a imagem ainda vier torta no VR, ajuste rotação aqui:
+        // Ajuste de rotação se a imagem ainda estiver meio torta:
         // skyEl.setAttribute('rotation', '0 -90 0');
       };
 
