@@ -19,6 +19,9 @@ function isStereoName(name) {
   return /_stereo/i.test(name);
 }
 
+/* ───── Armazena qual botão (A/B/init) acionou o load ───── */
+let lastButton = 'init'; // no início, vem do fetch automático
+
 /* ───── Carrega lista + primeira textura ───── */
 const sel = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
@@ -34,16 +37,26 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
         sel.appendChild(o);
       });
     sel.selectedIndex = 0;
-    const opt    = sel.options[0];
-    const stereo = isStereoName(opt.dataset.name);
-    showLoading();
-    loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
+
+    // Carregamento inicial (botão “init”)
+    const opt0    = sel.options[0];
+    const name0   = opt0.dataset.name;
+    const stereo0 = isStereoName(name0);
+
+    // Mostra loading com nome da mídia e “init”
+    lastButton = 'init';
+    showLoading(`${name0} [botão ${lastButton}]`);
+    loadTexture(opt0.value, stereo0, (tex, isSt) => createSphere(tex, isSt));
   });
 
+/* ───── Handler para clicar em “Carregar 360” ───── */
 document.getElementById('btnLoad').onclick = () => {
   const opt    = sel.options[sel.selectedIndex];
-  const stereo = isStereoName(opt.dataset.name);
-  showLoading();
+  const name   = opt.dataset.name;
+  const stereo = isStereoName(name);
+
+  // Aqui chamamos showLoading com texto customizado
+  showLoading(`${name} [botão ${lastButton}]`);
   loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
 };
 
@@ -60,15 +73,19 @@ renderer.setAnimationLoop(() => {
     session.inputSources.forEach(src => {
       if (src.gamepad && src.handedness === 'right') {
         const gp = src.gamepad;
-        const isA = gp.buttons[3]?.pressed;
-        const isB = gp.buttons[4]?.pressed || gp.buttons[1]?.pressed;
+        const isA = gp.buttons[3]?.pressed;             // Botão A (index 3)
+        const isB = gp.buttons[4]?.pressed || gp.buttons[1]?.pressed; // B ou Y (index 4 ou 1)
 
         if (isA && !prevA) {
+          // Se apertou A agora, salta para próxima mídia
           sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+          lastButton = 'A'; // marca que foi A
           document.getElementById('btnLoad').click();
         }
         if (isB && !prevB) {
+          // Se apertou B (ou Y) agora, volta mídia
           sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+          lastButton = 'B'; // marca que foi B
           document.getElementById('btnLoad').click();
         }
         prevA = isA;
