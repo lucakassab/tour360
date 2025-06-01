@@ -22,9 +22,6 @@ function isStereoName(name) {
   return /_stereo/i.test(name);
 }
 
-/* ───── Armazena qual botão (A/B/init) acionou o load ───── */
-let lastButton = 'init'; // no início, vem do fetch automático
-
 /* ───── Carrega lista + primeira textura ───── */
 const sel = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
@@ -41,14 +38,13 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       });
     sel.selectedIndex = 0;
 
-    // Carregamento inicial (botão “init”)
+    // Carregamento inicial (sem exibir botão)
     const opt0    = sel.options[0];
     const name0   = opt0.dataset.name;
     const stereo0 = isStereoName(name0);
 
-    // Mostra loading com nome da mídia e “init”
-    lastButton = 'init';
-    showLoading(`${name0} [botão ${lastButton}]`);
+    // Mostra apenas o nome da mídia
+    showLoading(name0);
     loadTexture(opt0.value, stereo0, (tex, isSt) => createSphere(tex, isSt));
   });
 
@@ -58,8 +54,8 @@ document.getElementById('btnLoad').onclick = () => {
   const name   = opt.dataset.name;
   const stereo = isStereoName(name);
 
-  // Aqui chamamos showLoading com texto customizado
-  showLoading(`${name} [botão ${lastButton}]`);
+  // Aqui chamamos showLoading apenas com o nome da mídia
+  showLoading(name);
   loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
 };
 
@@ -91,22 +87,18 @@ renderer.setAnimationLoop(() => {
             let buttonName = `Botão ${i}`;
             let actionText = 'sem ação';
 
-            // Mapeia A e B “oficiais” (índice 3 e 4 ou 1)
+            // Ações padronizadas para índices 3 e 4 (ou 1), mas sem renomear o botão
             if (i === 3) {
-              buttonName = 'Botão A';
               actionText = 'próxima mídia';
               sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-              lastButton = 'A';
               document.getElementById('btnLoad').click();
             } else if (i === 4 || i === 1) {
-              buttonName = 'Botão B';
               actionText = 'mídia anterior';
-              lastButton = 'B';
               sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
               document.getElementById('btnLoad').click();
             }
 
-            // Exibe no HUD de botão: "Botão X → açãoTexto"
+            // Exibe no HUD de botão: "Botão i → açãoText" ou "Botão i → sem ação"
             showButtonHUD(`${buttonName} → ${actionText}`);
             break; // mostra só o primeiro botão detectado nessa frame
           }
