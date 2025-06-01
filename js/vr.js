@@ -7,7 +7,10 @@ import {
   createSphere,
   showLoading,
   hideLoading,
-  updateLoadingPosition
+  updateLoadingPosition,
+  showButtonHUD,
+  hideButtonHUD,
+  updateButtonPosition
 } from './core.js';
 import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
 
@@ -60,43 +63,72 @@ document.getElementById('btnLoad').onclick = () => {
   loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
 };
 
-/* ───── Botões A/B para trocar mídia em VR ───── */
-let prevA = false, prevB = false;
+/* ───── Detecção e exibição de todos os botões ───── */
+let prevButtons = []; // armazena estado anterior de cada botão
 
 renderer.setAnimationLoop(() => {
-  // 1) Reposiciona sprite de Loading (se existir)
+  // 1) Atualiza posição do HUD Loading (se existir)
   updateLoadingPosition();
 
-  // 2) Lê gamepad e troca mídia se A/B pressionado
+  // 1.1) Atualiza posição do HUD de botão (se existir)
+  updateButtonPosition();
+
+  // 2) Se estiver em VR, lê gamepad do controle direito
   const session = renderer.xr.getSession();
   if (session) {
     session.inputSources.forEach(src => {
       if (src.gamepad && src.handedness === 'right') {
         const gp = src.gamepad;
-        const isA = gp.buttons[3]?.pressed;             // Botão A (index 3)
-        const isB = gp.buttons[4]?.pressed || gp.buttons[1]?.pressed; // B ou Y (index 4 ou 1)
+        const nowPressed = gp.buttons.map(btn => btn.pressed);
 
-        if (isA && !prevA) {
-          // Se apertou A agora, salta para próxima mídia
-          sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-          lastButton = 'A'; // marca que foi A
-          document.getElementById('btnLoad').click();
+        // Itera todos os botões pra detectar novos presses
+        let anyNewPress = false;
+        for (let i = 0; i < nowPressed.length; i++) {
+          const isPressed  = nowPressed[i];
+          const wasPressed = prevButtons[i] || false;
+          if (isPressed && !wasPressed) {
+            anyNewPress = true;
+            let buttonName = `Botão ${i}`;
+            let actionText = 'sem ação';
+
+            // Mapeia A e B “oficiais” (índice 3 e 4 ou 1)
+            if (i === 3) {
+              buttonName = 'Botão A';
+              actionText = 'próxima mídia';
+              sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+              lastButton = 'A';
+              document.getElementById('btnLoad').click();
+            } else if (i === 4 || i === 1) {
+              buttonName = 'Botão B';
+              actionText = 'mídia anterior';
+              lastButton = 'B';
+              sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+              document.getElementById('btnLoad').click();
+            }
+
+            // Exibe no HUD de botão: "Botão X → açãoTexto"
+            showButtonHUD(`${buttonName} → ${actionText}`);
+            break; // mostra só o primeiro botão detectado nessa frame
+          }
         }
-        if (isB && !prevB) {
-          // Se apertou B (ou Y) agora, volta mídia
-          sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-          lastButton = 'B'; // marca que foi B
-          document.getElementById('btnLoad').click();
+
+        // Se não houve nenhum novo pressione, esconde o HUD se nenhum botão estiver segurado
+        if (!anyNewPress) {
+          const stillPressed = nowPressed.some(p => p);
+          if (!stillPressed) {
+            hideButtonHUD();
+          }
         }
-        prevA = isA;
-        prevB = isB;
+
+        // Atualiza prevButtons para a próxima iteração
+        prevButtons = nowPressed;
       }
     });
   } else {
-    prevA = false;
-    prevB = false;
+    prevButtons = [];
+    hideButtonHUD();
   }
 
-  // 3) Render VR
+  // 3) Renderiza cena VR
   renderer.render(scene, camera);
 });

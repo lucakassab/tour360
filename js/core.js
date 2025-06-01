@@ -60,7 +60,7 @@ export function showLoading(msg = 'Loading…') {
   sprite.scale.set(aspect, 1, 1); // ajusta proporção no mundo
   sprite.renderOrder = 9999;
   loadingSprite = sprite;
-  scene.add(sprite);
+  scene.add(loadingSprite);
 
   // Posiciona o sprite na frente da câmera (ou da câmera XR, se estiver em VR)
   updateLoadingPosition();
@@ -198,4 +198,81 @@ export function loadTexture(url, isStereo, cb) {
       setTimeout(hideLoading, 200);
     }
   );
+}
+
+// -------------- HUD de Botão --------------
+let buttonSprite = null;
+
+export function showButtonHUD(msg = '') {
+  // Se já existe, destrói pra recriar com o texto novo
+  if (buttonSprite) {
+    scene.remove(buttonSprite);
+    buttonSprite.material.map.dispose();
+    buttonSprite.material.dispose();
+    buttonSprite = null;
+  }
+
+  // Cria canvas 512x128 (retângulo horizontal)
+  const W = 512, H = 128;
+  const cv = document.createElement('canvas');
+  cv.width = W;
+  cv.height = H;
+  const ctx = cv.getContext('2d');
+  // Fundo semi-transparente (meio cinza-escuro)
+  ctx.fillStyle = 'rgba(30,30,30,0.8)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillStyle = '#ff3333';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(msg, W / 2, H / 2);
+
+  const tex = new THREE.CanvasTexture(cv);
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false });
+  const sprite = new THREE.Sprite(mat);
+  const aspect = W / H;
+  sprite.scale.set(aspect, 1, 1);
+  sprite.renderOrder = 9999;
+
+  buttonSprite = sprite;
+  scene.add(buttonSprite);
+
+  updateButtonPosition();
+}
+
+export function hideButtonHUD() {
+  if (!buttonSprite) return;
+  scene.remove(buttonSprite);
+  buttonSprite.material.map.dispose();
+  buttonSprite.material.dispose();
+  buttonSprite = null;
+}
+
+const _btnDir = new THREE.Vector3(0, 0, -1);
+const _btnPos = new THREE.Vector3();
+const _btnQuat = new THREE.Quaternion();
+
+export function updateButtonPosition() {
+  if (!buttonSprite) return;
+
+  // Pega a câmera (normal ou VR)
+  const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
+  headCam.updateMatrixWorld();
+
+  // Posição da câmera
+  headCam.getWorldPosition(_btnPos);
+  headCam.getWorldQuaternion(_btnQuat);
+
+  // Cria vetor apontando pra frente da câmera
+  const forward = _btnDir.clone().applyQuaternion(_btnQuat);
+
+  // Coloca o sprite a 3.5m na frente E 0.8m abaixo da câmera
+  const DIST = 3.5;
+  const DOWN = 0.8; // ajusta pra ficar abaixo do Loading
+  const pos = forward.clone().multiplyScalar(DIST).add(_btnPos);
+  pos.y -= DOWN; // desloca pra baixo
+  buttonSprite.position.copy(pos);
+
+  // Rotaciona pro sprite olhar sempre pra câmera
+  buttonSprite.quaternion.copy(_btnQuat);
 }
