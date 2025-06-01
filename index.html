@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>Tour360_3.3</title>
+<title>Tour360_3.5</title>
+  <!-- A-Frame normal -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <!-- Componente que faz o split estereoscópico corretamente -->
+  <!-- Componente de estéreo que vai fazer o split top-bottom -->
   <script src="https://unpkg.com/aframe-stereo-component/dist/aframe-stereo-component.min.js"></script>
   <style>
     body, html {
@@ -38,8 +39,13 @@
   </div>
 
   <!-- Cena A-Frame -->
-  <a-scene id="scene" embedded vr-mode-ui="enterVRButton: true" background="color: #000">
-    <!-- Aqui vamos injetar e remover entidades dinamicamente -->
+  <a-scene id="scene"
+           embedded
+           vr-mode-ui="enterVRButton: true"
+           background="color: #000">
+    <!-- Câmera explícita com stereocam para lidar com entidades estéreo -->
+    <a-entity id="cam" camera look-controls position="0 0 0.1" stereocam="eye:left"></a-entity>
+    <!-- note que a câmera padrão foi substituída por esta com stereocam -->
   </a-scene>
 
   <script>
@@ -48,9 +54,9 @@
     const branch = 'main';
     const baseUrl = `https://${owner}.github.io/${repo}/media`;
 
-    let currentMonoSky = null;
-    let leftSky = null;
-    let rightSky = null;
+    let currentMono = null;
+    let leftEyeEntity = null;
+    let rightEyeEntity = null;
     let currentVideoEl = null;
     const scene = document.getElementById('scene');
 
@@ -64,21 +70,20 @@
         .map(f => f.name);
     }
 
-    function clearSkies() {
-      // Remove qualquer entidade de 360 que estiver na cena antes
-      if (currentMonoSky) {
-        scene.removeChild(currentMonoSky);
-        currentMonoSky = null;
+    function clearEntities() {
+      // Remove tudo antes de recriar
+      if (currentMono) {
+        scene.removeChild(currentMono);
+        currentMono = null;
       }
-      if (leftSky) {
-        scene.removeChild(leftSky);
-        leftSky = null;
+      if (leftEyeEntity) {
+        scene.removeChild(leftEyeEntity);
+        leftEyeEntity = null;
       }
-      if (rightSky) {
-        scene.removeChild(rightSky);
-        rightSky = null;
+      if (rightEyeEntity) {
+        scene.removeChild(rightEyeEntity);
+        rightEyeEntity = null;
       }
-      // Remove <video> se existir
       if (currentVideoEl) {
         document.body.removeChild(currentVideoEl);
         currentVideoEl = null;
@@ -86,9 +91,9 @@
     }
 
     function showMono(url, isVideo) {
-      clearSkies();
+      clearEntities();
       if (isVideo) {
-        // Cria elemento <video> escondido
+        // Cria <video> escondido
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = url;
@@ -101,31 +106,31 @@
         document.body.appendChild(video);
         currentVideoEl = video;
 
-        // Sky de vídeo mono
+        // Apenas UM videosphere normal (modo mono)
         const vs = document.createElement('a-videosphere');
         vs.setAttribute('shader', 'flat');
         vs.setAttribute('src', '#mediaVideo');
         scene.appendChild(vs);
-        currentMonoSky = vs;
+        currentMono = vs;
       } else {
-        // Sky de imagem estática mono
+        // Apenas UM sky normal (modo mono)
         const sky = document.createElement('a-sky');
         sky.setAttribute('shader', 'flat');
         sky.setAttribute('src', `url(${url})`);
         scene.appendChild(sky);
-        currentMonoSky = sky;
+        currentMono = sky;
       }
     }
 
     function showStereo(url, isVideo) {
-      // Remove mono
-      if (currentMonoSky) {
-        scene.removeChild(currentMonoSky);
-        currentMonoSky = null;
+      // Remove o modo mono primeiro
+      if (currentMono) {
+        scene.removeChild(currentMono);
+        currentMono = null;
       }
 
       if (isVideo) {
-        // Mesma lógica de criar <video>
+        // Cria <video> pro estéreo
         const video = document.createElement('video');
         video.id = 'mediaVideo';
         video.src = url;
@@ -138,60 +143,57 @@
         document.body.appendChild(video);
         currentVideoEl = video;
 
-        // Criamos DOIS a-videosphere: um pra cada olho
-        leftSky = document.createElement('a-videosphere');
-        leftSky.setAttribute('shader', 'flat');
-        leftSky.setAttribute('src', '#mediaVideo');
-        // Stereo componente: olho esquerdo, split vertical (top-bottom)
-        leftSky.setAttribute('stereo', 'eye:left; split:vertical');
-        scene.appendChild(leftSky);
+        // DOIS videosphere — um só para olho esquerdo
+        leftEyeEntity = document.createElement('a-videosphere');
+        leftEyeEntity.setAttribute('shader', 'flat');
+        leftEyeEntity.setAttribute('src', '#mediaVideo');
+        // stereo-component pra olho esquerdo, split vertical (top-bottom)
+        leftEyeEntity.setAttribute('stereo', 'eye:left; split:vertical');
+        scene.appendChild(leftEyeEntity);
 
-        rightSky = document.createElement('a-videosphere');
-        rightSky.setAttribute('shader', 'flat');
-        rightSky.setAttribute('src', '#mediaVideo');
-        // Stereo componente: olho direito
-        rightSky.setAttribute('stereo', 'eye:right; split:vertical');
-        scene.appendChild(rightSky);
+        // Segundo videosphere só pra olho direito
+        rightEyeEntity = document.createElement('a-videosphere');
+        rightEyeEntity.setAttribute('shader', 'flat');
+        rightEyeEntity.setAttribute('src', '#mediaVideo');
+        rightEyeEntity.setAttribute('stereo', 'eye:right; split:vertical');
+        scene.appendChild(rightEyeEntity);
       } else {
-        // Imagem
-        leftSky = document.createElement('a-sky');
-        leftSky.setAttribute('shader', 'flat');
-        leftSky.setAttribute('src', `url(${url})`);
-        leftSky.setAttribute('stereo', 'eye:left; split:vertical');
-        scene.appendChild(leftSky);
+        // DOIS sky — um pra cada olho
+        leftEyeEntity = document.createElement('a-sky');
+        leftEyeEntity.setAttribute('shader', 'flat');
+        leftEyeEntity.setAttribute('src', `url(${url})`);
+        leftEyeEntity.setAttribute('stereo', 'eye:left; split:vertical');
+        scene.appendChild(leftEyeEntity);
 
-        rightSky = document.createElement('a-sky');
-        rightSky.setAttribute('shader', 'flat');
-        rightSky.setAttribute('src', `url(${url})`);
-        rightSky.setAttribute('stereo', 'eye:right; split:vertical');
-        scene.appendChild(rightSky);
+        rightEyeEntity = document.createElement('a-sky');
+        rightEyeEntity.setAttribute('shader', 'flat');
+        rightEyeEntity.setAttribute('src', `url(${url})`);
+        rightEyeEntity.setAttribute('stereo', 'eye:right; split:vertical');
+        scene.appendChild(rightEyeEntity);
       }
     }
 
     function loadMedia(filename) {
-      clearSkies();
+      clearEntities();
       const url = `${baseUrl}/${filename}`;
       const lower = filename.toLowerCase();
       const isVideo = /\.(mp4|webm)$/i.test(lower);
       const isImage = /\.(jpg|jpeg|png|gif)$/i.test(lower);
       const isStereo = /_stereo\./i.test(filename);
 
-      if (isStereo) {
-        // Começa mostrando mono (para testarmos fora do VR)
-        showMono(url, isVideo);
-      } else {
-        // Se não for stereo, fica mono sempre
-        showMono(url, isVideo);
-      }
+      // Se for estéreo, começa mostrando mono — mas prepara events pra trocar
+      showMono(url, isVideo);
 
-      // Quando o usuário entrar em VR, troca para estéreo
+      // Ao entrar em VR, troca pro estéreo (se aplicável)
       scene.addEventListener('enter-vr', () => {
         if (isStereo) {
+          // Troca câmera pro olho direito também
+          document.getElementById('cam').setAttribute('stereocam', 'eye:left');
           showStereo(url, isVideo);
         }
       });
 
-      // Quando sair do VR, volta para mono
+      // Ao sair do VR, volta pro mono
       scene.addEventListener('exit-vr', () => {
         if (isStereo) {
           showMono(url, isVideo);
