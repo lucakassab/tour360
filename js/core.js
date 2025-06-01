@@ -1,3 +1,4 @@
+/* -------------- Core compartilhado -------------- */
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 export { THREE };
 
@@ -61,7 +62,7 @@ export const layerMono  = 0;
 export const layerLeft  = 1;
 export const layerRight = 2;
 
-/* ───────── ESPERA / DERRUBA ESPERA ───────── */
+/* ───────── helpers para destruir esferas ───────── */
 let sphereMono = null, sphereLeft = null, sphereRight = null;
 function disposeSphere(s) {
   if (!s) return;
