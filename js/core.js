@@ -26,40 +26,43 @@ window.addEventListener('resize', () => {
 let loadingSprite = null;
 
 /**
- * Agora showLoading pode receber uma mensagem personalizada.
- * Se não passar nada, fica só “Loading…”.
+ * Agora o showLoading cria um retângulo horizontal maior,
+ * para caber textos longos. msg é opcional; se não passar nada, usa "Loading…".
  */
 export function showLoading(msg = 'Loading…') {
-  // Se já existe um sprite, apenas reposiciona (mantém o mesmo texto)
+  // Se já existe um sprite, remove ele antes de criar um novo com texto atualizado
   if (loadingSprite) {
-    updateLoadingPosition();
-    return;
+    scene.remove(loadingSprite);
+    loadingSprite.material.map.dispose();
+    loadingSprite.material.dispose();
+    loadingSprite = null;
   }
 
-  // Criar canvas pra desenhar o texto dinâmico
-  const s  = 256;
+  // Dimensões do canvas para um retângulo horizontal
+  const W = 512;
+  const H = 128;
   const cv = document.createElement('canvas');
-  cv.width = cv.height = s;
+  cv.width  = W;
+  cv.height = H;
   const ctx = cv.getContext('2d');
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(0, 0, s, s);
+  ctx.fillRect(0, 0, W, H);
   ctx.font = 'bold 32px sans-serif';
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.fillText(msg, W / 2, H / 2);
 
-  // Desenha a mensagem passada (ou “Loading…” se msg não foi fornecido)
-  ctx.fillText(msg, s / 2, s / 2);
-
-  const tex   = new THREE.CanvasTexture(cv);
-  const mat   = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false });
+  const tex = new THREE.CanvasTexture(cv);
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false });
   const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(1, 1, 1);
+  const aspect = W / H;      // 512/128 = 4
+  sprite.scale.set(aspect, 1, 1); // ajusta proporção no mundo
   sprite.renderOrder = 9999;
   loadingSprite = sprite;
   scene.add(sprite);
 
-  // Posiciona “na frente” da câmera no primeiro frame
+  // Posiciona o sprite na frente da câmera (ou da câmera XR, se estiver em VR)
   updateLoadingPosition();
 }
 
@@ -78,23 +81,18 @@ const _loadQuat = new THREE.Quaternion();
 
 export function updateLoadingPosition() {
   if (!loadingSprite) return;
-
-  // Se estiver em VR, pega a câmera XR; senão, a própria camera 2D
+  // Se tiver em VR, pega a câmera XR; senão, a câmera normal
   const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
-
   headCam.updateMatrixWorld();
-  headCam.getWorldPosition   (_loadPos);
-  headCam.getWorldQuaternion (_loadQuat);
+  headCam.getWorldPosition(_loadPos);
+  headCam.getWorldQuaternion(_loadQuat);
 
-  // Distância de 3.5 metros para não ficar colado
-  const DIST = 3.5;
-
+  const DIST = 3.5; // distância do sprite em relação à câmera
   loadingSprite.position
-               .copy(_loadDir)
-               .applyQuaternion(_loadQuat)
-               .multiplyScalar(DIST)
-               .add(_loadPos);
-
+    .copy(_loadDir)
+    .applyQuaternion(_loadQuat)
+    .multiplyScalar(DIST)
+    .add(_loadPos);
   loadingSprite.quaternion.copy(_loadQuat);
 }
 
@@ -142,7 +140,7 @@ export function createSphere(tex, isStereo) {
     return;
   }
 
-  // ───── ESTÉREO: metade de baixo → fake mono + olho esquerdo ─────
+  // ESTÉREO: metade de baixo → fake mono + olho esquerdo
   const bot = tex.clone();
   setupTex(bot);
   bot.repeat.set(1, 0.5);
@@ -161,7 +159,7 @@ export function createSphere(tex, isStereo) {
   sphereLeft.layers.set(layerLeft);
   scene.add(sphereLeft);
 
-  // ───── metade de cima → olho direito ─────
+  // Metade de cima → olho direito
   const top = tex.clone();
   setupTex(top);
   top.repeat.set(1, 0.5);
@@ -176,31 +174,26 @@ export function createSphere(tex, isStereo) {
 
 /* ───────── carrega texture e chama callback com atraso para hideLoading ───────── */
 export function loadTexture(url, isStereo, cb) {
-  // Note: No VR, a gente já chamou showLoading com texto customizado no vr.js.
-  // Caso desktop/mobile chamem sem parâmetro, showLoading() desenha “Loading…”.
-  showLoading(); 
+  // Chama showLoading sem parâmetro, que vai mostrar "Loading…" padrão
+  showLoading();
   new THREE.TextureLoader().load(
     url,
     tex => {
-      // Ajusta cor e wrapping antes de usar
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.wrapS      = tex.wrapT = THREE.ClampToEdgeWrapping;
       tex.minFilter  = THREE.LinearFilter;
       tex.generateMipmaps = false;
-
-      // Executa a callback (com try/catch apenas para capturar erros
       try {
         cb(tex, isStereo);
       } catch (e) {
         console.error(e);
       }
-      // Garante que o “Loading…” seja removido 0,2 s após o callback
+      // Garante que o sprite de Loading suma 0,2s depois
       setTimeout(hideLoading, 200);
     },
     undefined,
     err => {
       console.error(err);
-      // Mesmo em erro, remove o “Loading…” após 0,2 s
       setTimeout(hideLoading, 200);
     }
   );
