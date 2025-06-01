@@ -7,9 +7,7 @@ import {
   createSphere,
   showLoading,
   hideLoading,
-  layerMono,
-  layerLeft,
-  layerRight
+  updateLoadingPosition
 } from './core.js';
 import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
 
@@ -49,6 +47,9 @@ document.getElementById('btnLoad').onclick = () => {
 /* ---- botões A/B para trocar mídia em VR ---- */
 let prevA = false, prevB = false;
 renderer.setAnimationLoop(() => {
+  // atualiza posição/rotação do sprite de loading (se existir)
+  updateLoadingPosition();
+
   const session = renderer.xr.getSession();
   if (session) {
     session.inputSources.forEach(src => {

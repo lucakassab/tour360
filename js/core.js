@@ -4,7 +4,7 @@ export { THREE };
 
 /* ───────── SETUP BÁSICO ───────── */
 export const scene    = new THREE.Scene();
-export const camera   = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 2000);
+export const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 
 camera.layers.enable(0);  // layerMono
@@ -17,7 +17,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 window.addEventListener('resize', () => {
-  camera.aspect = innerWidth/innerHeight;
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
@@ -55,6 +55,17 @@ export function hideLoading() {
   loadingSprite.material.map.dispose();
   loadingSprite.material.dispose();
   loadingSprite = null;
+}
+
+/* ───────── Atualiza posição do sprite de Loading ───────── */
+export function updateLoadingPosition() {
+  if (!loadingSprite) return;
+  // Se estiver em VR e sessão ativa, use câmera XR; caso contrário, use a câmera normal
+  const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
+  // Posição 1 metro à frente no eixo -Z da câmera
+  const tmp = new THREE.Vector3(0, 0, -1).applyQuaternion(headCam.quaternion).multiplyScalar(1);
+  loadingSprite.position.copy(headCam.position).add(tmp);
+  loadingSprite.quaternion.copy(headCam.quaternion);
 }
 
 /* ───────── LAYERS ───────── */
@@ -134,7 +145,7 @@ function cloneHalf(base, offsetY) {
   return t;
 }
 
-/* ───────── carrega texture e chama de volta ───────── */
+/* ───────── carrega texture e chama callback ───────── */
 export function loadTexture(url, isStereo, cb) {
   showLoading();
   new THREE.TextureLoader().load(

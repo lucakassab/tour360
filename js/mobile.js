@@ -6,7 +6,8 @@ import {
   loadTexture,
   createSphere,
   showLoading,
-  hideLoading
+  hideLoading,
+  updateLoadingPosition
 } from './core.js';
 
 /* ───── CONTROLES TOUCH (drag) ───── */
@@ -51,7 +52,6 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
         sel.appendChild(o);
       });
     sel.selectedIndex = 0;
-    // AQUI A GENTE DEFINE o primeiro arquivo
     const opt = sel.options[0];
     const stereo = isStereoName(opt.dataset.name);
     loadTexture(opt.value, stereo, (tex, st) => createSphere(tex, st));
@@ -63,7 +63,11 @@ document.getElementById('btnLoad').onclick = () => {
   loadTexture(opt.value, stereo, (tex, st) => createSphere(tex, st));
 };
 
+/* ───── render loop ───── */
 renderer.setAnimationLoop(() => {
+  // atualiza posição/rotação do sprite de loading (se existir)
+  updateLoadingPosition();
+
   const phi = THREE.MathUtils.degToRad(90 - lat);
   const theta = THREE.MathUtils.degToRad(lon);
   camera.position.set(0, 0, 0);

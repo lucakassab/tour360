@@ -7,9 +7,7 @@ import {
   createSphere,
   showLoading,
   hideLoading,
-  layerMono,
-  layerLeft,
-  layerRight
+  updateLoadingPosition
 } from './core.js';
 
 /* ───── CONTROLES MOUSE + WHEEL ───── */
@@ -68,6 +66,10 @@ document.getElementById('btnLoad').onclick = () => {
 
 /* ───── render loop (camera orbit) ───── */
 renderer.setAnimationLoop(() => {
+  // atualiza posição/rotação do sprite de loading (se existir)
+  updateLoadingPosition();
+
+  // cam orbit básica
   const phi = THREE.MathUtils.degToRad(90 - lat);
   const theta = THREE.MathUtils.degToRad(lon);
 
