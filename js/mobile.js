@@ -32,7 +32,8 @@ const selMob = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
-    files.filter(f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name))
+    files
+      .filter(f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name))
       .forEach(f => {
         const o = document.createElement('option');
         o.value = f.download_url;
@@ -41,13 +42,24 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
         selMob.appendChild(o);
       });
     selMob.selectedIndex = 0;
+
+    // Detecta estéreo pelo nome
+    const name0 = selMob.options[0].dataset.name.toLowerCase();
+    const isStereo0 = name0.includes('_stereo');
+
     showLoading();
-    loadTexture(selMob.value, false, tex => createSphere(tex, false));
+    loadTexture(selMob.value, isStereo0, tex => {
+      createSphere(tex, isStereo0);
+    });
   });
 
 document.getElementById('btnLoad').onclick = () => {
+  const chosenName = selMob.options[selMob.selectedIndex].dataset.name.toLowerCase();
+  const isStereo   = chosenName.includes('_stereo');
   showLoading();
-  loadTexture(selMob.value, false, tex => createSphere(tex, false));
+  loadTexture(selMob.value, isStereo, tex => {
+    createSphere(tex, isStereo);
+  });
 };
 
 /* ---- render loop ---- */
@@ -56,7 +68,7 @@ renderer.setAnimationLoop(() => {
   updateLoadingPosition();
 
   // 2) orbita câmera
-  const phi = THREE.MathUtils.degToRad(90 - latTouch);
+  const phi   = THREE.MathUtils.degToRad(90 - latTouch);
   const theta = THREE.MathUtils.degToRad(lonTouch);
   camera.position.set(0, 0, 0);
   camera.lookAt(

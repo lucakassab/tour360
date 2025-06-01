@@ -49,8 +49,8 @@ export function showLoading() {
   loadingSprite = sprite;
   scene.add(sprite);
 
-  // Posiciona imediatamente “na frente” da câmera
-  // Isso garante visibilidade antes do loop de render rodar
+  // Posiciona imediatamente “na frente” da câmera,
+  // para que o usuário já veja no primeiro frame.
   updateLoadingPosition();
 }
 
@@ -63,7 +63,7 @@ export function hideLoading() {
 }
 
 /* ---------- Atualiza posição / rotação do sprite “Loading…” ---------- */
-const _loadDir  = new THREE.Vector3(0, 0, -1);        // reuse p/ evitar GC
+const _loadDir  = new THREE.Vector3(0, 0, -1);
 const _loadPos  = new THREE.Vector3();
 const _loadQuat = new THREE.Quaternion();
 
@@ -72,16 +72,14 @@ export function updateLoadingPosition () {
 
   // • em VR: grupo retornado por xr.getCamera(camera)
   // • fora do VR: a própria câmera de cena
-  const headCam = renderer.xr.isPresenting
-                ? renderer.xr.getCamera(camera)
-                : camera;
+  const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
 
-  // Força atualização das matrizes
   headCam.updateMatrixWorld();
   headCam.getWorldPosition   (_loadPos);
   headCam.getWorldQuaternion (_loadQuat);
 
-  // Distância a 3.5m para ficar mais visível em VR
+  // Distância a 3.5m para ficar mais visível em VR, 
+  // em 2D também ficará à frente da câmera.
   const DIST = 3.5;
 
   loadingSprite.position
@@ -90,7 +88,7 @@ export function updateLoadingPosition () {
                .multiplyScalar(DIST)
                .add(_loadPos);
 
-  loadingSprite.quaternion.copy(_loadQuat);    // sempre virado p/ o usuário
+  loadingSprite.quaternion.copy(_loadQuat);
 }
 
 /* ───────── LAYERS ───────── */
