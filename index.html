@@ -1,0 +1,97 @@
+@echo off
+setlocal enabledelayedexpansion
+title Deploy Tour360
+
+rem ------------------------------------------------
+rem  [1] Garante que o BAT rode do próprio diretório
+rem ------------------------------------------------
+cd /d "%~dp0"
+
+rem ------------------------------------------------
+rem  CONFIGURAÇÃO
+rem ------------------------------------------------
+set "REPO_URL=https://github.com/lucakassab/tour360.git"
+set "REPO_DIR=tour360"
+set "COPY_LIST=index.html media js"
+set "BRANCH=main"
+
+rem ------------------------------------------------
+echo --------------------------------
+echo 1) Bump de versão no <title>...
+echo --------------------------------
+powershell -NoLogo -Command ^
+  "$c = Get-Content 'index.html';" ^
+  "$c = $c -replace '<title>([^_]+?)_([\d\.]+)</title>', { param($m) " ^
+  "  $n = [double]($m.Groups[2].Value) + 0.1; " ^
+  "  '<title>' + $m.Groups[1].Value + '_' + ('{0:N1}' -f $n) + '</title>' };" ^
+  "$c | Set-Content 'index.html'"
+
+echo --------------------------------
+echo 2) BUILD (minificação/obfuscação)...
+echo --------------------------------
+echo (sem build extra)
+
+rem ------------------------------------------------
+echo --------------------------------
+echo 3) Removendo clone antigo (caso exista)...
+echo --------------------------------
+if exist "%REPO_DIR%" (
+    echo Apagando pasta "%REPO_DIR%" antiga...
+    rmdir /s /q "%REPO_DIR%"
+)
+
+rem ------------------------------------------------
+echo --------------------------------
+echo 4) Clonando repositório novo...
+echo --------------------------------
+git clone "%REPO_URL%" "%REPO_DIR%" || (echo ERRO no clone & goto :EOF)
+
+rem ------------------------------------------------
+echo --------------------------------
+echo 5) Copiando arquivos para o clone...
+echo --------------------------------
+for %%A in (%COPY_LIST%) do (
+    if exist "%%A" (
+        echo Copiando "%%A"...
+        xcopy /E /Y /I "%%A" "%REPO_DIR%\%%A" >nul
+    ) else (
+        echo WARN: "%%A" não encontrado, pulando...
+    )
+)
+
+rem ------------------------------------------------
+echo --------------------------------
+echo 6) Removendo arquivos antigos no clone (se existirem)...
+echo --------------------------------
+pushd "%REPO_DIR%"
+if exist js\logic.js (
+    echo Deletando js\logic.js do repositório...
+    git rm -f js\logic.js >nul 2>&1
+)
+if exist js\main.min.js (
+    echo Deletando js\main.min.js do repositório...
+    git rm -f js\main.min.js >nul 2>&1
+)
+
+rem ------------------------------------------------
+echo --------------------------------
+echo 7) Commit & Push...
+echo --------------------------------
+git add -A
+
+for /f "tokens=2 delims=_" %%V in ('findstr /i "<title>" index.html') do set VERSION=%%~V
+git commit -m "Deploy v%VERSION%" || echo (nada para commitar)
+git push origin %BRANCH% || (echo ERRO no push & popd & goto :EOF)
+popd
+
+echo.
+echo ✅ Deploy concluído!
+echo https://lucakassab.github.io/tour360/index.html
+echo.
+
+choice /M "Quer subir outra vez?"
+if errorlevel 2 goto :EOF
+goto :restart
+
+:restart
+call "%~f0"
