@@ -38,13 +38,10 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       });
     sel.selectedIndex = 0;
 
-    // Carregamento inicial (sem exibir botão)
+    // Carregamento inicial sem HUD (só imagem)
     const opt0    = sel.options[0];
     const name0   = opt0.dataset.name;
     const stereo0 = isStereoName(name0);
-
-    // Mostra apenas o nome da mídia
-    showLoading(name0);
     loadTexture(opt0.value, stereo0, (tex, isSt) => createSphere(tex, isSt));
   });
 
@@ -53,58 +50,65 @@ document.getElementById('btnLoad').onclick = () => {
   const opt    = sel.options[sel.selectedIndex];
   const name   = opt.dataset.name;
   const stereo = isStereoName(name);
-
-  // Aqui chamamos showLoading apenas com o nome da mídia
-  showLoading(name);
   loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
 };
 
-/* ───── Detecção e exibição de todos os botões ───── */
+/* ───── Detecção de botões com HUDs dinâmicos ───── */
 let prevButtons = []; // armazena estado anterior de cada botão
+let currentButtonIndex = null; // controla o botão que disparou a imagem
 
 renderer.setAnimationLoop(() => {
-  // 1) Atualiza posição do HUD Loading (se existir)
   updateLoadingPosition();
-
-  // 1.1) Atualiza posição do HUD de botão (se existir)
   updateButtonPosition();
 
-  // 2) Se estiver em VR, lê gamepad do controle direito
   const session = renderer.xr.getSession();
   if (session) {
     session.inputSources.forEach(src => {
       if (src.gamepad && src.handedness === 'right') {
         const gp = src.gamepad;
         const nowPressed = gp.buttons.map(btn => btn.pressed);
-
-        // Itera todos os botões pra detectar novos presses
         let anyNewPress = false;
+
         for (let i = 0; i < nowPressed.length; i++) {
           const isPressed  = nowPressed[i];
           const wasPressed = prevButtons[i] || false;
+
           if (isPressed && !wasPressed) {
             anyNewPress = true;
             let buttonName = `Botão ${i}`;
             let actionText = 'sem ação';
 
-            // Mapeia A e B reais (índice 4 e 5)
             if (i === 4) {
               actionText = 'próxima mídia';
               sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-              document.getElementById('btnLoad').click();
+              const opt = sel.options[sel.selectedIndex];
+              const name = opt.dataset.name;
+              const stereo = isStereoName(name);
+              showLoading(name);  // mostra HUD de imagem
+              loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
+              currentButtonIndex = i;
             } else if (i === 5) {
               actionText = 'mídia anterior';
               sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-              document.getElementById('btnLoad').click();
+              const opt = sel.options[sel.selectedIndex];
+              const name = opt.dataset.name;
+              const stereo = isStereoName(name);
+              showLoading(name);  // mostra HUD de imagem
+              loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
+              currentButtonIndex = i;
             }
 
-            // Exibe no HUD de botão: "Botão i → açãoText" ou "Botão i → sem ação"
             showButtonHUD(`${buttonName} → ${actionText}`);
-            break; // mostra só o primeiro botão detectado nessa frame
+            break;
           }
         }
 
-        // Se não houve nenhum novo pressione, esconde o HUD se nenhum botão estiver segurado
+        // Esconde HUDs se o botão que iniciou foi solto
+        if (currentButtonIndex !== null && !nowPressed[currentButtonIndex]) {
+          hideLoading();
+          currentButtonIndex = null;
+        }
+
         if (!anyNewPress) {
           const stillPressed = nowPressed.some(p => p);
           if (!stillPressed) {
@@ -112,15 +116,15 @@ renderer.setAnimationLoop(() => {
           }
         }
 
-        // Atualiza prevButtons para a próxima iteração
         prevButtons = nowPressed;
       }
     });
   } else {
     prevButtons = [];
     hideButtonHUD();
+    hideLoading();
+    currentButtonIndex = null;
   }
 
-  // 3) Renderiza cena VR
   renderer.render(scene, camera);
 });
