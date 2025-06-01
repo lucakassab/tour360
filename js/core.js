@@ -27,6 +27,8 @@ let loadingSprite = null, loadingCnt = 0;
 
 export function showLoading() {
   if (++loadingCnt > 1) return;
+
+  // Cria o canvas com “Loading…”
   const s = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
@@ -46,6 +48,10 @@ export function showLoading() {
   sprite.renderOrder = 9999;
   loadingSprite = sprite;
   scene.add(sprite);
+
+  // Posiciona imediatamente “na frente” da câmera
+  // Isso garante visibilidade antes do loop de render rodar
+  updateLoadingPosition();
 }
 
 export function hideLoading() {
@@ -64,17 +70,19 @@ const _loadQuat = new THREE.Quaternion();
 export function updateLoadingPosition () {
   if (!loadingSprite) return;
 
-  // • em VR: group retornado por xr.getCamera(camera)
+  // • em VR: grupo retornado por xr.getCamera(camera)
   // • fora do VR: a própria câmera de cena
   const headCam = renderer.xr.isPresenting
                 ? renderer.xr.getCamera(camera)
                 : camera;
 
-  headCam.updateMatrixWorld();                 // garante world-matrix atualizada
+  // Força atualização das matrizes
+  headCam.updateMatrixWorld();
   headCam.getWorldPosition   (_loadPos);
   headCam.getWorldQuaternion (_loadQuat);
 
-  const DIST = 2.5;                            // ← distância confortável (m)
+  // Distância a 3.5m para ficar mais visível em VR
+  const DIST = 3.5;
 
   loadingSprite.position
                .copy(_loadDir)
@@ -84,7 +92,6 @@ export function updateLoadingPosition () {
 
   loadingSprite.quaternion.copy(_loadQuat);    // sempre virado p/ o usuário
 }
-
 
 /* ───────── LAYERS ───────── */
 export const layerMono  = 0;
@@ -113,9 +120,9 @@ export function createSphere(tex, isStereo) {
   const geo = new THREE.SphereGeometry(500, 64, 32);
 
   function setupTex(t) {
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.wrapS      = t.wrapT = THREE.ClampToEdgeWrapping;
-    t.minFilter  = THREE.LinearFilter;
+    t.colorSpace      = THREE.SRGBColorSpace;
+    t.wrapS           = t.wrapT = THREE.ClampToEdgeWrapping;
+    t.minFilter       = THREE.LinearFilter;
     t.generateMipmaps = false;
   }
 
@@ -173,6 +180,7 @@ export function loadTexture(url, isStereo, cb) {
       tex.wrapS      = tex.wrapT = THREE.ClampToEdgeWrapping;
       tex.minFilter  = THREE.LinearFilter;
       tex.generateMipmaps = false;
+
       cb(tex, isStereo);
       hideLoading();
     },

@@ -1,84 +1,193 @@
-import {
-  THREE,
-  scene,
-  camera,
-  renderer,
-  loadTexture,
-  createSphere,
-  showLoading,
-  hideLoading,
-  updateLoadingPosition
-} from './core.js';
-import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
+/* -------------- Core compartilhado -------------- */
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+export { THREE };
 
-renderer.xr.enabled = true;
-document.body.appendChild(VRButton.createButton(renderer));
+/* ───────── SETUP BÁSICO ───────── */
+export const scene    = new THREE.Scene();
+export const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
+export const renderer = new THREE.WebGLRenderer({ antialias: true });
 
-/* ───── Helper pra detectar nome “_stereo” ───── */
-function isStereoName(name) {
-  return /_stereo/i.test(name);
+camera.layers.enable(0);  // layerMono
+camera.layers.disable(1); // layerLeft
+camera.layers.disable(2); // layerRight
+
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ───────── HUD LOADING (ref-count, evita sprites duplicados) ───────── */
+let loadingSprite = null, loadingCnt = 0;
+
+export function showLoading() {
+  if (++loadingCnt > 1) return;
+
+  // Cria o canvas com “Loading…”
+  const s = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = s;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, s, s);
+  ctx.font = 'bold 48px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Loading…', s / 2, s / 2);
+
+  const tex   = new THREE.CanvasTexture(cv);
+  const mat   = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(1, 1, 1);
+  sprite.renderOrder = 9999;
+  loadingSprite = sprite;
+  scene.add(sprite);
+
+  // Posiciona imediatamente “na frente” da câmera
+  // Isso garante visibilidade antes do loop de render rodar
+  updateLoadingPosition();
 }
 
-/* ───── Carrega lista + primeira textura ───── */
-const sel = document.getElementById('mediaSelect');
-fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
-  .then(r => r.json())
-  .then(files => {
-    files
-      .filter(f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name))
-      .forEach(f => {
-        const o = document.createElement('option');
-        o.value = f.download_url;
-        o.text = f.name;
-        o.dataset.name = f.name;
-        sel.appendChild(o);
-      });
-    sel.selectedIndex = 0;
-    const opt    = sel.options[0];
-    const stereo = isStereoName(opt.dataset.name);
-    loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
-  });
+export function hideLoading() {
+  if (--loadingCnt > 0 || !loadingSprite) return;
+  scene.remove(loadingSprite);
+  loadingSprite.material.map.dispose();
+  loadingSprite.material.dispose();
+  loadingSprite = null;
+}
 
-document.getElementById('btnLoad').onclick = () => {
-  const opt    = sel.options[sel.selectedIndex];
-  const stereo = isStereoName(opt.dataset.name);
-  loadTexture(opt.value, stereo, (tex, isSt) => createSphere(tex, isSt));
-};
+/* ---------- Atualiza posição / rotação do sprite “Loading…” ---------- */
+const _loadDir  = new THREE.Vector3(0, 0, -1);        // reuse p/ evitar GC
+const _loadPos  = new THREE.Vector3();
+const _loadQuat = new THREE.Quaternion();
 
-/* ───── Botões A/B para trocar mídia em VR ───── */
-let prevA = false,
-    prevB = false;
+export function updateLoadingPosition () {
+  if (!loadingSprite) return;
 
-renderer.setAnimationLoop(() => {
-  // 1) Reposiciona sprite de loading (se existir)
-  updateLoadingPosition();
+  // • em VR: grupo retornado por xr.getCamera(camera)
+  // • fora do VR: a própria câmera de cena
+  const headCam = renderer.xr.isPresenting
+                ? renderer.xr.getCamera(camera)
+                : camera;
 
-  // 2) Lê gamepad e troca mídia se A/B pressionado
-  const session = renderer.xr.getSession();
-  if (session) {
-    session.inputSources.forEach(src => {
-      if (src.gamepad && src.handedness === 'right') {
-        const gp = src.gamepad;
-        const isA = gp.buttons[3]?.pressed;
-        const isB = gp.buttons[4]?.pressed || gp.buttons[1]?.pressed;
+  // Força atualização das matrizes
+  headCam.updateMatrixWorld();
+  headCam.getWorldPosition   (_loadPos);
+  headCam.getWorldQuaternion (_loadQuat);
 
-        if (isA && !prevA) {
-          sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-          document.getElementById('btnLoad').click();
-        }
-        if (isB && !prevB) {
-          sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-          document.getElementById('btnLoad').click();
-        }
-        prevA = isA;
-        prevB = isB;
-      }
-    });
-  } else {
-    prevA = false;
-    prevB = false;
+  // Distância a 3.5m para ficar mais visível em VR
+  const DIST = 3.5;
+
+  loadingSprite.position
+               .copy(_loadDir)
+               .applyQuaternion(_loadQuat)
+               .multiplyScalar(DIST)
+               .add(_loadPos);
+
+  loadingSprite.quaternion.copy(_loadQuat);    // sempre virado p/ o usuário
+}
+
+/* ───────── LAYERS ───────── */
+export const layerMono  = 0;
+export const layerLeft  = 1;
+export const layerRight = 2;
+
+/* ───────── Helpers para destruir esferas ───────── */
+let sphereMono  = null,
+    sphereLeft  = null,
+    sphereRight = null;
+
+function disposeSphere(s) {
+  if (!s) return;
+  scene.remove(s);
+  s.geometry.dispose();
+  s.material.dispose();
+}
+
+/* ───────── Cria esfera (mono OU stereo) ───────── */
+export function createSphere(tex, isStereo) {
+  disposeSphere(sphereMono);
+  disposeSphere(sphereLeft);
+  disposeSphere(sphereRight);
+  sphereMono = sphereLeft = sphereRight = null;
+
+  const geo = new THREE.SphereGeometry(500, 64, 32);
+
+  function setupTex(t) {
+    t.colorSpace      = THREE.SRGBColorSpace;
+    t.wrapS           = t.wrapT = THREE.ClampToEdgeWrapping;
+    t.minFilter       = THREE.LinearFilter;
+    t.generateMipmaps = false;
   }
 
-  // 3) Render VR
-  renderer.render(scene, camera);
-});
+  if (!isStereo) {
+    setupTex(tex);
+    sphereMono = new THREE.Mesh(
+      geo,
+      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide })
+    );
+    sphereMono.layers.set(layerMono);
+    scene.add(sphereMono);
+    return;
+  }
+
+  // ───── ESTÉREO: metade de baixo → fake mono + olho esquerdo ─────
+  const bot = tex.clone();
+  setupTex(bot);
+  bot.repeat.set(1, 0.5);
+  bot.offset.set(0, 0);
+  sphereMono = new THREE.Mesh(
+    geo,
+    new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide })
+  );
+  sphereMono.layers.set(layerMono);
+  scene.add(sphereMono);
+
+  sphereLeft = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide })
+  );
+  sphereLeft.layers.set(layerLeft);
+  scene.add(sphereLeft);
+
+  // ───── metade de cima → olho direito ─────
+  const top = tex.clone();
+  setupTex(top);
+  top.repeat.set(1, 0.5);
+  top.offset.set(0, 0.5);
+  sphereRight = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide })
+  );
+  sphereRight.layers.set(layerRight);
+  scene.add(sphereRight);
+}
+
+/* ───────── carrega texture e chama callback ───────── */
+export function loadTexture(url, isStereo, cb) {
+  showLoading();
+  new THREE.TextureLoader().load(
+    url,
+    tex => {
+      // Ajusta cor e wrapping antes de usar
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS      = tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.minFilter  = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+
+      cb(tex, isStereo);
+      hideLoading();
+    },
+    undefined,
+    err => {
+      console.error(err);
+      hideLoading();
+    }
+  );
+}
