@@ -1,7 +1,10 @@
-// js/core.js
 import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
 
 export let scene, camera, renderer;
+// Armazenam a última mídia carregada para reuso no VR
+export let lastMediaURL = null;
+export let lastMediaStereo = false;
+
 let currentMesh = null;
 let loadingMesh = null;
 let buttonHUDMesh = null;
@@ -97,6 +100,10 @@ export function showButtonHUD(txt) {
 }
 
 export async function loadMediaInSphere(url, isStereo) {
+  // Armazena globalmente pra podermos recarregar no VR
+  lastMediaURL = url;
+  lastMediaStereo = isStereo;
+
   showLoading();
 
   if (currentMesh) {
@@ -129,7 +136,7 @@ export async function loadMediaInSphere(url, isStereo) {
     tex.colorSpace = THREE.SRGBColorSpace;
   } else {
     const loader = new THREE.TextureLoader();
-    tex = await new Promise((ok, err) => 
+    tex = await new Promise((ok, err) =>
       loader.load(
         url,
         t => { t.colorSpace = THREE.SRGBColorSpace; ok(t); },
@@ -139,25 +146,26 @@ export async function loadMediaInSphere(url, isStereo) {
     );
   }
 
-  // === Se for stereo E NÃO ESTIVER em VR (isPresenting = false) ===
+  // Decide entre 2D ou VR de verdade (isPresenting só true durante a sessão XR)
   if (isStereo && !renderer.xr.isPresenting) {
+    // modo 2D: exibe só metade superior (top-half)
     const mat = new THREE.MeshBasicMaterial({ map: tex });
-    mat.map.repeat.set(1, .5);
-    mat.map.offset.set(0, .5);
+    mat.map.repeat.set(1, 0.5);
+    mat.map.offset.set(0, 0.5);
     mat.map.needsUpdate = true;
     currentMesh = new THREE.Mesh(geo, mat);
 
-  // === Se for stereo E ESTIVER em VR (isPresenting = true) ===
   } else if (isStereo && renderer.xr.isPresenting) {
+    // modo VR: cria duas esferas (layer 1 = olho esquerdo, layer 2 = olho direito)
     const matL = new THREE.MeshBasicMaterial({ map: tex.clone() });
-    matL.map.repeat.set(1, .5);
-    matL.map.offset.set(0, .5);
+    matL.map.repeat.set(1, 0.5);
+    matL.map.offset.set(0, 0.5);
     matL.map.needsUpdate = true;
     const meshL = new THREE.Mesh(geo.clone(), matL);
     meshL.layers.set(1);
 
     const matR = new THREE.MeshBasicMaterial({ map: tex.clone() });
-    matR.map.repeat.set(1, .5);
+    matR.map.repeat.set(1, 0.5);
     matR.map.offset.set(0, 0);
     matR.map.needsUpdate = true;
     const meshR = new THREE.Mesh(geo.clone(), matR);
@@ -166,8 +174,8 @@ export async function loadMediaInSphere(url, isStereo) {
     currentMesh = new THREE.Group();
     currentMesh.add(meshL, meshR);
 
-  // === Caso mono (ou fallback) ===
   } else {
+    // mono ou fallback
     currentMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex }));
   }
 
