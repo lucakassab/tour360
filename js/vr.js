@@ -1,4 +1,3 @@
-// vr.js (pixelRatio e segmentos ajustados via core.js; usa WebXR Layers quando possível)
 import {
   THREE,
   scene,
@@ -20,6 +19,9 @@ document.body.appendChild(VRButton.createButton(renderer));
 
 /* helper “_stereo” */
 const isStereoName = n => /_stereo/i.test(n);
+
+/* guarda timestamp do último gesto no VR */
+window.lastVRGesture = 0;
 
 /* ---------- Carrega lista + primeira ---------- */
 const sel = document.getElementById('mediaSelect');
@@ -49,7 +51,10 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .catch(err => console.error('Fetch media falhou:', err));
 
 /* ---------- Botão “Carregar” do menu ---------- */
-document.getElementById('btnLoad').onclick = () => loadCurrent();
+document.getElementById('btnLoad').onclick = () => {
+  window.lastVRGesture = performance.now(); // último gesto (embora seja clique desktop)
+  loadCurrent();
+};
 
 /* carrega a opção selecionada */
 function loadCurrent() {
@@ -61,7 +66,6 @@ function loadCurrent() {
 
 /* ---------- Gamepad ---------- */
 let prevButtons = [];
-let currentButtonIdxForHUD = null;
 
 renderer.setAnimationLoop(() => {
   updateLoadingPosition();
@@ -77,17 +81,14 @@ renderer.setAnimationLoop(() => {
         for (let i = 0; i < nowPressed.length; i++) {
           if (nowPressed[i] && !prevButtons[i]) {
             showButtonHUD(`Botão ${i}`);
+            window.lastVRGesture = performance.now(); // registra gesto VR
 
             if (i === 4) {
               sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
               loadCurrent();
-              currentButtonIdxForHUD = i;
             } else if (i === 5) {
               sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
               loadCurrent();
-              currentButtonIdxForHUD = i;
-            } else {
-              currentButtonIdxForHUD = null;
             }
 
             if (i === 1) {

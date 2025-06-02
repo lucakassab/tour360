@@ -7,6 +7,7 @@ export const scene    = new THREE.Scene();
 export const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 
+// Ajusta pixelRatio menor em dispositivos móveis pra poupar GPU
 const isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
 renderer.setPixelRatio(isMobileDevice ? Math.min(window.devicePixelRatio, 1) : window.devicePixelRatio);
 renderer.setSize(innerWidth, innerHeight);
@@ -70,7 +71,11 @@ export function updateLoadingPosition() {
   headCam.updateMatrixWorld();
   headCam.getWorldPosition(_loadPos);
   headCam.getWorldQuaternion(_loadQuat);
-  loadingSprite.position.copy(_loadDir).applyQuaternion(_loadQuat).multiplyScalar(3.5).add(_loadPos);
+  loadingSprite.position
+    .copy(_loadDir)
+    .applyQuaternion(_loadQuat)
+    .multiplyScalar(3.5)
+    .add(_loadPos);
   loadingSprite.quaternion.copy(_loadQuat);
 }
 
@@ -104,18 +109,22 @@ function disposeSphere(s) {
 
 /* ───────── Cria esfera (foto ou vídeo) ───────── */
 export function createSphere(tex, isStereo) {
-  /* WebXR Equirect Layer (quando disponível) */
+  // Se for vídeo e WebXR Layers existe, use camada para desempenho máximo em VR
   const session = renderer.xr.getSession?.();
   if (tex.image?.tagName === 'VIDEO' && session && 'XRWebGLBinding' in window) {
     const gl      = renderer.getContext();
     const binding = new XRWebGLBinding(session, gl);
     const layout  = isStereo ? 'stereo-top-bottom' : 'mono';
-    const layer   = binding.createEquirectLayer(tex.image, { layout, radius: 500, colorFormat: 'sRGB' });
+    const layer   = binding.createEquirectLayer(tex.image, {
+      layout,
+      radius: 500,
+      colorFormat: 'sRGB'
+    });
     session.updateRenderState({ layers: [layer] });
     return;
   }
 
-  /* Fallback ➜ esfera invertida */
+  // Fallback: esfera invertida
   disposeSphere(sphereMono);
   disposeSphere(sphereLeft);
   disposeSphere(sphereRight);
@@ -134,25 +143,36 @@ export function createSphere(tex, isStereo) {
 
   if (!isStereo) {
     setup(tex);
-    sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide }));
+    sphereMono = new THREE.Mesh(
+      geo,
+      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide })
+    );
     sphereMono.layers.set(layerMono);
     scene.add(sphereMono);
     return;
   }
 
+  // ESTÉREO top/bottom
   const bot = tex.clone(); setup(bot); bot.repeat.set(1,0.5); bot.offset.set(0,0);
-  sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide }));
+  sphereMono = new THREE.Mesh(
+    geo,
+    new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide })
+  );
   sphereMono.layers.set(layerMono);
   scene.add(sphereMono);
 
-  sphereLeft = new THREE.Mesh(geo.clone(),
-    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide }));
+  sphereLeft = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide })
+  );
   sphereLeft.layers.set(layerLeft);
   scene.add(sphereLeft);
 
   const top = tex.clone(); setup(top); top.repeat.set(1,0.5); top.offset.set(0,0.5);
-  sphereRight = new THREE.Mesh(geo.clone(),
-    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide }));
+  sphereRight = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide })
+  );
   sphereRight.layers.set(layerRight);
   scene.add(sphereRight);
 }
@@ -163,9 +183,9 @@ const VID_RE = /\.(mp4|webm|mov)$/i;
 
 export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
   showLoading(msg);
-  stopCurrentVid();                       // mata vídeo antigo, se houver
+  stopCurrentVid();  // pausa e remove instância de vídeo anterior
 
-  /* ---------- IMAGEM ---------- */
+  // ---------- IMAGEM ----------
   if (IMG_RE.test(url)) {
     new THREE.TextureLoader().load(
       url,
@@ -176,7 +196,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     return;
   }
 
-  /* ---------- VÍDEO ---------- */
+  // ---------- VÍDEO ----------
   if (VID_RE.test(url)) {
     fetch(url, { mode: 'cors' })
       .then(res => {
@@ -196,9 +216,10 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
         vid.preload      = 'auto';
         vid.style.display = 'none';
         document.body.appendChild(vid);
-        currentVid = vid;                // guarda ref. global
+        currentVid = vid;
 
         const forcePlay = () => vid.play().catch(() => {});
+
         const onReady = () => {
           const videoTexture = new THREE.VideoTexture(vid);
           videoTexture.colorSpace      = THREE.SRGBColorSpace;
@@ -206,26 +227,24 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
           videoTexture.generateMipmaps = false;
 
           if (vid.requestVideoFrameCallback) {
-            const update = () => {
+            const updater = () => {
               videoTexture.needsUpdate = true;
-              vid.requestVideoFrameCallback(update);
+              vid.requestVideoFrameCallback(updater);
             };
-            vid.requestVideoFrameCallback(update);
+            vid.requestVideoFrameCallback(updater);
           }
 
           try { cb(videoTexture, isStereo); } finally { hideLoading(); }
 
-          /* 1) tenta tocar agora */
+          // 1) tenta tocar imediatamente (a user gesture já ocorreu no vr.js)
           forcePlay();
 
-          /* 2) clique (desktop/mobile) */
+          // 2) se falhar, usa clique (desktop/mobile)
           document.addEventListener('click', forcePlay, { once: true, capture: true });
 
-          /* 3) gesto XR (select) */
-          const session = renderer.xr.getSession();
-          if (session) {
-            const resume = () => { forcePlay(); session.removeEventListener('select', resume); };
-            session.addEventListener('select', resume);
+          // 3) se em VR e houver select recente, a heurística resolve
+          if (renderer.xr.isPresenting && window.lastVRGesture && (performance.now() - window.lastVRGesture < 500)) {
+            forcePlay();
           }
         };
 
@@ -241,46 +260,52 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
 }   // fim loadTexture
 
 /* ───────── HUD de Botão ───────── */
-let buttonSprite=null;
-export function showButtonHUD(msg=''){
-  if(buttonSprite){
+let buttonSprite = null;
+export function showButtonHUD(msg = '') {
+  if (buttonSprite) {
     scene.remove(buttonSprite);
     buttonSprite.material.map.dispose();
     buttonSprite.material.dispose();
   }
-  const W=512,H=128;
-  const cv=Object.assign(document.createElement('canvas'),{width:W,height:H});
-  const ctx=cv.getContext('2d');
-  ctx.fillStyle='rgba(30,30,30,0.8)'; ctx.fillRect(0,0,W,H);
-  ctx.font='bold 28px sans-serif'; ctx.fillStyle='#ff3333';
-  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(msg,W/2,H/2);
-  buttonSprite=new THREE.Sprite(new THREE.SpriteMaterial({
-    map:new THREE.CanvasTexture(cv), depthTest:false, depthWrite:false
+  const W = 512, H = 128;
+  const cv = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = 'rgba(30,30,30,0.8)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillStyle = '#ff3333';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(msg, W / 2, H / 2);
+
+  buttonSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(cv),
+    depthTest: false,
+    depthWrite: false
   }));
-  buttonSprite.scale.set(4,1,1);
-  buttonSprite.renderOrder=9999;
+  buttonSprite.scale.set(4, 1, 1);
+  buttonSprite.renderOrder = 9999;
   scene.add(buttonSprite);
   updateButtonPosition();
 }
-export function hideButtonHUD(){
-  if(!buttonSprite) return;
+export function hideButtonHUD() {
+  if (!buttonSprite) return;
   scene.remove(buttonSprite);
   buttonSprite.material.map.dispose();
   buttonSprite.material.dispose();
-  buttonSprite=null;
+  buttonSprite = null;
 }
-const _btnDir=new THREE.Vector3(0,0,-1),
-      _btnPos=new THREE.Vector3(),
-      _btnQuat=new THREE.Quaternion();
-export function updateButtonPosition(){
-  if(!buttonSprite) return;
-  const headCam=(renderer.xr.isPresenting && renderer.xr.getCamera(camera))||camera;
+const _btnDir = new THREE.Vector3(0,0,-1);
+const _btnPos = new THREE.Vector3();
+const _btnQuat = new THREE.Quaternion();
+export function updateButtonPosition() {
+  if (!buttonSprite) return;
+  const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
   headCam.updateMatrixWorld();
   headCam.getWorldPosition(_btnPos);
   headCam.getWorldQuaternion(_btnQuat);
-  const pos=_btnDir.clone().applyQuaternion(_btnQuat)
-                     .multiplyScalar(3.5).add(_btnPos);
-  pos.y-=0.8;
+  const pos = _btnDir.clone().applyQuaternion(_btnQuat).multiplyScalar(3.5).add(_btnPos);
+  pos.y -= 0.8;
   buttonSprite.position.copy(pos);
   buttonSprite.quaternion.copy(_btnQuat);
 }
