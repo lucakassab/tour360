@@ -88,6 +88,7 @@ export const layerRight = 2;
 export let currentVid = null;
 function stopCurrentVid() {
   if (!currentVid) return;
+  console.log('[core] stopCurrentVid: pausando e removendo vídeo anterior');
   currentVid.pause();
   currentVid.remove();
   currentVid = null;
@@ -110,6 +111,7 @@ function disposeSphere(s) {
 export function createSphere(tex, isStereo) {
   const session = renderer.xr.getSession?.();
   if (tex.image?.tagName === 'VIDEO' && session && 'XRWebGLBinding' in window) {
+    console.log('[core] createSphere: usando XRWebGLBinding para VR Layers');
     const gl      = renderer.getContext();
     const binding = new XRWebGLBinding(session, gl);
     const layout  = isStereo ? 'stereo-top-bottom' : 'mono';
@@ -118,6 +120,7 @@ export function createSphere(tex, isStereo) {
     return;
   }
 
+  // Fallback clássico (esfera invertida)
   disposeSphere(sphereMono);
   disposeSphere(sphereLeft);
   disposeSphere(sphereRight);
@@ -142,19 +145,24 @@ export function createSphere(tex, isStereo) {
     return;
   }
 
+  // Estéreo top/bottom
   const bot = tex.clone(); setup(bot); bot.repeat.set(1,0.5); bot.offset.set(0,0);
   sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide }));
   sphereMono.layers.set(layerMono);
   scene.add(sphereMono);
 
-  sphereLeft = new THREE.Mesh(geo.clone(),
-    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide }));
+  sphereLeft = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide })
+  );
   sphereLeft.layers.set(layerLeft);
   scene.add(sphereLeft);
 
   const top = tex.clone(); setup(top); top.repeat.set(1,0.5); top.offset.set(0,0.5);
-  sphereRight = new THREE.Mesh(geo.clone(),
-    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide }));
+  sphereRight = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide })
+  );
   sphereRight.layers.set(layerRight);
   scene.add(sphereRight);
 }
@@ -166,20 +174,24 @@ const VID_RE = /\.(mp4|webm|mov)$/i;
 export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
   showLoading(msg);
   stopCurrentVid();
+  console.log('[core] loadTexture iniciado para:', url);
 
   if (IMG_RE.test(url)) {
     new THREE.TextureLoader().load(
       url,
-      tex => { try { cb(tex, isStereo); } finally { hideLoading(); } },
+      tex => { 
+        console.log('[core] loadTexture: imagem carregada');
+        try { cb(tex, isStereo); } finally { hideLoading(); } 
+      },
       undefined,
-      err => { console.error(err); hideLoading(); }
+      err => { console.error('[core] loadTexture (IMG) erro:', err); hideLoading(); }
     );
     return;
   }
 
   /* ---------- VÍDEO ---------- */
   if (VID_RE.test(url)) {
-    console.log('loadTexture: criando <video> para', url);
+    console.log('[core] loadTexture: criando <video> para', url);
     const vid = document.createElement('video');
     vid.crossOrigin  = 'anonymous';
     vid.src          = url;
@@ -191,31 +203,31 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     vid.style.display = 'none';
     document.body.appendChild(vid);
     currentVid = vid;
-    window.currentVid = vid; // expõe também em window
+    window.currentVid = vid; // também expõe em window para compatibilidade
 
-    /* primeira tentativa de play no contexto do gesto */
+    // Tenta tocar imediatamente
     const tryPlay = () => {
-      console.log('tryPlay(): tentando play do vídeo');
-      vid.play().catch(e => console.log('tryPlay erro:', e));
+      console.log('[core] tryPlay(): tentando play do vídeo');
+      vid.play().catch(e => console.log('[core] tryPlay erro:', e));
     };
     tryPlay();
 
-    /* fallback clique desktop/mobile */
+    // fallback clique desktop/mobile
     document.addEventListener('click', tryPlay, { once: true, capture: true });
 
-    /* ❶ qualquer botão VR dispara nova tentativa */
+    // Se estiver em VR, qualquer seleção de fonte força nova tentativa
     if (renderer.xr.isPresenting) {
       const session = renderer.xr.getSession();
       const onInput = () => {
-        console.log('inputsourceschange: tentando play se pausado');
+        console.log('[core] inputsourceschange: tentando play se pausado');
         if (vid.paused) tryPlay();
       };
       session.addEventListener('inputsourceschange', onInput);
     }
 
-    /* ❷ preenche a textura quando vierem dados, e tenta play de novo */
+    // Quando metadata carregar, criamos o VideoTexture
     const onReady = () => {
-      console.log('onReady(): vídeo pronto, criando VideoTexture');
+      console.log('[core] onReady(): vídeo pronto (loadedmetadata)');
       const tex = new THREE.VideoTexture(vid);
       tex.colorSpace      = THREE.SRGBColorSpace;
       tex.minFilter       = THREE.LinearFilter;
@@ -229,23 +241,25 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
         vid.requestVideoFrameCallback(upd);
       }
 
+      console.log('[core] onReady: chamando callback de createSphere');
       try { cb(tex, isStereo); } finally { hideLoading(); }
       if (vid.paused) {
-        console.log('onReady(): vídeo ainda pausado, tryPlay()');
+        console.log('[core] onReady(): vídeo ainda pausado, nova tentativa');
         tryPlay();
       }
     };
 
-    if (vid.readyState >= 2) {
+    if (vid.readyState >= 1) {
+      // já carregou metadata
       onReady();
     } else {
-      vid.addEventListener('loadeddata', onReady, { once: true });
+      vid.addEventListener('loadedmetadata', onReady, { once: true });
     }
 
     return;
   }
 
-  console.error('Extensão não suportada:', url);
+  console.error('[core] Extensão não suportada:', url);
   hideLoading();
 }   // fim loadTexture
 
@@ -309,7 +323,7 @@ export function showLogHUD(text = '') {
     logSprite.material.dispose();
   }
 
-  const lines = text.split('\n').slice(-10); // mostra apenas as últimas 10 linhas
+  const lines = text.split('\n').slice(-10);
   const W = 1024, H = 256;
   const cv = Object.assign(document.createElement('canvas'), { width: W, height: H });
   const ctx = cv.getContext('2d');
@@ -354,7 +368,7 @@ export function updateLogPosition() {
   headCam.getWorldPosition(_logPos);
   headCam.getWorldQuaternion(_logQuat);
   const pos = _logDir.clone().applyQuaternion(_logQuat).multiplyScalar(3.5).add(_logPos);
-  pos.y += 0.5; // abaixado de 1.2 para 0.5
+  pos.y += 0.5; // abaixei para 0.5
   logSprite.position.copy(pos);
   logSprite.quaternion.copy(_logQuat);
 }
