@@ -12,16 +12,47 @@ import {
   showButtonHUD,
   hideButtonHUD,
   updateButtonPosition,
-  currentVid       // ← Importa o currentVid exportado
+  currentVid
 } from './core.js';
 import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
 
 renderer.xr.enabled = true;
 document.body.appendChild(VRButton.createButton(renderer));
 
+/* helper _stereo */
 const isStereoName = n => /_stereo/i.test(n);
 
-// ⬇ Não precisamos mais de window.currentVid; usamos currentVid do módulo
+/* ─────────── Override do console.log para bufferizar mensagens ─────────── */
+const originalConsoleLog = console.log.bind(console);
+let logBuffer = [];
+console.log = (...args) => {
+  originalConsoleLog(...args);
+  logBuffer.push(args.map(a => String(a)).join(' '));
+  if (logBox) logBox.innerText = logBuffer.join('\n');
+};
+
+/* ─────────── Criação do elemento de log ─────────── */
+let logBox = null;
+(function createLogBox() {
+  logBox = document.createElement('div');
+  logBox.style.position = 'absolute';
+  logBox.style.top = '10px';
+  logBox.style.left = '10px';
+  logBox.style.width = 'calc(100% - 20px)';
+  logBox.style.maxHeight = '40%';
+  logBox.style.overflowY = 'auto';
+  logBox.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  logBox.style.color = '#fff';
+  logBox.style.fontFamily = 'monospace';
+  logBox.style.fontSize = '12px';
+  logBox.style.padding = '10px';
+  logBox.style.borderRadius = '4px';
+  logBox.style.display = 'none';
+  logBox.style.zIndex = '9999';
+  document.body.appendChild(logBox);
+})();
+
+/* ─────────── Função de play contínuo ─────────── */
 function keepTryingPlay() {
   if (!currentVid) return;
   currentVid.play().catch(() => {});
@@ -34,7 +65,7 @@ function keepTryingPlay() {
   }, 500);
 }
 
-// No sessionstart, qualquer select também tenta tocar currentVid
+/* ─────────── Listener global de select para destravar autoplay ─────────── */
 renderer.xr.addEventListener('sessionstart', () => {
   const s = renderer.xr.getSession();
   if (!s) return;
@@ -45,14 +76,14 @@ renderer.xr.addEventListener('sessionstart', () => {
   s.addEventListener('selectstart', resume);
 });
 
-// Popula dropdown mas NÃO carrega até trigger (botão 0)
+/* ─────────── Carrega lista + primeira mídia no dropdown ─────────── */
 const sel = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
     const media = files.filter(f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name));
     if (!media.length) {
-      console.error('Nada em /media');
+      console.log('Nada em /media');
       return;
     }
     media.forEach(f => {
@@ -63,64 +94,112 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       sel.appendChild(o);
     });
     sel.selectedIndex = 0;
+    // Não chamamos loadCurrent() aqui, aguardamos o trigger (botão 0)
   })
-  .catch(console.error);
+  .catch(err => {
+    console.log('Fetch media falhou:', err);
+  });
 
-// Botão “Carregar 360” fora do VR
+/* ─────────── Botão “Carregar Mídia” (fora do VR) ─────────── */
 document.getElementById('btnLoad').onclick = () => {
   loadCurrent();
   keepTryingPlay();
 };
 
+/* ─────────── Carrega a mídia selecionada ─────────── */
 function loadCurrent() {
   const opt    = sel.options[sel.selectedIndex];
   const name   = opt.dataset.name;
   const stereo = isStereoName(name);
-  loadTexture(opt.value, stereo, tex => createSphere(tex, stereo), name);
+
+  console.log('loadCurrent →', name);
+  loadTexture(
+    opt.value,
+    stereo,
+    tex => {
+      createSphere(tex, stereo);
+      console.log('createSphere chamado para', name);
+    },
+    name
+  );
 }
 
-// Mapeamento de gamepad VR (aperta 4/5 só altera índice, e 0 dispara loadCurrent)
+/* ─────────── Gamepad VR (botões 3, 4 e 5) ─────────── */
 let prevButtons = [];
+
 renderer.setAnimationLoop(() => {
   updateLoadingPosition();
   updateButtonPosition();
+
   const session = renderer.xr.getSession();
   if (session) {
     session.inputSources.forEach(src => {
       if (!src.gamepad || src.handedness !== 'right') return;
       const gp = src.gamepad;
-      const now = gp.buttons.map(b => b.pressed);
-      now.forEach((pressed, i) => {
+      const nowPressed = gp.buttons.map(b => b.pressed);
+
+      nowPressed.forEach((pressed, i) => {
+        // Se acabou de pressionar
         if (pressed && !prevButtons[i]) {
+          console.log(`Botão ${i} pressionado`);
           showButtonHUD(`Botão ${i}`);
 
-          // 0 = trigger → carrega e toca (gesto válido)
+          // Botão 3 (thumbstick pressionado) → mostra logBox
+          if (i === 3) {
+            logBox.style.display = 'block';
+          }
+
+          // Botão 0 (trigger) → carrega e tenta play
           if (i === 0) {
+            console.log('Trigger (0) acionado: carregando mídia');
             loadCurrent();
             keepTryingPlay();
           }
-          // 4 = A → próximo índice
+
+          // Botão 4 (A) → próximo índice
           if (i === 4) {
             sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+            console.log('A (4): índice agora', sel.selectedIndex);
           }
-          // 5 = B → índice anterior
+
+          // Botão 5 (B) → índice anterior
           if (i === 5) {
             sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+            console.log('B (5): índice agora', sel.selectedIndex);
           }
-          // 1 = grip → mostra loading HUD
+
+          // Botão 1 (grip) → mostra loading HUD
           if (i === 1) {
-            showLoading(sel.options[sel.selectedIndex].dataset.name);
+            const nomeAtual = sel.options[sel.selectedIndex].dataset.name;
+            console.log('Grip (1): mostrando Loading para', nomeAtual);
+            showLoading(nomeAtual);
           }
         }
       });
-      if (!now[1] && prevButtons[1]) hideLoading();
-      if (!now.some(Boolean))        hideButtonHUD();
-      prevButtons = now;
+
+      // Se soltou o botão 3 (thumbstick), esconde logBox
+      if (!nowPressed[3] && prevButtons[3]) {
+        logBox.style.display = 'none';
+      }
+
+      // Se soltou o botão 1, esconde loading HUD
+      if (!nowPressed[1] && prevButtons[1]) {
+        hideLoading();
+      }
+
+      // Se nenhum botão está pressionado, esconde HUD de botão
+      if (!nowPressed.some(Boolean)) {
+        hideButtonHUD();
+      }
+
+      prevButtons = nowPressed;
     });
   } else {
     prevButtons = [];
     hideButtonHUD();
     hideLoading();
+    logBox.style.display = 'none';
   }
+
   renderer.render(scene, camera);
 });
