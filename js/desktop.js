@@ -1,6 +1,8 @@
 import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js';
-import { initializeCore, loadMediaInSphere, camera, renderer, updateHUDPositions } from './core.js';
+import { OrbitControls } 
+  from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js?module';
+import { initializeCore, loadMediaInSphere, camera, renderer, updateHUDPositions } 
+  from './core.js';
 
 let controls;
 
@@ -8,12 +10,12 @@ export function initialize() {
   initializeCore();
   document.body.appendChild(renderer.domElement);
 
-  camera.position.set(0, 0, 0.1);          // afasta a câmera do centro
+  camera.position.set(0, 0, 0.1);  // afasta a câmera do centro
 
   controls = new OrbitControls(camera, renderer.domElement);
-  controls.enablePan = false;
+  controls.enablePan   = false;
   controls.rotateSpeed = 0.4;
-  controls.zoomSpeed  = 1.0;
+  controls.zoomSpeed   = 1.0;
 
   animate();
 }
