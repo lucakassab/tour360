@@ -21,38 +21,6 @@ document.body.appendChild(VRButton.createButton(renderer));
 /* helper _stereo */
 const isStereoName = n => /_stereo/i.test(n);
 
-/* play em loop até funcionar */
-function keepTryingPlay() {
-  const v = window.currentVid;
-  if (!v) return;
-
-  // Tenta imediatamente
-  v.play().catch(() => {});
-
-  // Loop de retomada (para bloquear só até dar certo)
-  const id = setInterval(() => {
-    if (!v.paused || v.readyState === 0) {
-      clearInterval(id);          // já tocando ou vídeo removido
-      return;
-    }
-    v.play().catch(() => {});
-  }, 500);
-}
-
-/* quando entrar no VR, qualquer select/selectstart também tenta play */
-renderer.xr.addEventListener('sessionstart', () => {
-  const s = renderer.xr.getSession();
-  if (!s) return;
-
-  const resume = () => {
-    const v = window.currentVid;
-    if (v && v.paused) v.play().catch(() => {});
-  };
-
-  s.addEventListener('select', resume);
-  s.addEventListener('selectstart', resume);
-});
-
 /* ----------- lista + primeira ----------- */
 const sel = document.getElementById('mediaSelect');
 
@@ -72,32 +40,30 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       sel.appendChild(o);
     });
     sel.selectedIndex = 0;
-    loadCurrent();
+    // Não carrega ainda: aguardamos o gatilho (botão 0)
   })
   .catch(console.error);
 
-/* botão “Carregar” (fora do VR) */
+/* ---------- Botão “Carregar Mídia” (fora do VR) ---------- */
 document.getElementById('btnLoad').onclick = () => {
   loadCurrent();
-  keepTryingPlay();          // clique normal conta como gesture
 };
 
-/* carrega mídia atual */
+/* carrega mídia atualmente selecionada */
 function loadCurrent() {
   const opt    = sel.options[sel.selectedIndex];
-  const stereo = isStereoName(opt.dataset.name);
+  const name   = opt.dataset.name;
+  const stereo = isStereoName(name);
 
   loadTexture(
     opt.value,
     stereo,
     tex => createSphere(tex, stereo),
-    opt.dataset.name
+    name
   );
-
-  keepTryingPlay();          // já começa a tentar
 }
 
-/* ---------- gamepad (botões 4/5) ---------- */
+/* ---------- gamepad VR ---------- */
 let prevButtons = [];
 
 renderer.setAnimationLoop(() => {
@@ -108,31 +74,40 @@ renderer.setAnimationLoop(() => {
   if (session) {
     session.inputSources.forEach(src => {
       if (!src.gamepad || src.handedness !== 'right') return;
-      const now = src.gamepad.buttons.map(b => b.pressed);
+      const gp = src.gamepad;
+      const nowPressed = gp.buttons.map(b => b.pressed);
 
-      now.forEach((pressed, i) => {
+      nowPressed.forEach((pressed, i) => {
         if (pressed && !prevButtons[i]) {
           showButtonHUD(`Botão ${i}`);
 
-          if (i === 4 || i === 5) {
-            sel.selectedIndex =
-              i === 4
-                ? (sel.selectedIndex + 1) % sel.options.length
-                : (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+          // 0 = trigger → carrega a mídia selecionada (user gesture válido)
+          if (i === 0) {
             loadCurrent();
-            keepTryingPlay();   // gesto 4/5 deve destravar o vídeo
           }
 
+          // 4 = A, 5 = B → apenas ajustam o índice, sem tentar play
+          if (i === 4) {
+            sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+          }
+          if (i === 5) {
+            sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+          }
+
+          // 1 = grip → mostra loading HUD
           if (i === 1) {
             showLoading(sel.options[sel.selectedIndex].dataset.name);
           }
         }
       });
 
-      if (!now[1] && prevButtons[1]) hideLoading();
-      if (!now.some(Boolean))        hideButtonHUD();
-
-      prevButtons = now;
+      if (!nowPressed[1] && prevButtons[1]) {
+        hideLoading();
+      }
+      if (!nowPressed.some(Boolean)) {
+        hideButtonHUD();
+      }
+      prevButtons = nowPressed;
     });
   } else {
     prevButtons = [];
