@@ -28,29 +28,53 @@ const isStereoName = n => /_stereo/i.test(n);
 /* ---------- buffer de log ---------- */
 const originalLog = console.log.bind(console);
 let logBuffer = [];
-let logVisible = false;              // se o HUD está exibido
+let logVisible = false; // se o HUD está exibido
 
 console.log = (...args) => {
   originalLog(...args);
   logBuffer.push(args.map(String).join(' '));
-  if (logVisible) showLogHUD(logBuffer.slice(-10).join('\n'));
+  if (logVisible) {
+    const text = logBuffer.slice(-10).join('\n');
+    showLogHUD(text);
+  }
 };
 
 /* ---------- função de autoplay persistente ---------- */
 function keepTryingPlay() {
-  if (!currentVid) return;
-  currentVid.play().catch(() => {});
+  if (!currentVid) {
+    console.log('keepTryingPlay: currentVid is null');
+    return;
+  }
+  console.log('keepTryingPlay: tentando play do vídeo');
+  currentVid.play().catch(e => console.log('keepTryingPlay erro:', e));
   const id = setInterval(() => {
-    if (!currentVid || !currentVid.paused) { clearInterval(id); return; }
-    currentVid.play().catch(() => {});
+    if (!currentVid) {
+      clearInterval(id);
+      return;
+    }
+    if (!currentVid.paused) {
+      clearInterval(id);
+      return;
+    }
+    console.log('keepTryingPlay (interval): tentando play novamente');
+    currentVid.play().catch(e => console.log('interval play erro:', e));
   }, 500);
 }
 
 /* destrava autoplay a cada select */
 renderer.xr.addEventListener('sessionstart', () => {
   const s = renderer.xr.getSession();
-  if (!s) return;
-  s.addEventListener('select', () => currentVid?.paused && currentVid.play().catch(() => {}));
+  if (!s) {
+    console.log('sessionstart: sem sessão VR');
+    return;
+  }
+  console.log('sessionstart: adicionando listener select');
+  s.addEventListener('select', () => {
+    console.log('select evento VR: tentando play');
+    if (currentVid && currentVid.paused) {
+      currentVid.play().catch(e => console.log('select play erro:', e));
+    }
+  });
 });
 
 /* ---------- dropdown ---------- */
@@ -59,6 +83,7 @@ const sel = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
+    console.log('fetch media OK, total:', files.length);
     files.filter(f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name))
          .forEach(f => {
            const o = document.createElement('option');
@@ -66,20 +91,32 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
            o.text  = f.name;
            o.dataset.name = f.name;
            sel.appendChild(o);
+           console.log('dropdown adicionou:', f.name);
          });
     sel.selectedIndex = 0;
+    console.log('dropdown: índice inicial 0');
   })
   .catch(err => console.log('Fetch media falhou:', err));
 
-document.getElementById('btnLoad').onclick = () => { loadCurrent(); keepTryingPlay(); };
+document.getElementById('btnLoad').onclick = () => {
+  console.log('btnLoad clicado (fora do VR)');
+  loadCurrent();
+  keepTryingPlay();
+};
 
 function loadCurrent() {
   const opt    = sel.options[sel.selectedIndex];
-  const stereo = isStereoName(opt.dataset.name);
-  console.log('loadCurrent →', opt.dataset.name);
+  const name   = opt.dataset.name;
+  const stereo = isStereoName(name);
+
+  console.log('loadCurrent →', name, 'stereo?', stereo);
   loadTexture(opt.value, stereo,
-              tex => { createSphere(tex, stereo); console.log('createSphere OK'); },
-              opt.dataset.name);
+              tex => {
+                console.log('loadTexture callback: textura carregada para', name);
+                createSphere(tex, stereo);
+                console.log('createSphere OK para', name);
+              },
+              name);
 }
 
 /* ---------- gamepad ---------- */
@@ -94,35 +131,66 @@ renderer.setAnimationLoop(() => {
   if (session) {
     session.inputSources.forEach(src => {
       if (!src.gamepad || src.handedness !== 'right') return;
-      const now = src.gamepad.buttons.map(b => b.pressed);
+      const gp = src.gamepad;
+      const now = gp.buttons.map(b => b.pressed);
 
       now.forEach((pressed, i) => {
         if (pressed && !prevButtons[i]) {
-          showButtonHUD(`Botão ${i}`);
           console.log(`Botão ${i} DOWN`);
+          showButtonHUD(`Botão ${i}`);
 
-          if (i === 3) {               // thumbstick: mostrar log
+          if (i === 3) { // thumbstick press
+            console.log('thumbstick (3) pressionado → mostrar LOG HUD');
             logVisible = true;
             showLogHUD(logBuffer.slice(-10).join('\n'));
           }
-          if (i === 0) {               // trigger: carregar mídia
-            loadCurrent(); keepTryingPlay();
+          if (i === 0) { // trigger
+            console.log('trigger (0) pressionado → loadCurrent + keepTryingPlay');
+            loadCurrent();
+            keepTryingPlay();
           }
-          if (i === 4) sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-          if (i === 5) sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-          if (i === 1) showLoading(sel.options[sel.selectedIndex].dataset.name);
+          if (i === 4) {
+            sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+            console.log('A (4) pressionado → índice agora', sel.selectedIndex);
+          }
+          if (i === 5) {
+            sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+            console.log('B (5) pressionado → índice agora', sel.selectedIndex);
+          }
+          if (i === 1) { // grip
+            const nomeAtual = sel.options[sel.selectedIndex].dataset.name;
+            console.log('grip (1) pressionado → showLoading', nomeAtual);
+            showLoading(nomeAtual);
+          }
         }
       });
 
-      if (!now[3] && prevButtons[3]) { logVisible = false; hideLogHUD(); }
-      if (!now[1] && prevButtons[1]) hideLoading();
-      if (!now.some(Boolean)) hideButtonHUD();
+      // soltou thumbstick
+      if (!now[3] && prevButtons[3]) {
+        console.log('thumbstick (3) solto → esconder LOG HUD');
+        logVisible = false;
+        hideLogHUD();
+      }
+      // soltou grip
+      if (!now[1] && prevButtons[1]) {
+        console.log('grip (1) solto → hideLoading');
+        hideLoading();
+      }
+      // nenhum botão pressionado
+      if (!now.some(Boolean)) {
+        hideButtonHUD();
+      }
 
       prevButtons = now;
     });
   } else {
     prevButtons = [];
-    hideButtonHUD(); hideLoading(); hideLogHUD(); logVisible = false;
+    hideButtonHUD();
+    hideLoading();
+    if (logVisible) {
+      logVisible = false;
+      hideLogHUD();
+    }
   }
 
   renderer.render(scene, camera);

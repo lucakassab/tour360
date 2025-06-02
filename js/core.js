@@ -179,6 +179,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
 
   /* ---------- VÍDEO ---------- */
   if (VID_RE.test(url)) {
+    console.log('loadTexture: criando <video> para', url);
     const vid = document.createElement('video');
     vid.crossOrigin  = 'anonymous';
     vid.src          = url;
@@ -190,11 +191,15 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     vid.style.display = 'none';
     document.body.appendChild(vid);
     currentVid = vid;
-    window.currentVid = vid; // expõe também na window, caso algo use window.currentVid
+    window.currentVid = vid; // expõe também em window
 
     /* primeira tentativa de play no contexto do gesto */
-    const tryPlay = () => vid.play().catch(() => {});
+    const tryPlay = () => {
+      console.log('tryPlay(): tentando play do vídeo');
+      vid.play().catch(e => console.log('tryPlay erro:', e));
+    };
     tryPlay();
+
     /* fallback clique desktop/mobile */
     document.addEventListener('click', tryPlay, { once: true, capture: true });
 
@@ -202,6 +207,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     if (renderer.xr.isPresenting) {
       const session = renderer.xr.getSession();
       const onInput = () => {
+        console.log('inputsourceschange: tentando play se pausado');
         if (vid.paused) tryPlay();
       };
       session.addEventListener('inputsourceschange', onInput);
@@ -209,6 +215,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
 
     /* ❷ preenche a textura quando vierem dados, e tenta play de novo */
     const onReady = () => {
+      console.log('onReady(): vídeo pronto, criando VideoTexture');
       const tex = new THREE.VideoTexture(vid);
       tex.colorSpace      = THREE.SRGBColorSpace;
       tex.minFilter       = THREE.LinearFilter;
@@ -223,11 +230,17 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
       }
 
       try { cb(tex, isStereo); } finally { hideLoading(); }
-      if (vid.paused) tryPlay(); // nova tentativa após buffer
+      if (vid.paused) {
+        console.log('onReady(): vídeo ainda pausado, tryPlay()');
+        tryPlay();
+      }
     };
 
-    if (vid.readyState >= 2) onReady();
-    else vid.addEventListener('loadeddata', onReady, { once: true });
+    if (vid.readyState >= 2) {
+      onReady();
+    } else {
+      vid.addEventListener('loadeddata', onReady, { once: true });
+    }
 
     return;
   }
@@ -341,7 +354,7 @@ export function updateLogPosition() {
   headCam.getWorldPosition(_logPos);
   headCam.getWorldQuaternion(_logQuat);
   const pos = _logDir.clone().applyQuaternion(_logQuat).multiplyScalar(3.5).add(_logPos);
-  pos.y += 1.2;
+  pos.y += 0.5; // abaixado de 1.2 para 0.5
   logSprite.position.copy(pos);
   logSprite.quaternion.copy(_logQuat);
 }
