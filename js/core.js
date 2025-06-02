@@ -136,24 +136,20 @@ export function createSphere(tex, isStereo){
   sphereRight.layers.set(layerRight); scene.add(sphereRight);
 }
 
-/* ───────── loadTexture: agora aceita IMG ou VÍDEO ───────── */
+/* ───────── loadTexture: aceita IMG ou VÍDEO ───────── */
 const IMG_RE = /\.(jpe?g|png)$/i;
 const VID_RE = /\.(mp4|webm|mov)$/i;
 
-/**
- * loadTexture(url,isStereo,cb,msg)
- * – Detecta extensão; se imagem usa TextureLoader; se vídeo cria VideoTexture
- */
-export function loadTexture(url,isStereo,cb,msg='Loading…'){
+export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
   showLoading(msg);
 
   // ---------- IMAGEM ----------
-  if (IMG_RE.test(url)){
+  if (IMG_RE.test(url)) {
     new THREE.TextureLoader().load(
       url,
-      tex=>{ try{cb(tex,isStereo);}finally{hideLoading();} },
+      tex => { try { cb(tex, isStereo); } finally { hideLoading(); } },
       undefined,
-      err=>{ console.error(err); hideLoading(); }
+      err => { console.error(err); hideLoading(); }
     );
     return;
   }
@@ -162,59 +158,52 @@ export function loadTexture(url,isStereo,cb,msg='Loading…'){
   if (VID_RE.test(url)) {
     const vid = document.createElement('video');
     vid.crossOrigin = 'anonymous';
-    vid.muted       = true;      // obrigatório p/ autoplay
-    vid.loop        = true;      // loop infinito
-    vid.autoplay    = true;      // dica p/ browsers teimosos
-    vid.playsInline = true;      // Safari iOS não sair do full-screen
+    vid.muted       = true;   // obrigatório pro autoplay
+    vid.loop        = true;   // loop infinito
+    vid.autoplay    = true;
+    vid.playsInline = true;
     vid.preload     = 'auto';
     vid.src         = url;
-    vid.style.display = 'none';  // não precisa aparecer no DOM
-    document.body.appendChild(vid); // iOS exige estar no DOM p/ autoplay
+    vid.style.display = 'none';
+    document.body.appendChild(vid);     // iOS precisa no DOM
 
-    const startVideo = () => {
-      // tenta tocar, e se falhar, espera primeiro clique no documento
+    const ensurePlay = () => {
       const p = vid.play();
-      if (p && p.catch) {
+      if (p?.catch) {
         p.catch(() => {
-          const resume = () => {
-            vid.play().finally(() => document.removeEventListener('click', resume, true));
+          const kick = () => {
+            vid.play().finally(() => document.removeEventListener('click', kick, true));
           };
-          document.addEventListener('click', resume, true);
+          document.addEventListener('click', kick, true);
         });
       }
     };
 
-    // quando já tiver dados suficientes, cria a textura
-    vid.addEventListener(
-      'loadeddata',
-      () => {
-        const tex = new THREE.VideoTexture(vid);
-        tex.colorSpace      = THREE.SRGBColorSpace;
-        tex.minFilter       = THREE.LinearFilter;
-        tex.generateMipmaps = false;
+    vid.addEventListener('loadeddata', () => {
+      const tex = new THREE.VideoTexture(vid);
+      tex.colorSpace      = THREE.SRGBColorSpace;
+      tex.minFilter       = THREE.LinearFilter;
+      tex.generateMipmaps = false;
 
-        try {
-          cb(tex, isStereo);
-        } finally {
-          hideLoading();
-        }
-        startVideo();            // garante autoplay + loop
-        vid.remove();            // pode sair do DOM depois
-      },
-      { once: true }
-    );
+      try { cb(tex, isStereo); } finally { hideLoading(); }
+      ensurePlay();
+      vid.remove();                       // sai do DOM, já tá rodando
+    }, { once: true });
 
-    vid.addEventListener(
-      'error',
-      e => {
-        console.error('Erro carregando vídeo:', e);
-        hideLoading();
-      },
-      { once: true }
-    );
+    vid.addEventListener('error', e => {
+      console.error('Erro carregando vídeo:', e);
+      hideLoading();
+    }, { once: true });
 
     return;
   }
+
+  console.error('Extensão não suportada:', url);
+  hideLoading();
+}   //  <<—— AGORA a função fecha aqui
+
+
+
 
 /* ───────── HUD de Botão (mesmo de antes) ───────── */
 let buttonSprite=null;
