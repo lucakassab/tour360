@@ -18,39 +18,48 @@ import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js
 renderer.xr.enabled = true;
 document.body.appendChild(VRButton.createButton(renderer));
 
-// Helper pra detectar “_stereo” no nome
+/* helper _stereo */
 const isStereoName = n => /_stereo/i.test(n);
 
-// Guarda o <video> atual (definido dentro de core.js como currentVid)
-// Forçar-reprodução se estiver pausado
-function forcePlayIfPaused() {
+/* play em loop até funcionar */
+function keepTryingPlay() {
   const v = window.currentVid;
-  if (v && v.paused) {
-    v.play().catch(() => {
-      // Se ainda falhar, deixa para o listener de 'select' disparar depois
-    });
-  }
+  if (!v) return;
+
+  // Tenta imediatamente
+  v.play().catch(() => {});
+
+  // Loop de retomada (para bloquear só até dar certo)
+  const id = setInterval(() => {
+    if (!v.paused || v.readyState === 0) {
+      clearInterval(id);          // já tocando ou vídeo removido
+      return;
+    }
+    v.play().catch(() => {});
+  }, 500);
 }
 
-// Quando a sessão VR começar, garante que qualquer "select" destrave o vídeo
+/* quando entrar no VR, qualquer select/selectstart também tenta play */
 renderer.xr.addEventListener('sessionstart', () => {
-  const session = renderer.xr.getSession();
-  if (!session) return;
-  session.addEventListener('select', () => {
-    // Sempre que houver um “select” no controlador, tenta dar play de novo
-    forcePlayIfPaused();
-  });
+  const s = renderer.xr.getSession();
+  if (!s) return;
+
+  const resume = () => {
+    const v = window.currentVid;
+    if (v && v.paused) v.play().catch(() => {});
+  };
+
+  s.addEventListener('select', resume);
+  s.addEventListener('selectstart', resume);
 });
 
-// ---------- Carrega lista + primeira mídia ----------
+/* ----------- lista + primeira ----------- */
 const sel = document.getElementById('mediaSelect');
 
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
-    const media = files.filter(
-      f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name)
-    );
+    const media = files.filter(f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name));
     if (!media.length) {
       console.error('Nada em /media');
       return;
@@ -65,92 +74,71 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
     sel.selectedIndex = 0;
     loadCurrent();
   })
-  .catch(err => console.error('Fetch media falhou:', err));
+  .catch(console.error);
 
-// ---------- Botão “Carregar Mídia” no menu fora do VR ----------
+/* botão “Carregar” (fora do VR) */
 document.getElementById('btnLoad').onclick = () => {
-  // Ao clicar no botão, sempre tentar forçar play logo após carregar
   loadCurrent();
-  forcePlayIfPaused();
+  keepTryingPlay();          // clique normal conta como gesture
 };
 
-// Carrega a mídia atualmente selecionada no dropdown
+/* carrega mídia atual */
 function loadCurrent() {
   const opt    = sel.options[sel.selectedIndex];
-  const name   = opt.dataset.name;
-  const stereo = isStereoName(name);
+  const stereo = isStereoName(opt.dataset.name);
 
-  // loadTexture já põe o <video> em window.currentVid via core.js
-  loadTexture(opt.value, stereo, tex => {
-    createSphere(tex, stereo);
-  }, name);
+  loadTexture(
+    opt.value,
+    stereo,
+    tex => createSphere(tex, stereo),
+    opt.dataset.name
+  );
 
-  // Tenta forçar play imediatamente (se captar o user gesture)
-  forcePlayIfPaused();
+  keepTryingPlay();          // já começa a tentar
 }
 
-// ---------- Gamepad VR (botões A/B pra trocar) ----------
+/* ---------- gamepad (botões 4/5) ---------- */
 let prevButtons = [];
 
 renderer.setAnimationLoop(() => {
-  // 1) Atualiza HUDs (loading + botão)
   updateLoadingPosition();
   updateButtonPosition();
 
-  // 2) Lê gamepad VR
   const session = renderer.xr.getSession();
   if (session) {
     session.inputSources.forEach(src => {
-      if (src.gamepad && src.handedness === 'right') {
-        const gp = src.gamepad;
-        const nowPressed = gp.buttons.map(b => b.pressed);
+      if (!src.gamepad || src.handedness !== 'right') return;
+      const now = src.gamepad.buttons.map(b => b.pressed);
 
-        for (let i = 0; i < nowPressed.length; i++) {
-          // Botão acabou de ser pressionado
-          if (nowPressed[i] && !prevButtons[i]) {
-            showButtonHUD(`Botão ${i}`);
+      now.forEach((pressed, i) => {
+        if (pressed && !prevButtons[i]) {
+          showButtonHUD(`Botão ${i}`);
 
-            // Botões 4 e 5: avançar / voltar mídia
-            if (i === 4 || i === 5) {
-              // Ajusta selectedIndex conforme o botão
-              if (i === 4) {
-                sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-              } else {
-                sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-              }
-              loadCurrent();
-              // Força play já (se for user gesture reconhecido)
-              forcePlayIfPaused();
-            }
+          if (i === 4 || i === 5) {
+            sel.selectedIndex =
+              i === 4
+                ? (sel.selectedIndex + 1) % sel.options.length
+                : (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+            loadCurrent();
+            keepTryingPlay();   // gesto 4/5 deve destravar o vídeo
+          }
 
-            // Botão 1: mostrar nome da mídia atual no HUD
-            if (i === 1) {
-              const nomeAtual = sel.options[sel.selectedIndex].dataset.name;
-              showLoading(nomeAtual);
-            }
+          if (i === 1) {
+            showLoading(sel.options[sel.selectedIndex].dataset.name);
           }
         }
+      });
 
-        // Se soltou o botão 1, esconde loading HUD
-        if (!nowPressed[1] && prevButtons[1]) {
-          hideLoading();
-        }
+      if (!now[1] && prevButtons[1]) hideLoading();
+      if (!now.some(Boolean))        hideButtonHUD();
 
-        // Se nenhum botão está mais pressionado, esconde HUD de botão
-        if (!nowPressed.some(p => p)) {
-          hideButtonHUD();
-        }
-
-        prevButtons = nowPressed;
-      }
+      prevButtons = now;
     });
   } else {
-    // Fora do VR, só reset nas pressed arrays e HUDs
     prevButtons = [];
     hideButtonHUD();
     hideLoading();
   }
 
-  // 3) Renderiza a cena VR ou padrão
   renderer.render(scene, camera);
 });
