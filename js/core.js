@@ -81,7 +81,7 @@ export const layerLeft  = 1;
 export const layerRight = 2;
 
 /* ───────── Limpa vídeo anterior ───────── */
-let currentVid = null;
+export let currentVid = null;
 function stopCurrentVid() {
   if (!currentVid) return;
   currentVid.pause();
@@ -186,6 +186,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     vid.style.display = 'none';
     document.body.appendChild(vid);
     currentVid = vid;
+    window.currentVid = vid; // expõe também na window, caso algo use window.currentVid
 
     /* primeira tentativa de play no contexto do gesto */
     const tryPlay = () => vid.play().catch(() => {});
