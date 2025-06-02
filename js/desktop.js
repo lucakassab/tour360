@@ -41,24 +41,25 @@ renderer.domElement.addEventListener('mouseup', () => {
   dragging = false;
 });
 
-/* ─── Carrega lista & primeira textura ─── */
+/* ─── Carrega lista & primeira mídia (imagem ou vídeo) ─── */
 const selDesk = document.getElementById('mediaSelect');
 
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
-    const imgs = files.filter(
-      f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name)
+    // agora aceita jpg, png, mp4, webm, mov
+    const media = files.filter(
+      f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name)
     );
-    if (!imgs.length) {
-      console.error('Nenhuma imagem encontrada na pasta “media”.');
+    if (!media.length) {
+      console.error('Nenhum arquivo compatível em /media.');
       return;
     }
 
-    imgs.forEach(f => {
+    media.forEach(f => {
       const o = document.createElement('option');
       o.value = f.download_url;
-      o.text = f.name;
+      o.text  = f.name;
       o.dataset.name = f.name;
       selDesk.appendChild(o);
     });
@@ -66,23 +67,15 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
     selDesk.selectedIndex = 0;
     loadCurrent(); // carrega a primeira
   })
-  .catch(err => {
-    console.error('Falha ao buscar a pasta “media”:', err);
-  });
+  .catch(err => console.error('Falha no fetch /media:', err));
 
-/* ─── Carrega uma textura quando clica no botão ─── */
-document.getElementById('btnLoad').onclick = () => {
-  loadCurrent();
-};
+document.getElementById('btnLoad').onclick = () => loadCurrent();
 
 function loadCurrent() {
   const opt    = selDesk.options[selDesk.selectedIndex];
   const name   = opt.dataset.name;
   const stereo = isStereoName(name);
-  // loadTexture(url, isStereo, cb, msg)
-  loadTexture(opt.value, stereo, tex => {
-    createSphere(tex, stereo);
-  }, name);
+  loadTexture(opt.value, stereo, tex => createSphere(tex, stereo), name);
 }
 
 /* ─── render loop ─── */

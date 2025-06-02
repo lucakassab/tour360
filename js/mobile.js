@@ -44,9 +44,10 @@ const sel = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
-    const imgs = files.filter(
-      f => f.type === 'file' && /\.(jpe?g|png)$/i.test(f.name)
+    const media = files.filter(
+      f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name)
     );
+
     if (!imgs.length) {
       console.error('Nada em /media');
       return;
