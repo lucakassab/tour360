@@ -1,4 +1,5 @@
 // mobile.js
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 import { initializeCore, loadMediaInSphere, scene, camera, renderer, updateHUDPositions } from './core.js';
 
 let isUserInteracting = false;
@@ -7,7 +8,7 @@ let lon = 0, lat = 0, phi = 0, theta = 0;
 let touchZoomDistanceStart = 0, touchZoomDistanceEnd = 0;
 
 export function initialize() {
-  // 1) Inicia o core
+  // 1) Inicia o core (cria scene, camera, renderer e HUDs)
   initializeCore();
   document.body.appendChild(renderer.domElement);
 
@@ -19,7 +20,7 @@ export function initialize() {
   renderer.domElement.addEventListener('touchmove', onTouchMove, false);
   renderer.domElement.addEventListener('touchend', onTouchEnd, false);
 
-  // 4) Bloqueia gestos nativos do browser (pode estar no CSS: touch-action:none)
+  // 4) Bloqueia gestos nativos do navegador (touch-action:none no CSS já ajuda)
   window.addEventListener('gesturestart', e => e.preventDefault());
   window.addEventListener('gesturechange', e => e.preventDefault());
 
@@ -68,7 +69,6 @@ function onTouchEnd(/*event*/) {
   isUserInteracting = false;
 }
 
-// Loop principal de render; atualiza posição da câmera baseado em lon/lat
 function animate() {
   requestAnimationFrame(animate);
 
@@ -76,20 +76,16 @@ function animate() {
   phi = THREE.MathUtils.degToRad(90 - lat);
   theta = THREE.MathUtils.degToRad(lon);
 
-  camera.target = new THREE.Vector3();
-  camera.target.x = Math.sin(phi) * Math.cos(theta);
-  camera.target.y = Math.cos(phi);
-  camera.target.z = Math.sin(phi) * Math.sin(theta);
-  camera.lookAt(camera.target);
+  const target = new THREE.Vector3();
+  target.x = Math.sin(phi) * Math.cos(theta);
+  target.y = Math.cos(phi);
+  target.z = Math.sin(phi) * Math.sin(theta);
+  camera.lookAt(target);
 
   updateHUDPositions();
   renderer.render(scene, camera);
 }
 
-/**
- * loadMedia(url, isStereo)
- * Repassa para o core carregar a mídia.
- */
 export function loadMedia(url, isStereo) {
   loadMediaInSphere(url, isStereo);
 }
