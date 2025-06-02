@@ -82,14 +82,9 @@ export const layerRight = 2;
 
 /* ───────── Limpa vídeo anterior ───────── */
 let currentVid = null;
-
 function stopCurrentVid() {
   if (!currentVid) return;
   currentVid.pause();
-
-  // ⚠️ Removido: URL.revokeObjectURL(currentVid.src) ← só usaria se fosse blob:
-  // if (currentVid.src.startsWith('blob:')) URL.revokeObjectURL(currentVid.src);
-
   currentVid.remove();
   currentVid = null;
 }
@@ -192,21 +187,22 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     document.body.appendChild(vid);
     currentVid = vid;
 
+    /* primeira tentativa de play no contexto do gesto */
     const tryPlay = () => vid.play().catch(() => {});
-    tryPlay();                                   // 1ª tentativa (gesto atual)
-    document.addEventListener('click', tryPlay, { once:true, capture:true });
+    tryPlay();
+    /* fallback clique desktop/mobile */
+    document.addEventListener('click', tryPlay, { once: true, capture: true });
 
-    /* ❶ — ↯ qualquer botão do controle VR (não só select) */
+    /* ❶ qualquer botão VR dispara nova tentativa */
     if (renderer.xr.isPresenting) {
       const session = renderer.xr.getSession();
-      const onInput = e => {
+      const onInput = () => {
         if (vid.paused) tryPlay();
-        if (!vid.paused) session.removeEventListener('inputsourceschange', onInput);
       };
       session.addEventListener('inputsourceschange', onInput);
     }
 
-    /* ❷ — gera textura e tenta play outra vez quando já houver dados */
+    /* ❷ preenche a textura quando vierem dados, e tenta play de novo */
     const onReady = () => {
       const tex = new THREE.VideoTexture(vid);
       tex.colorSpace      = THREE.SRGBColorSpace;
@@ -214,38 +210,22 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
       tex.generateMipmaps = false;
 
       if (vid.requestVideoFrameCallback) {
-        const upd = () => { tex.needsUpdate = true; vid.requestVideoFrameCallback(upd); };
+        const upd = () => {
+          tex.needsUpdate = true;
+          vid.requestVideoFrameCallback(upd);
+        };
         vid.requestVideoFrameCallback(upd);
       }
 
       try { cb(tex, isStereo); } finally { hideLoading(); }
-      if (vid.paused) tryPlay();                 // 2ª tentativa, buffer já cheio
-    };
-    if (vid.readyState >= 2) onReady();
-    else vid.addEventListener('loadeddata', onReady, { once:true });
-    return;
-  }
-
-    /* cria textura quando tiver dados */
-    const onReady = () => {
-      const tex = new THREE.VideoTexture(vid);
-      tex.colorSpace      = THREE.SRGBColorSpace;
-      tex.minFilter       = THREE.LinearFilter;
-      tex.generateMipmaps = false;
-
-      if (vid.requestVideoFrameCallback) {
-        const upd = () => { tex.needsUpdate = true; vid.requestVideoFrameCallback(upd); };
-        vid.requestVideoFrameCallback(upd);
-      }
-      try { cb(tex, isStereo); } finally { hideLoading(); }
+      if (vid.paused) tryPlay(); // nova tentativa após buffer
     };
 
     if (vid.readyState >= 2) onReady();
     else vid.addEventListener('loadeddata', onReady, { once: true });
+
     return;
   }
-
-
 
   console.error('Extensão não suportada:', url);
   hideLoading();

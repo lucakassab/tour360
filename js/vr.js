@@ -20,18 +20,13 @@ document.body.appendChild(VRButton.createButton(renderer));
 /* helper “_stereo” */
 const isStereoName = n => /_stereo/i.test(n);
 
-/* timestamp do último gesto VR */
-window.lastVRGesture = 0;
-
-/* -------------- força play ------------ */
-function forcePlayIfPaused(delay = 0) {
-  setTimeout(() => {
-    const v = window.currentVid;
-    if (v && v.paused) v.play().catch(() => {});
-  }, delay);
+/* força play se vídeo estiver pausado */
+function forcePlayIfPaused() {
+  const v = window.currentVid;
+  if (v && v.paused) v.play().catch(() => {});
 }
 
-/* ---------- lista + primeira ---------- */
+/* ---------- Carrega lista + primeira ---------- */
 const sel = document.getElementById('mediaSelect');
 
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
@@ -54,23 +49,21 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   })
   .catch(err => console.error('Fetch media falhou:', err));
 
-/* ---------- botão “Carregar” ---------- */
+/* ---------- Botão “Carregar Mídia” ---------- */
 document.getElementById('btnLoad').onclick = () => {
-  window.lastVRGesture = performance.now();
   loadCurrent();
+  forcePlayIfPaused(); // forçar play no clique “Carregar” fora do VR
 };
 
-/* carrega mídia selecionada */
+/* carrega a opção selecionada */
 function loadCurrent() {
   const opt    = sel.options[sel.selectedIndex];
   const stereo = isStereoName(opt.dataset.name);
   loadTexture(opt.value, stereo, tex => createSphere(tex, stereo), opt.dataset.name);
-  /* tenta tocar caso seja vídeo — primeiro logo, depois 1 s após buffer */
-  forcePlayIfPaused(0);
-  forcePlayIfPaused(1000);
+  forcePlayIfPaused(); // forçar play logo após criar o vídeo
 }
 
-/* ---------- Gamepad ---------- */
+/* ---------- Gamepad VR ---------- */
 let prevButtons = [];
 
 renderer.setAnimationLoop(() => {
@@ -81,21 +74,21 @@ renderer.setAnimationLoop(() => {
   if (session) {
     session.inputSources.forEach(src => {
       if (src.gamepad && src.handedness === 'right') {
-        const gp          = src.gamepad;
-        const nowPressed  = gp.buttons.map(b => b.pressed);
+        const gp         = src.gamepad;
+        const nowPressed = gp.buttons.map(b => b.pressed);
 
         for (let i = 0; i < nowPressed.length; i++) {
           if (nowPressed[i] && !prevButtons[i]) {
             showButtonHUD(`Botão ${i}`);
-            window.lastVRGesture = performance.now();
 
             if (i === 4 || i === 5) {
+              // troca mídia (avançar / voltar)
               sel.selectedIndex =
                 (i === 4)
                   ? (sel.selectedIndex + 1) % sel.options.length
                   : (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
               loadCurrent();
-              forcePlayIfPaused(0);      // usa o próprio gesto 4/5
+              forcePlayIfPaused(); // usa gesto 4/5 para destravar play
             }
 
             if (i === 1) {
