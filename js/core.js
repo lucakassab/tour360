@@ -1,3 +1,4 @@
+// js/core.js
 import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
 
 export let scene, camera, renderer;
@@ -54,7 +55,7 @@ export function initializeCore() {
   ctxB.fillText('Button: —', 256, 80);
   buttonTexture = new THREE.CanvasTexture(buttonCanvas);
   buttonHUDMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.5,.4),
+    new THREE.PlaneGeometry(1.5, .4),
     new THREE.MeshBasicMaterial({ map: buttonTexture, transparent:true })
   );
   buttonHUDMesh.visible = false;
@@ -88,57 +89,88 @@ export function showButtonHUD(txt) {
   ctx.fillStyle='#ff0';
   ctx.font='bold 42px sans-serif';
   ctx.textAlign='center';
-  ctx.fillText(`Button: ${txt}`,256,80);
-  buttonTexture.needsUpdate=true;
-  buttonHUDMesh.visible=true;
+  ctx.fillText(`Button: ${txt}`, 256, 80);
+  buttonTexture.needsUpdate = true;
+  buttonHUDMesh.visible = true;
   clearTimeout(buttonTimeout);
-  buttonTimeout=setTimeout(()=>buttonHUDMesh.visible=false,2000);
+  buttonTimeout = setTimeout(() => buttonHUDMesh.visible = false, 2000);
 }
 
-export async function loadMediaInSphere(url,isStereo){
+export async function loadMediaInSphere(url, isStereo) {
   showLoading();
-  if(currentMesh){
+
+  if (currentMesh) {
     scene.remove(currentMesh);
-    currentMesh.traverse(n=>{
-      if(n.isMesh){
+    currentMesh.traverse(n => {
+      if (n.isMesh) {
         n.material.map?.dispose();
         n.geometry.dispose();
         n.material.dispose();
       }
     });
-    currentMesh=null;
-  }
-  const geo=new THREE.SphereGeometry(500,60,40); geo.scale(-1,1,1);
-  const ext=url.split('.').pop().toLowerCase();
-  let tex;
-  if(['mp4','webm','mov'].includes(ext)){
-    const vid=document.createElement('video');
-    vid.src=url; vid.crossOrigin='anonymous'; vid.loop=true; vid.muted=true; vid.playsInline=true;
-    try{await vid.play().catch(()=>{});}catch{}
-    tex=new THREE.VideoTexture(vid);
-    tex.colorSpace=THREE.SRGBColorSpace;
-  }else{
-    const loader=new THREE.TextureLoader();
-    tex=await new Promise((ok,err)=>loader.load(url,t=>{t.colorSpace=THREE.SRGBColorSpace;ok(t);},undefined,err));
+    currentMesh = null;
   }
 
-  if(isStereo && !renderer.xr.enabled){
-    const mat=new THREE.MeshBasicMaterial({ map: tex });
-    mat.map.repeat.set(1,.5);
-    mat.map.offset.set(0,.5);
-    mat.map.needsUpdate=true;
-    currentMesh=new THREE.Mesh(geo,mat);
-  }else if(isStereo && renderer.xr.enabled){
-    const matL=new THREE.MeshBasicMaterial({ map: tex.clone() });
-    matL.map.repeat.set(1,.5); matL.map.offset.set(0,.5); matL.map.needsUpdate=true;
-    const matR=new THREE.MeshBasicMaterial({ map: tex.clone() });
-    matR.map.repeat.set(1,.5); matR.map.offset.set(0,0); matR.map.needsUpdate=true;
-    const meshL=new THREE.Mesh(geo.clone(),matL); meshL.layers.set(1);
-    const meshR=new THREE.Mesh(geo.clone(),matR); meshR.layers.set(2);
-    currentMesh=new THREE.Group(); currentMesh.add(meshL,meshR);
-  }else{
-    currentMesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({ map: tex }));
+  const geo = new THREE.SphereGeometry(500, 60, 40);
+  geo.scale(-1, 1, 1);
+
+  const ext = url.split('.').pop().toLowerCase();
+  let tex;
+
+  if (['mp4','webm','mov'].includes(ext)) {
+    const vid = document.createElement('video');
+    vid.src = url;
+    vid.crossOrigin = 'anonymous';
+    vid.loop = true;
+    vid.muted = true;
+    vid.playsInline = true;
+    try { await vid.play().catch(() => {}); } catch {}
+    tex = new THREE.VideoTexture(vid);
+    tex.colorSpace = THREE.SRGBColorSpace;
+  } else {
+    const loader = new THREE.TextureLoader();
+    tex = await new Promise((ok, err) => 
+      loader.load(
+        url,
+        t => { t.colorSpace = THREE.SRGBColorSpace; ok(t); },
+        undefined,
+        err
+      )
+    );
   }
+
+  // === Se for stereo E NÃO ESTIVER em VR (isPresenting = false) ===
+  if (isStereo && !renderer.xr.isPresenting) {
+    const mat = new THREE.MeshBasicMaterial({ map: tex });
+    mat.map.repeat.set(1, .5);
+    mat.map.offset.set(0, .5);
+    mat.map.needsUpdate = true;
+    currentMesh = new THREE.Mesh(geo, mat);
+
+  // === Se for stereo E ESTIVER em VR (isPresenting = true) ===
+  } else if (isStereo && renderer.xr.isPresenting) {
+    const matL = new THREE.MeshBasicMaterial({ map: tex.clone() });
+    matL.map.repeat.set(1, .5);
+    matL.map.offset.set(0, .5);
+    matL.map.needsUpdate = true;
+    const meshL = new THREE.Mesh(geo.clone(), matL);
+    meshL.layers.set(1);
+
+    const matR = new THREE.MeshBasicMaterial({ map: tex.clone() });
+    matR.map.repeat.set(1, .5);
+    matR.map.offset.set(0, 0);
+    matR.map.needsUpdate = true;
+    const meshR = new THREE.Mesh(geo.clone(), matR);
+    meshR.layers.set(2);
+
+    currentMesh = new THREE.Group();
+    currentMesh.add(meshL, meshR);
+
+  // === Caso mono (ou fallback) ===
+  } else {
+    currentMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex }));
+  }
+
   scene.add(currentMesh);
   hideLoading();
 }
