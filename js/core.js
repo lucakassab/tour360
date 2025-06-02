@@ -154,49 +154,60 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     return;
   }
 
-  // ---------- VÍDEO ----------
-  if (VID_RE.test(url)) {
-    const vid = document.createElement('video');
-    vid.crossOrigin = 'anonymous';
-    vid.muted       = true;   // obrigatório pro autoplay
-    vid.loop        = true;   // loop infinito
-    vid.autoplay    = true;
-    vid.playsInline = true;
-    vid.preload     = 'auto';
-    vid.src         = url;
-    vid.style.display = 'none';
-    document.body.appendChild(vid);     // iOS precisa no DOM
+// ---------- VÍDEO ----------
+if (VID_RE.test(url)) {
+  // 1) Baixa o arquivo via fetch → blob
+  fetch(url, { mode: 'cors' })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.blob();
+    })
+    .then(blob => {
+      // 2) Cria <video> e objectURL
+      const objectURL = URL.createObjectURL(blob);
+      const vid = document.createElement('video');
+      vid.crossOrigin = 'anonymous';   // não atrapalha o blob
+      vid.src         = objectURL;
+      vid.muted       = true;          // autoplay
+      vid.loop        = true;
+      vid.playsInline = true;
+      vid.autoplay    = true;
+      vid.preload     = 'auto';
+      vid.style.display = 'none';
+      document.body.appendChild(vid);
 
-    const ensurePlay = () => {
-      const p = vid.play();
-      if (p?.catch) {
-        p.catch(() => {
-          const kick = () => {
-            vid.play().finally(() => document.removeEventListener('click', kick, true));
-          };
-          document.addEventListener('click', kick, true);
-        });
-      }
-    };
+      const start = () => {
+        // cria textura e manda bala
+        const tex = new THREE.VideoTexture(vid);
+        tex.colorSpace      = THREE.SRGBColorSpace;
+        tex.minFilter       = THREE.LinearFilter;
+        tex.generateMipmaps = false;
 
-    vid.addEventListener('loadeddata', () => {
-      const tex = new THREE.VideoTexture(vid);
-      tex.colorSpace      = THREE.SRGBColorSpace;
-      tex.minFilter       = THREE.LinearFilter;
-      tex.generateMipmaps = false;
+        try { cb(tex, isStereo); } finally { hideLoading(); }
 
-      try { cb(tex, isStereo); } finally { hideLoading(); }
-      ensurePlay();
-      vid.remove();                       // sai do DOM, já tá rodando
-    }, { once: true });
+        // força tentar tocar – se falhar, tenta no primeiro clique
+        const p = vid.play();
+        if (p?.catch) {
+          p.catch(() => {
+            const resume = () => {
+              vid.play().finally(() => document.removeEventListener('click', resume, true));
+            };
+            document.addEventListener('click', resume, true);
+          });
+        }
+      };
 
-    vid.addEventListener('error', e => {
-      console.error('Erro carregando vídeo:', e);
+      vid.addEventListener('canplaythrough', start, { once: true });
+      // fallback se já estava pronto
+      if (vid.readyState >= 3) start();
+    })
+    .catch(err => {
+      console.error('Falha ao baixar vídeo:', err);
       hideLoading();
-    }, { once: true });
+    });
+  return;
+}
 
-    return;
-  }
 
   console.error('Extensão não suportada:', url);
   hideLoading();
