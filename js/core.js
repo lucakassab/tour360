@@ -71,11 +71,7 @@ export function updateLoadingPosition() {
   headCam.updateMatrixWorld();
   headCam.getWorldPosition(_loadPos);
   headCam.getWorldQuaternion(_loadQuat);
-  loadingSprite.position
-    .copy(_loadDir)
-    .applyQuaternion(_loadQuat)
-    .multiplyScalar(3.5)
-    .add(_loadPos);
+  loadingSprite.position.copy(_loadDir).applyQuaternion(_loadQuat).multiplyScalar(3.5).add(_loadPos);
   loadingSprite.quaternion.copy(_loadQuat);
 }
 
@@ -109,22 +105,16 @@ function disposeSphere(s) {
 
 /* ───────── Cria esfera (foto ou vídeo) ───────── */
 export function createSphere(tex, isStereo) {
-  // Se for vídeo e WebXR Layers existe, use camada para desempenho máximo em VR
   const session = renderer.xr.getSession?.();
   if (tex.image?.tagName === 'VIDEO' && session && 'XRWebGLBinding' in window) {
     const gl      = renderer.getContext();
     const binding = new XRWebGLBinding(session, gl);
     const layout  = isStereo ? 'stereo-top-bottom' : 'mono';
-    const layer   = binding.createEquirectLayer(tex.image, {
-      layout,
-      radius: 500,
-      colorFormat: 'sRGB'
-    });
+    const layer   = binding.createEquirectLayer(tex.image, { layout, radius: 500, colorFormat: 'sRGB' });
     session.updateRenderState({ layers: [layer] });
     return;
   }
 
-  // Fallback: esfera invertida
   disposeSphere(sphereMono);
   disposeSphere(sphereLeft);
   disposeSphere(sphereRight);
@@ -143,36 +133,25 @@ export function createSphere(tex, isStereo) {
 
   if (!isStereo) {
     setup(tex);
-    sphereMono = new THREE.Mesh(
-      geo,
-      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide })
-    );
+    sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide }));
     sphereMono.layers.set(layerMono);
     scene.add(sphereMono);
     return;
   }
 
-  // ESTÉREO top/bottom
   const bot = tex.clone(); setup(bot); bot.repeat.set(1,0.5); bot.offset.set(0,0);
-  sphereMono = new THREE.Mesh(
-    geo,
-    new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide })
-  );
+  sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide }));
   sphereMono.layers.set(layerMono);
   scene.add(sphereMono);
 
-  sphereLeft = new THREE.Mesh(
-    geo.clone(),
-    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide })
-  );
+  sphereLeft = new THREE.Mesh(geo.clone(),
+    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide }));
   sphereLeft.layers.set(layerLeft);
   scene.add(sphereLeft);
 
   const top = tex.clone(); setup(top); top.repeat.set(1,0.5); top.offset.set(0,0.5);
-  sphereRight = new THREE.Mesh(
-    geo.clone(),
-    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide })
-  );
+  sphereRight = new THREE.Mesh(geo.clone(),
+    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide }));
   sphereRight.layers.set(layerRight);
   scene.add(sphereRight);
 }
@@ -183,9 +162,8 @@ const VID_RE = /\.(mp4|webm|mov)$/i;
 
 export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
   showLoading(msg);
-  stopCurrentVid();  // pausa e remove instância de vídeo anterior
+  stopCurrentVid();
 
-  // ---------- IMAGEM ----------
   if (IMG_RE.test(url)) {
     new THREE.TextureLoader().load(
       url,
@@ -196,7 +174,6 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     return;
   }
 
-  // ---------- VÍDEO ----------
   if (VID_RE.test(url)) {
     fetch(url, { mode: 'cors' })
       .then(res => {
@@ -236,15 +213,18 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
 
           try { cb(videoTexture, isStereo); } finally { hideLoading(); }
 
-          // 1) tenta tocar imediatamente (a user gesture já ocorreu no vr.js)
-          forcePlay();
-
-          // 2) se falhar, usa clique (desktop/mobile)
+          /* --------- DESBLOQUEIO DE AUTOPLAY --------- */
+          forcePlay();                                                 // tenta já
           document.addEventListener('click', forcePlay, { once: true, capture: true });
 
-          // 3) se em VR e houver select recente, a heurística resolve
-          if (renderer.xr.isPresenting && window.lastVRGesture && (performance.now() - window.lastVRGesture < 500)) {
-            forcePlay();
+          if (renderer.xr.isPresenting) {
+            const session = renderer.xr.getSession();
+            // sempre adiciona o listener de 'select', sem limite de tempo
+            const resume = () => {
+              if (vid.paused) forcePlay();
+              if (!vid.paused) session.removeEventListener('select', resume);
+            };
+            session.addEventListener('select', resume);
           }
         };
 
