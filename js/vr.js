@@ -1,4 +1,4 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js?module';
 import { VRButton } from 'https://unpkg.com/three@0.158.0/examples/jsm/webxr/VRButton.js?module';
 import { initializeCore, loadMediaInSphere, scene, camera, renderer, showButtonHUD, updateHUDPositions } from './core.js';
 
