@@ -82,10 +82,14 @@ export const layerRight = 2;
 
 /* ───────── Limpa vídeo anterior ───────── */
 let currentVid = null;
+
 function stopCurrentVid() {
   if (!currentVid) return;
   currentVid.pause();
-  URL.revokeObjectURL(currentVid.src);
+
+  // ⚠️ Removido: URL.revokeObjectURL(currentVid.src) ← só usaria se fosse blob:
+  // if (currentVid.src.startsWith('blob:')) URL.revokeObjectURL(currentVid.src);
+
   currentVid.remove();
   currentVid = null;
 }
@@ -174,66 +178,59 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     return;
   }
 
+/* ---------- VÍDEO ---------- */
   if (VID_RE.test(url)) {
-    fetch(url, { mode: 'cors' })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.blob();
-      })
-      .then(blob => {
-        const objectURL = URL.createObjectURL(blob);
-        const vid = document.createElement('video');
+    const vid = document.createElement('video');
 
-        vid.src          = objectURL;
-        vid.crossOrigin  = 'anonymous';
-        vid.muted        = true;
-        vid.loop         = true;
-        vid.playsInline  = true;
-        vid.autoplay     = true;
-        vid.preload      = 'auto';
-        vid.style.display = 'none';
-        document.body.appendChild(vid);
-        currentVid = vid;
+    // Config. básicas
+    vid.crossOrigin  = 'anonymous';
+    vid.src          = url;        // usa URL direto (nada de fetch blob)
+    vid.muted        = true;
+    vid.loop         = true;
+    vid.playsInline  = true;
+    vid.autoplay     = true;
+    vid.preload      = 'auto';
+    vid.style.display = 'none';
+    document.body.appendChild(vid);
+    currentVid = vid;
 
-        const forcePlay = () => vid.play().catch(() => {});
+    /* ―― tenta tocar AQUI, ainda no contexto do gesto ―― */
+    const tryPlay = () => vid.play().catch(() => {});
+    tryPlay();
 
-        const onReady = () => {
-          const videoTexture = new THREE.VideoTexture(vid);
-          videoTexture.colorSpace      = THREE.SRGBColorSpace;
-          videoTexture.minFilter       = THREE.LinearFilter;
-          videoTexture.generateMipmaps = false;
+    /* fallback: clique desktop/mobile */
+    document.addEventListener('click', tryPlay, { once: true, capture: true });
 
-          if (vid.requestVideoFrameCallback) {
-            const updater = () => {
-              videoTexture.needsUpdate = true;
-              vid.requestVideoFrameCallback(updater);
-            };
-            vid.requestVideoFrameCallback(updater);
-          }
+    /* fallback: qualquer botão VR depois */
+    if (renderer.xr.isPresenting) {
+      const session = renderer.xr.getSession();
+      const resume  = () => {
+        if (vid.paused) tryPlay();
+        if (!vid.paused) session.removeEventListener('select', resume);
+      };
+      session.addEventListener('select', resume);
+    }
 
-          try { cb(videoTexture, isStereo); } finally { hideLoading(); }
+    /* cria textura quando tiver dados */
+    const onReady = () => {
+      const tex = new THREE.VideoTexture(vid);
+      tex.colorSpace      = THREE.SRGBColorSpace;
+      tex.minFilter       = THREE.LinearFilter;
+      tex.generateMipmaps = false;
 
-          /* --------- DESBLOQUEIO DE AUTOPLAY --------- */
-          forcePlay();                                                 // tenta já
-          document.addEventListener('click', forcePlay, { once: true, capture: true });
+      if (vid.requestVideoFrameCallback) {
+        const upd = () => { tex.needsUpdate = true; vid.requestVideoFrameCallback(upd); };
+        vid.requestVideoFrameCallback(upd);
+      }
+      try { cb(tex, isStereo); } finally { hideLoading(); }
+    };
 
-          if (renderer.xr.isPresenting) {
-            const session = renderer.xr.getSession();
-            // sempre adiciona o listener de 'select', sem limite de tempo
-            const resume = () => {
-              if (vid.paused) forcePlay();
-              if (!vid.paused) session.removeEventListener('select', resume);
-            };
-            session.addEventListener('select', resume);
-          }
-        };
-
-        if (vid.readyState >= 3) onReady();
-        else vid.addEventListener('canplaythrough', onReady, { once: true });
-      })
-      .catch(err => { console.error('Falha no vídeo:', err); hideLoading(); });
+    if (vid.readyState >= 2) onReady();
+    else vid.addEventListener('loadeddata', onReady, { once: true });
     return;
   }
+
+
 
   console.error('Extensão não suportada:', url);
   hideLoading();
