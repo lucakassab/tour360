@@ -13,51 +13,36 @@ import {
   updateHUDPositions
 } from './core.js';
 
+export let onEnterXR = null; // ← aqui
+
 let currentSession = null;
-
 // Map de códigos de botão do gamepad para nome legível
-const BUTTON_NAMES = {
-  0: 'Trigger (0)',
-  1: 'Grip (1)',
-  3: 'Thumbstick (3)',
-  4: 'A (4)',
-  5: 'B (5)'
-};
+const BUTTON_NAMES = { /* … */ };
 
-/**
- * INITIALIZE VR
- * - Habilita XR no renderer
- * - Cria VRButton e injeta no DOM
- * - Define camada da câmera para exibir corretamente esferas estéreo
- */
 export function initialize() {
-  // 1) Inicia o core (cria cena, câmera, renderer, HUDs)
   initializeCore();
 
-  // 2) Habilita XR e insere botão “Enter VR”
   renderer.xr.enabled = true;
   document.body.appendChild(renderer.domElement);
   document.body.appendChild(VRButton.createButton(renderer));
 
-  // 3) Configura câmera para usar camadas: 
-  //    - layer 0 = mono (usado quando não for stereo)
-  //    - layer 1 = olho esquerdo, layer 2 = olho direito (pra stereo)
   camera.layers.enable(0);
   camera.layers.disable(1);
   camera.layers.disable(2);
 
-  // 4) Ao iniciar sessão XR, capturamos o session para depois monitorar gamepads
   renderer.xr.addEventListener('sessionstart', (event) => {
     currentSession = event.session;
-    // Se quiser, aqui pode configurar options adicionais (e.g. hand-tracking)
+    if (typeof onEnterXR === 'function') {
+      onEnterXR();
+    }
   });
   renderer.xr.addEventListener('sessionend', () => {
     currentSession = null;
   });
 
-  // 5) Inicia loop de animação em VR
   renderer.setAnimationLoop(animate);
 }
+
 
 /**
  * ANIMATE (loop em VR)
