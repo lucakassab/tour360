@@ -99,23 +99,39 @@ function disposeSphere(s){
 
 /* ───────── Cria esfera (foto ou vídeo) ───────── */
 export function createSphere(tex, isStereo){
+  // Se houver layer WebXR de vídeo, cada chamada cria uma nova layer
+  // e não adiciona esfera tradicional. Caso contrário, cai no fallback de esfera.
+  const session = renderer.xr.getSession?.();
+  if (tex.image?.tagName === 'VIDEO' && session && 'XRWebGLBinding' in window) {
+    // Cria e configura WebXR Equirect Layer (alto desempenho em VR compatível)
+    const gl      = renderer.getContext();
+    const binding = new XRWebGLBinding(session, gl);
+    const layout  = isStereo ? 'stereo-top-bottom' : 'mono';
+    const layer   = binding.createEquirectLayer(tex.image, { layout, colorFormat: 'sRGB', intensity: 1.0, radius: 500 });
+
+    session.updateRenderState({ layers: [layer] });
+    return;
+  }
+
+  // Fallback: cria esfera invertida com textura (imagem ou vídeo)
   disposeSphere(sphereMono);
   disposeSphere(sphereLeft);
   disposeSphere(sphereRight);
   sphereMono = sphereLeft = sphereRight = null;
 
-  const geo = new THREE.SphereGeometry(500,64,32);
+  // Reduz segmentos para melhorar desempenho, ainda mantendo boa qualidade 8K
+  const geo = new THREE.SphereGeometry(500, 32, 16);
   function setup(t){
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-    t.minFilter = THREE.LinearFilter;
+    t.colorSpace      = THREE.SRGBColorSpace;
+    t.wrapS           = t.wrapT = THREE.ClampToEdgeWrapping;
+    t.minFilter       = THREE.LinearFilter;  // evita gastos extras com mipmaps
     t.generateMipmaps = false;
-    t.needsUpdate = true;
+    t.needsUpdate     = true;
   }
 
   if(!isStereo){
     setup(tex);
-    sphereMono = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide}));
+    sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide }));
     sphereMono.layers.set(layerMono);
     scene.add(sphereMono);
     return;
@@ -123,20 +139,20 @@ export function createSphere(tex, isStereo){
 
   // ESTÉREO: dividir top/bottom
   const bot = tex.clone();  setup(bot); bot.repeat.set(1,0.5); bot.offset.set(0,0);
-  sphereMono = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:bot,side:THREE.BackSide}));
+  sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide }));
   sphereMono.layers.set(layerMono); scene.add(sphereMono);
 
   sphereLeft = new THREE.Mesh(geo.clone(),
-    new THREE.MeshBasicMaterial({map:bot.clone(),side:THREE.BackSide}));
+    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide }));
   sphereLeft.layers.set(layerLeft); scene.add(sphereLeft);
 
   const top = tex.clone();  setup(top); top.repeat.set(1,0.5); top.offset.set(0,0.5);
   sphereRight = new THREE.Mesh(geo.clone(),
-    new THREE.MeshBasicMaterial({map:top,side:THREE.BackSide}));
+    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide }));
   sphereRight.layers.set(layerRight); scene.add(sphereRight);
 }
 
-/* ───────── loadTexture: aceita IMG ou VÍDEO ───────── */
+/* ───────── loadTexture: aceita IMG ou VÍDEO (alto desempenho) ───────── */
 const IMG_RE = /\.(jpe?g|png)$/i;
 const VID_RE = /\.(mp4|webm|mov)$/i;
 
@@ -154,67 +170,71 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     return;
   }
 
-// ---------- VÍDEO ----------
-if (VID_RE.test(url)) {
-  // 1) Baixa o arquivo via fetch → blob
-  fetch(url, { mode: 'cors' })
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.blob();
-    })
-    .then(blob => {
-      // 2) Cria <video> e objectURL
-      const objectURL = URL.createObjectURL(blob);
-      const vid = document.createElement('video');
-      vid.crossOrigin = 'anonymous';   // não atrapalha o blob
-      vid.src         = objectURL;
-      vid.muted       = true;          // autoplay
-      vid.loop        = true;
-      vid.playsInline = true;
-      vid.autoplay    = true;
-      vid.preload     = 'auto';
-      vid.style.display = 'none';
-      document.body.appendChild(vid);
+  // ---------- VÍDEO (fetch → blob para evitar bloqueios CORS) ----------
+  if (VID_RE.test(url)) {
+    fetch(url, { mode: 'cors' })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then(blob => {
+        const objectURL = URL.createObjectURL(blob);
+        const vid = document.createElement('video');
 
-      const start = () => {
-        // cria textura e manda bala
-        const tex = new THREE.VideoTexture(vid);
-        tex.colorSpace      = THREE.SRGBColorSpace;
-        tex.minFilter       = THREE.LinearFilter;
-        tex.generateMipmaps = false;
+        // Configurações para autoplay em modern browsers e VR
+        vid.crossOrigin  = 'anonymous';
+        vid.src          = objectURL;
+        vid.muted        = true;
+        vid.loop         = true;
+        vid.playsInline  = true;
+        vid.autoplay     = true;
+        vid.preload      = 'auto';
+        vid.style.display = 'none';
 
-        try { cb(tex, isStereo); } finally { hideLoading(); }
+        document.body.appendChild(vid);
 
-        // força tentar tocar – se falhar, tenta no primeiro clique
-        const p = vid.play();
-        if (p?.catch) {
-          p.catch(() => {
-            const resume = () => {
-              vid.play().finally(() => document.removeEventListener('click', resume, true));
+        const onReady = () => {
+          const videoTexture = new THREE.VideoTexture(vid);
+          videoTexture.colorSpace      = THREE.SRGBColorSpace;
+          videoTexture.minFilter       = THREE.LinearFilter;
+          videoTexture.generateMipmaps = false;
+
+          // Use requestVideoFrameCallback se disponível, para texture.needsUpdate otimizado
+          if (vid.requestVideoFrameCallback) {
+            const updateFrame = () => {
+              videoTexture.needsUpdate = true;
+              vid.requestVideoFrameCallback(updateFrame);
             };
-            document.addEventListener('click', resume, true);
-          });
-        }
-      };
+            vid.requestVideoFrameCallback(updateFrame);
+          }
 
-      vid.addEventListener('canplaythrough', start, { once: true });
-      // fallback se já estava pronto
-      if (vid.readyState >= 3) start();
-    })
-    .catch(err => {
-      console.error('Falha ao baixar vídeo:', err);
-      hideLoading();
-    });
-  return;
-}
+          try { cb(videoTexture, isStereo); } finally { hideLoading(); }
 
+          // Tenta tocar o vídeo; se bloqueado, tenta no primeiro clique
+          const playPromise = vid.play();
+          if (playPromise?.catch) {
+            playPromise.catch(() => {
+              const resume = () => {
+                vid.play().finally(() => document.removeEventListener('click', resume, true));
+              };
+              document.addEventListener('click', resume, true);
+            });
+          }
+        };
+
+        vid.addEventListener('canplaythrough', onReady, { once: true });
+        if (vid.readyState >= 3) onReady();
+      })
+      .catch(err => {
+        console.error('Falha ao baixar vídeo:', err);
+        hideLoading();
+      });
+    return;
+  }
 
   console.error('Extensão não suportada:', url);
   hideLoading();
-}   //  <<—— AGORA a função fecha aqui
-
-
-
+}   // fim loadTexture
 
 /* ───────── HUD de Botão (mesmo de antes) ───────── */
 let buttonSprite=null;
