@@ -1,4 +1,4 @@
-// mobile.js (pixelRatio reduzido via core.js já ajuda bastante)
+// mobile.js
 import {
   THREE,
   scene,
@@ -18,6 +18,7 @@ let dx = 0, dy = 0, dragging = false;
 
 renderer.domElement.addEventListener('touchstart', e => {
   if (e.touches.length !== 1) return;
+  e.preventDefault();                // empurra o default pra evitar scroll
   dragging = true;
   dx = e.touches[0].clientX;
   dy = e.touches[0].clientY;
@@ -25,18 +26,37 @@ renderer.domElement.addEventListener('touchstart', e => {
 
 renderer.domElement.addEventListener('touchmove', e => {
   if (!dragging || e.touches.length !== 1) return;
+  e.preventDefault();                // evita scroll da página
   lon += (dx - e.touches[0].clientX) * 0.1;
   lat += (e.touches[0].clientY - dy) * 0.1;
   dx = e.touches[0].clientX;
   dy = e.touches[0].clientY;
 });
 
-renderer.domElement.addEventListener('touchend', () => {
+renderer.domElement.addEventListener('touchend', e => {
+  e.preventDefault();
   dragging = false;
 });
 
-window.addEventListener('wheel', e => {
-  dist = Math.max(0, Math.min(2000, dist - e.deltaY * 0.5));
+/* opcional: dois dedos para dar zoom */
+let initialDist = 0;
+renderer.domElement.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dx2 = e.touches[0].clientX - e.touches[1].clientX;
+    const dy2 = e.touches[0].clientY - e.touches[1].clientY;
+    initialDist = Math.hypot(dx2, dy2);
+  }
+});
+renderer.domElement.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dx2 = e.touches[0].clientX - e.touches[1].clientX;
+    const dy2 = e.touches[0].clientY - e.touches[1].clientY;
+    const newDist = Math.hypot(dx2, dy2);
+    dist = Math.max(0, Math.min(2000, dist - (newDist - initialDist) * 0.5));
+    initialDist = newDist;
+  }
 });
 
 /* ─── lista & primeira mídia ─── */
