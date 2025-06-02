@@ -1,52 +1,43 @@
 // core.js
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 
-/**
- * Exporta cena, câmera e renderer para os demais módulos usarem.
- * Também guarda as referências às HUDs e ao objeto 360° atual.
- */
 export let scene, camera, renderer;
 let currentMesh = null;
 let loadingMesh = null;
 let buttonHUDMesh = null;
 
-// --- VARIÁVEIS INTERNAS PARA GERENCIAR HUD “Loading...” ---
+// Variáveis internas HUD
 let loadingCanvas, loadingTexture;
-let isLoadingVisible = false;
-
-// --- VARIÁVEL PARA GERENCIAR HUD “Button Pressed” ---
 let buttonCanvas, buttonTexture;
 let buttonTimeout = null;
 
 /**
  * INITIALIZE CORE
- * 
- * Cria cena, câmera, renderer e configura o básico de Three.js.
- * Também cria o HUD de Loading (mas não adiciona à cena até ser chamado).
+ * Cria cena, câmera, renderer e HUDs (Loading e Button).
  */
 export function initializeCore() {
-  // 1) CENA
+  // 1) Cena
   scene = new THREE.Scene();
 
-  // 2) CÂMARA: Padrão Perspective, FOV 75
+  // 2) Câmera
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-  camera.position.set(0, 0, 0); // dentro da esfera
+  camera.position.set(0, 0, 0);
   scene.add(camera);
 
-  // 3) RENDERER
+  // 3) Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  // Força sRGB como espaço de cor de saída
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-  // Ajuste de resize no render
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // 4) HUD “Loading...” (canvas → textura → plano)
+  // 4) HUD “Loading...”
   loadingCanvas = document.createElement('canvas');
   loadingCanvas.width = 512;
   loadingCanvas.height = 128;
@@ -62,11 +53,10 @@ export function initializeCore() {
   const planeGeo = new THREE.PlaneGeometry(1.5, 0.4);
   const planeMat = new THREE.MeshBasicMaterial({ map: loadingTexture, transparent: true });
   loadingMesh = new THREE.Mesh(planeGeo, planeMat);
-  loadingMesh.visible = false; // inicia invisível
-  // posicione à frente da câmera (cada frame reposicionado)
+  loadingMesh.visible = false;
   scene.add(loadingMesh);
 
-  // 5) HUD “Button Pressed” (canvas → textura → plano)
+  // 5) HUD “Button Pressed”
   buttonCanvas = document.createElement('canvas');
   buttonCanvas.width = 512;
   buttonCanvas.height = 128;
@@ -86,40 +76,22 @@ export function initializeCore() {
   scene.add(buttonHUDMesh);
 }
 
-/**
- * SHOW LOADING HUD
- * Exibe o plano "Loading..." e garante que ele fique em frente à câmera.
- */
 export function showLoading() {
-  isLoadingVisible = true;
   loadingMesh.visible = true;
 }
 
-/**
- * HIDE LOADING HUD
- * Esconde o plano "Loading...".
- */
 export function hideLoading() {
-  isLoadingVisible = false;
   loadingMesh.visible = false;
 }
 
-/**
- * ATUALIZA POSIÇÃO DO LOADING e BUTTON HUDS
- * Sempre deve ser chamado no loop de animação de cada ambiente (desktop/mobile/VR)
- * para fixar os HUDs à frente da câmera.
- */
 export function updateHUDPositions() {
-  // calcula direção da câmera (vetor)
   const dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
 
-  // plota o Loading 2 unidades à frente
   if (loadingMesh.visible) {
     loadingMesh.position.copy(camera.position).add(dir.clone().multiplyScalar(2));
     loadingMesh.quaternion.copy(camera.quaternion);
   }
-  // plota o Button HUD 1.5 unidades à frente, um pouco abaixo
   if (buttonHUDMesh.visible) {
     const posBtn = camera.position.clone().add(dir.clone().multiplyScalar(1.5));
     posBtn.y -= 0.5;
@@ -128,12 +100,7 @@ export function updateHUDPositions() {
   }
 }
 
-/**
- * EXIBE MENSAGEM DE BOTÃO (“Button: X”)
- * Mostra por 2 segundos qual botão foi pressionado no VR.
- */
 export function showButtonHUD(buttonName) {
-  // reescreve texto no canvas
   const ctx = buttonCanvas.getContext('2d');
   ctx.clearRect(0, 0, buttonCanvas.width, buttonCanvas.height);
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -145,9 +112,7 @@ export function showButtonHUD(buttonName) {
   buttonTexture.needsUpdate = true;
 
   buttonHUDMesh.visible = true;
-  // limpa timer anterior (se houver)
   if (buttonTimeout) clearTimeout(buttonTimeout);
-  // some depois de 2 segundos
   buttonTimeout = setTimeout(() => {
     buttonHUDMesh.visible = false;
   }, 2000);
@@ -155,33 +120,33 @@ export function showButtonHUD(buttonName) {
 
 /**
  * LOAD MEDIA (imagem ou vídeo) NA ESFERA 360°
- * @param {string} url - URL do arquivo (imagem ou vídeo)
- * @param {boolean} isStereo - se contem "_stereo" (top-bottom)
- *
- * Exibe o HUD de Loading, carrega o recurso, aplica na esfera e remove o HUD.
+ * Corrige cores e exibe apenas metade no modo 2D se for mídia estéreo.
  */
 export async function loadMediaInSphere(url, isStereo) {
   showLoading();
 
-  // 1) Se já existir um objeto anterior, remova e descarte
+  // Remove mesh anterior
   if (currentMesh) {
     scene.remove(currentMesh);
-    if (currentMesh.material.map) currentMesh.material.map.dispose();
-    currentMesh.geometry.dispose();
-    currentMesh.material.dispose();
+    currentMesh.traverse(node => {
+      if (node.isMesh) {
+        if (node.material.map) node.material.map.dispose();
+        node.geometry.dispose();
+        node.material.dispose();
+      }
+    });
     currentMesh = null;
   }
 
-  // 2) Cria geometria da esfera invertida (normais para dentro)
+  // Gera geometria da esfera invertida
   const geo = new THREE.SphereGeometry(500, 60, 40);
   geo.scale(-1, 1, 1);
 
-  // 3) Decide se é imagem ou vídeo
+  // Detecta extensão e carrega textura (imagem ou vídeo)
   const ext = url.split('.').pop().toLowerCase();
-  let texture = null;
-
+  let texture;
   if (['mp4', 'webm', 'mov'].includes(ext)) {
-    // === VÍDEO ===
+    // Vídeo
     const video = document.createElement('video');
     video.src = url;
     video.crossOrigin = 'anonymous';
@@ -189,21 +154,25 @@ export async function loadMediaInSphere(url, isStereo) {
     video.muted = true;
     video.playsInline = true;
     try {
-      await video.play().catch(()=>{}); // tenta autoplay
+      await video.play().catch(() => {});
     } catch (e) {
-      // se navegador bloquear, precisa de interação
       console.warn('Vídeo bloqueado, aguardando interação do usuário.');
     }
     texture = new THREE.VideoTexture(video);
     texture.minFilter = THREE.LinearFilter;
     texture.format = THREE.RGBFormat;
+    texture.colorSpace = THREE.SRGBColorSpace;
   } else {
-    // === IMAGEM ===
+    // Imagem
     const loader = new THREE.TextureLoader();
     texture = await new Promise((res, rej) => {
       loader.load(
         url,
-        tex => res(tex),
+        tex => {
+          // Garante que a textura seja tratada em sRGB
+          tex.colorSpace = THREE.SRGBColorSpace;
+          res(tex);
+        },
         undefined,
         err => {
           console.error('Erro ao carregar imagem:', err);
@@ -213,17 +182,21 @@ export async function loadMediaInSphere(url, isStereo) {
     });
   }
 
-  // 4) Se for stereo (top-bottom) E estivermos em VR, vamos criar duas malhas: 
-  //    - uma esfera para olho esquerdo (metade superior da textura)
-  //    - outra para olho direito (metade inferior da textura)
-  //    Atribuímos layers 1 e 2 para distinguir cada um.
-  if (isStereo && renderer.xr.enabled) {
-    // Layer 1 → esquerda; Layer 2 → direita
-    // Define repetição da textura para cada metade
-    // Metade superior: offset.y = 0.5, repeat.y = 0.5
-    // Metade inferior: offset.y = 0.0, repeat.y = 0.5
+  // Se for estéreo e NÃO ESTIVER em VR, exibe apenas metade superior
+  if (isStereo && !renderer.xr.enabled) {
+    const mat = new THREE.MeshBasicMaterial({ map: texture });
+    mat.map.repeat.set(1, 0.5);
+    mat.map.offset.set(0, 0.5);
+    mat.map.needsUpdate = true;
+    currentMesh = new THREE.Mesh(geo, mat);
+    scene.add(currentMesh);
+    hideLoading();
+    return;
+  }
 
-    // Esfera olho esquerdo
+  // Se for estéreo e ESTIVER em VR, cria duas esferas (layer 1 = olho esquerdo / layer 2 = olho direito)
+  if (isStereo && renderer.xr.enabled) {
+    // Olho esquerdo (metade superior da textura)
     const matL = new THREE.MeshBasicMaterial({ map: texture.clone() });
     matL.map.repeat.set(1, 0.5);
     matL.map.offset.set(0, 0.5);
@@ -231,7 +204,7 @@ export async function loadMediaInSphere(url, isStereo) {
     const meshL = new THREE.Mesh(geo.clone(), matL);
     meshL.layers.set(1);
 
-    // Esfera olho direito
+    // Olho direito (metade inferior da textura)
     const matR = new THREE.MeshBasicMaterial({ map: texture.clone() });
     matR.map.repeat.set(1, 0.5);
     matR.map.offset.set(0, 0);
@@ -241,13 +214,14 @@ export async function loadMediaInSphere(url, isStereo) {
 
     currentMesh = new THREE.Group();
     currentMesh.add(meshL, meshR);
-  } else {
-    // === 360° MONO NORMAL ===
-    const mat = new THREE.MeshBasicMaterial({ map: texture });
-    currentMesh = new THREE.Mesh(geo, mat);
+    scene.add(currentMesh);
+    hideLoading();
+    return;
   }
 
+  // Caso mono (ou fallback)
+  const matMono = new THREE.MeshBasicMaterial({ map: texture });
+  currentMesh = new THREE.Mesh(geo, matMono);
   scene.add(currentMesh);
-
   hideLoading();
 }
