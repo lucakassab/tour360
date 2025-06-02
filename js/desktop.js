@@ -1,3 +1,4 @@
+// desktop.js (sem grandes mudanças, já estava otimizado)
 import {
   THREE,
   scene,
@@ -47,15 +48,13 @@ const selDesk = document.getElementById('mediaSelect');
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
-    // agora aceita jpg, png, mp4, webm, mov
     const media = files.filter(
       f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name)
     );
     if (!media.length) {
-      console.error('Nenhum arquivo compatível em /media.');
+      console.error('Nenhum arquivo em /media.');
       return;
     }
-
     media.forEach(f => {
       const o = document.createElement('option');
       o.value = f.download_url;
@@ -63,11 +62,10 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       o.dataset.name = f.name;
       selDesk.appendChild(o);
     });
-
     selDesk.selectedIndex = 0;
-    loadCurrent(); // carrega a primeira
+    loadCurrent();
   })
-  .catch(err => console.error('Falha no fetch /media:', err));
+  .catch(err => console.error('Falha no fetch:', err));
 
 document.getElementById('btnLoad').onclick = () => loadCurrent();
 
@@ -94,7 +92,6 @@ renderer.setAnimationLoop(() => {
   } else {
     camera.position.set(0, 0, 0);
   }
-
   camera.lookAt(
     Math.sin(phi) * Math.cos(theta),
     Math.cos(phi),

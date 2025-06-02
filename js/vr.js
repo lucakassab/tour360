@@ -1,3 +1,4 @@
+// vr.js (pixelRatio e segmentos ajustados via core.js; usa WebXR Layers quando possível)
 import {
   THREE,
   scene,
@@ -47,7 +48,6 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   })
   .catch(err => console.error('Fetch media falhou:', err));
 
-
 /* ---------- Botão “Carregar” do menu ---------- */
 document.getElementById('btnLoad').onclick = () => loadCurrent();
 
@@ -61,7 +61,7 @@ function loadCurrent() {
 
 /* ---------- Gamepad ---------- */
 let prevButtons = [];
-let currentButtonIdxForHUD = null; // qual botão disparou o HUD de navegação
+let currentButtonIdxForHUD = null;
 
 renderer.setAnimationLoop(() => {
   updateLoadingPosition();
@@ -74,13 +74,10 @@ renderer.setAnimationLoop(() => {
         const gp = src.gamepad;
         const nowPressed = gp.buttons.map(b => b.pressed);
 
-        // Detecta novos cliques
         for (let i = 0; i < nowPressed.length; i++) {
           if (nowPressed[i] && !prevButtons[i]) {
-            // Sempre mostra HUD com o nome cru do botão
             showButtonHUD(`Botão ${i}`);
 
-            // Navegação
             if (i === 4) {
               sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
               loadCurrent();
@@ -93,7 +90,6 @@ renderer.setAnimationLoop(() => {
               currentButtonIdxForHUD = null;
             }
 
-            // Mostrar nome da mídia enquanto segurar o botão 1
             if (i === 1) {
               const opt = sel.options[sel.selectedIndex];
               showLoading(opt.dataset.name);
@@ -101,12 +97,10 @@ renderer.setAnimationLoop(() => {
           }
         }
 
-        // Se botão 1 foi solto, esconde o Loading
         if (!nowPressed[1] && prevButtons[1]) {
           hideLoading();
         }
 
-        // Esconde HUD de botão se ninguém mais estiver pressionando nada
         const stillAnyPressed = nowPressed.some(p => p);
         if (!stillAnyPressed) hideButtonHUD();
 
@@ -114,7 +108,6 @@ renderer.setAnimationLoop(() => {
       }
     });
   } else {
-    // Fora de sessão XR
     prevButtons = [];
     hideButtonHUD();
     hideLoading();

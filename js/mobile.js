@@ -1,3 +1,4 @@
+// mobile.js (pixelRatio reduzido via core.js já ajuda bastante)
 import {
   THREE,
   scene,
@@ -11,7 +12,7 @@ import {
 /* detecta “_stereo” */
 const isStereoName = n => /_stereo/i.test(n);
 
-/* ---------- Touch orbit básico ---------- */
+/* ─── Touch orbit básico ─── */
 let lon = 0, lat = 0, dist = 0;
 let dx = 0, dy = 0, dragging = false;
 
@@ -38,7 +39,7 @@ window.addEventListener('wheel', e => {
   dist = Math.max(0, Math.min(2000, dist - e.deltaY * 0.5));
 });
 
-/* ---------- lista & primeira ---------- */
+/* ─── lista & primeira mídia ─── */
 const sel = document.getElementById('mediaSelect');
 
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
@@ -66,24 +67,20 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   })
   .catch(err => console.error('fetch media falhou:', err));
 
-
-
 document.getElementById('btnLoad').onclick = () => loadCurrent();
 
 function loadCurrent() {
-  const opt = sel.options[sel.selectedIndex];
-  const name = opt.dataset.name;
+  const opt    = sel.options[sel.selectedIndex];
+  const name   = opt.dataset.name;
   const stereo = isStereoName(name);
-  // loadTexture(url, isStereo, cb, msg)
   loadTexture(opt.value, stereo, tex => createSphere(tex, stereo), name);
 }
 
-/* ---------- render loop ---------- */
+/* ─── render loop ─── */
 renderer.setAnimationLoop(() => {
   updateLoadingPosition();
 
-  // usa THREE pra converter graus em radianos
-  const phi = THREE.MathUtils.degToRad(90 - lat);
+  const phi   = THREE.MathUtils.degToRad(90 - lat);
   const theta = THREE.MathUtils.degToRad(lon);
 
   if (dist > 0) {
@@ -95,6 +92,7 @@ renderer.setAnimationLoop(() => {
   } else {
     camera.position.set(0, 0, 0);
   }
+
   camera.lookAt(
     Math.sin(phi) * Math.cos(theta),
     Math.cos(phi),

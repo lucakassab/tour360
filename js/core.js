@@ -7,11 +7,9 @@ export const scene    = new THREE.Scene();
 export const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 
-camera.layers.enable(0);  // layerMono
-camera.layers.disable(1); // layerLeft
-camera.layers.disable(2); // layerRight
-
-renderer.setPixelRatio(window.devicePixelRatio);
+// Ajusta pixelRatio menor em dispositivos móveis pra poupar GPU
+const isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
+renderer.setPixelRatio(isMobileDevice ? Math.min(window.devicePixelRatio, 1) : window.devicePixelRatio);
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
@@ -73,7 +71,11 @@ export function updateLoadingPosition() {
   headCam.updateMatrixWorld();
   headCam.getWorldPosition(_loadPos);
   headCam.getWorldQuaternion(_loadQuat);
-  loadingSprite.position.copy(_loadDir).applyQuaternion(_loadQuat).multiplyScalar(3.5).add(_loadPos);
+  loadingSprite.position
+    .copy(_loadDir)
+    .applyQuaternion(_loadQuat)
+    .multiplyScalar(3.5)
+    .add(_loadPos);
   loadingSprite.quaternion.copy(_loadQuat);
 }
 
@@ -84,7 +86,6 @@ export const layerMono=0, layerLeft=1, layerRight=2;
 let sphereMono=null, sphereLeft=null, sphereRight=null;
 function disposeSphere(s){
   if(!s) return;
-  // se era vídeo, pausa e limpa o src p/ liberar a memória
   const vid = s.material.map?.image;
   if (vid?.tagName === 'VIDEO') {
     vid.pause();
@@ -99,57 +100,72 @@ function disposeSphere(s){
 
 /* ───────── Cria esfera (foto ou vídeo) ───────── */
 export function createSphere(tex, isStereo){
-  // Se houver layer WebXR de vídeo, cada chamada cria uma nova layer
-  // e não adiciona esfera tradicional. Caso contrário, cai no fallback de esfera.
+  // Se for vídeo e WebXR Layers existe, use camada pra desempenho máximo em VR
   const session = renderer.xr.getSession?.();
   if (tex.image?.tagName === 'VIDEO' && session && 'XRWebGLBinding' in window) {
-    // Cria e configura WebXR Equirect Layer (alto desempenho em VR compatível)
     const gl      = renderer.getContext();
     const binding = new XRWebGLBinding(session, gl);
     const layout  = isStereo ? 'stereo-top-bottom' : 'mono';
-    const layer   = binding.createEquirectLayer(tex.image, { layout, colorFormat: 'sRGB', intensity: 1.0, radius: 500 });
-
+    const layer   = binding.createEquirectLayer(
+      tex.image,
+      { layout, colorFormat: 'sRGB', intensity: 1.0, radius: 500 }
+    );
     session.updateRenderState({ layers: [layer] });
     return;
   }
 
-  // Fallback: cria esfera invertida com textura (imagem ou vídeo)
+  // Fallback para nível desktop/mobile/VR sem WebXR Layers
   disposeSphere(sphereMono);
   disposeSphere(sphereLeft);
   disposeSphere(sphereRight);
   sphereMono = sphereLeft = sphereRight = null;
 
-  // Reduz segmentos para melhorar desempenho, ainda mantendo boa qualidade 8K
-  const geo = new THREE.SphereGeometry(500, 32, 16);
+  // Reduz segmentos em mobile/VR para poupar GPU; usa mais em desktop
+  const segW = isMobileDevice || session ? 16 : 32;
+  const segH = isMobileDevice || session ? 8  : 16;
+  const geo  = new THREE.SphereGeometry(500, segW, segH);
   function setup(t){
     t.colorSpace      = THREE.SRGBColorSpace;
     t.wrapS           = t.wrapT = THREE.ClampToEdgeWrapping;
-    t.minFilter       = THREE.LinearFilter;  // evita gastos extras com mipmaps
+    t.minFilter       = THREE.LinearFilter;
     t.generateMipmaps = false;
     t.needsUpdate     = true;
   }
 
   if(!isStereo){
     setup(tex);
-    sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide }));
+    sphereMono = new THREE.Mesh(
+      geo,
+      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide })
+    );
     sphereMono.layers.set(layerMono);
     scene.add(sphereMono);
     return;
   }
 
-  // ESTÉREO: dividir top/bottom
+  // ESTÉREO top/bottom
   const bot = tex.clone();  setup(bot); bot.repeat.set(1,0.5); bot.offset.set(0,0);
-  sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide }));
-  sphereMono.layers.set(layerMono); scene.add(sphereMono);
+  sphereMono = new THREE.Mesh(
+    geo,
+    new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide })
+  );
+  sphereMono.layers.set(layerMono);
+  scene.add(sphereMono);
 
-  sphereLeft = new THREE.Mesh(geo.clone(),
-    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide }));
-  sphereLeft.layers.set(layerLeft); scene.add(sphereLeft);
+  sphereLeft = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide })
+  );
+  sphereLeft.layers.set(layerLeft);
+  scene.add(sphereLeft);
 
   const top = tex.clone();  setup(top); top.repeat.set(1,0.5); top.offset.set(0,0.5);
-  sphereRight = new THREE.Mesh(geo.clone(),
-    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide }));
-  sphereRight.layers.set(layerRight); scene.add(sphereRight);
+  sphereRight = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide })
+  );
+  sphereRight.layers.set(layerRight);
+  scene.add(sphereRight);
 }
 
 /* ───────── loadTexture: aceita IMG ou VÍDEO (alto desempenho) ───────── */
@@ -170,7 +186,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     return;
   }
 
-  // ---------- VÍDEO (fetch → blob para evitar bloqueios CORS) ----------
+  // ---------- VÍDEO (fetch → blob) ----------
   if (VID_RE.test(url)) {
     fetch(url, { mode: 'cors' })
       .then(res => {
@@ -181,7 +197,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
         const objectURL = URL.createObjectURL(blob);
         const vid = document.createElement('video');
 
-        // Configurações para autoplay em modern browsers e VR
+        // Configurações essenciais para autoplay e loop
         vid.crossOrigin  = 'anonymous';
         vid.src          = objectURL;
         vid.muted        = true;
@@ -190,7 +206,6 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
         vid.autoplay     = true;
         vid.preload      = 'auto';
         vid.style.display = 'none';
-
         document.body.appendChild(vid);
 
         const onReady = () => {
@@ -199,7 +214,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
           videoTexture.minFilter       = THREE.LinearFilter;
           videoTexture.generateMipmaps = false;
 
-          // Use requestVideoFrameCallback se disponível, para texture.needsUpdate otimizado
+          // Otimiza atualização de vídeo no Three.js
           if (vid.requestVideoFrameCallback) {
             const updateFrame = () => {
               videoTexture.needsUpdate = true;
@@ -210,7 +225,7 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
 
           try { cb(videoTexture, isStereo); } finally { hideLoading(); }
 
-          // Tenta tocar o vídeo; se bloqueado, tenta no primeiro clique
+          // Tenta tocar; se bloqueado, aguarda primeiro clique
           const playPromise = vid.play();
           if (playPromise?.catch) {
             playPromise.catch(() => {
