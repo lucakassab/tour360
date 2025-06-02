@@ -12,7 +12,10 @@ import {
   showButtonHUD,
   hideButtonHUD,
   updateButtonPosition,
-  currentVid
+  currentVid,
+  showLogHUD,
+  hideLogHUD,
+  updateLogPosition
 } from './core.js';
 import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
 
@@ -28,29 +31,12 @@ let logBuffer = [];
 console.log = (...args) => {
   originalConsoleLog(...args);
   logBuffer.push(args.map(a => String(a)).join(' '));
-  if (logBox) logBox.innerText = logBuffer.join('\n');
+  // Se logSprite existir, atualiza o texto no HUD
+  if (logSprite) {
+    const text = logBuffer.slice(-10).join('\n');
+    showLogHUD(text);
+  }
 };
-
-/* ─────────── Criação do elemento de log ─────────── */
-let logBox = null;
-(function createLogBox() {
-  logBox = document.createElement('div');
-  logBox.style.position = 'absolute';
-  logBox.style.top = '10px';
-  logBox.style.left = '10px';
-  logBox.style.width = 'calc(100% - 20px)';
-  logBox.style.maxHeight = '40%';
-  logBox.style.overflowY = 'auto';
-  logBox.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-  logBox.style.color = '#fff';
-  logBox.style.fontFamily = 'monospace';
-  logBox.style.fontSize = '12px';
-  logBox.style.padding = '10px';
-  logBox.style.borderRadius = '4px';
-  logBox.style.display = 'none';
-  logBox.style.zIndex = '9999';
-  document.body.appendChild(logBox);
-})();
 
 /* ─────────── Função de play contínuo ─────────── */
 function keepTryingPlay() {
@@ -94,7 +80,7 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       sel.appendChild(o);
     });
     sel.selectedIndex = 0;
-    // Não chamamos loadCurrent() aqui, aguardamos o trigger (botão 0)
+    // aguardamos trigger (botão 0) para loadCurrent()
   })
   .catch(err => {
     console.log('Fetch media falhou:', err);
@@ -130,6 +116,7 @@ let prevButtons = [];
 renderer.setAnimationLoop(() => {
   updateLoadingPosition();
   updateButtonPosition();
+  updateLogPosition();
 
   const session = renderer.xr.getSession();
   if (session) {
@@ -139,14 +126,14 @@ renderer.setAnimationLoop(() => {
       const nowPressed = gp.buttons.map(b => b.pressed);
 
       nowPressed.forEach((pressed, i) => {
-        // Se acabou de pressionar
         if (pressed && !prevButtons[i]) {
           console.log(`Botão ${i} pressionado`);
           showButtonHUD(`Botão ${i}`);
 
-          // Botão 3 (thumbstick pressionado) → mostra logBox
+          // Botão 3 (thumbstick pressionado) → mostra logHUD
           if (i === 3) {
-            logBox.style.display = 'block';
+            const text = logBuffer.slice(-10).join('\n');
+            showLogHUD(text);
           }
 
           // Botão 0 (trigger) → carrega e tenta play
@@ -177,9 +164,9 @@ renderer.setAnimationLoop(() => {
         }
       });
 
-      // Se soltou o botão 3 (thumbstick), esconde logBox
+      // Se soltou o botão 3 (thumbstick), esconde logHUD
       if (!nowPressed[3] && prevButtons[3]) {
-        logBox.style.display = 'none';
+        hideLogHUD();
       }
 
       // Se soltou o botão 1, esconde loading HUD
@@ -198,7 +185,7 @@ renderer.setAnimationLoop(() => {
     prevButtons = [];
     hideButtonHUD();
     hideLoading();
-    logBox.style.display = 'none';
+    hideLogHUD();
   }
 
   renderer.render(scene, camera);

@@ -71,7 +71,11 @@ export function updateLoadingPosition() {
   headCam.updateMatrixWorld();
   headCam.getWorldPosition(_loadPos);
   headCam.getWorldQuaternion(_loadQuat);
-  loadingSprite.position.copy(_loadDir).applyQuaternion(_loadQuat).multiplyScalar(3.5).add(_loadPos);
+  loadingSprite.position
+    .copy(_loadDir)
+    .applyQuaternion(_loadQuat)
+    .multiplyScalar(3.5)
+    .add(_loadPos);
   loadingSprite.quaternion.copy(_loadQuat);
 }
 
@@ -281,4 +285,63 @@ export function updateButtonPosition() {
   pos.y -= 0.8;
   buttonSprite.position.copy(pos);
   buttonSprite.quaternion.copy(_btnQuat);
+}
+
+/* ───────── HUD de Log (botão 3) ───────── */
+let logSprite = null;
+export function showLogHUD(text = '') {
+  if (logSprite) {
+    scene.remove(logSprite);
+    logSprite.material.map.dispose();
+    logSprite.material.dispose();
+  }
+
+  const lines = text.split('\n').slice(-10); // mostra apenas as últimas 10 linhas
+  const W = 1024, H = 256;
+  const cv = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const ctx = cv.getContext('2d');
+
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = '18px monospace';
+  ctx.fillStyle = '#0f0';
+  ctx.textBaseline = 'top';
+
+  lines.forEach((line, i) => {
+    ctx.fillText(line, 10, i * 24);
+  });
+
+  logSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(cv),
+    depthTest: false,
+    depthWrite: false
+  }));
+
+  logSprite.scale.set(6, 1.5, 1);
+  logSprite.renderOrder = 9999;
+  scene.add(logSprite);
+  updateLogPosition();
+}
+
+export function hideLogHUD() {
+  if (!logSprite) return;
+  scene.remove(logSprite);
+  logSprite.material.map.dispose();
+  logSprite.material.dispose();
+  logSprite = null;
+}
+
+const _logDir = new THREE.Vector3(0, 0, -1);
+const _logPos = new THREE.Vector3();
+const _logQuat = new THREE.Quaternion();
+export function updateLogPosition() {
+  if (!logSprite) return;
+  const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
+  headCam.updateMatrixWorld();
+  headCam.getWorldPosition(_logPos);
+  headCam.getWorldQuaternion(_logQuat);
+  const pos = _logDir.clone().applyQuaternion(_logQuat).multiplyScalar(3.5).add(_logPos);
+  pos.y += 1.2;
+  logSprite.position.copy(pos);
+  logSprite.quaternion.copy(_logQuat);
 }
