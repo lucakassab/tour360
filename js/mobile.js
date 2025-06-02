@@ -1,123 +1,91 @@
 // mobile.js
-import {
-  THREE,
-  scene,
-  camera,
-  renderer,
-  loadTexture,
-  createSphere,
-  updateLoadingPosition
-} from './core.js';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+import { initializeCore, loadMediaInSphere, scene, camera, renderer, updateHUDPositions } from './core.js';
 
-/* detecta “_stereo” */
-const isStereoName = n => /_stereo/i.test(n);
+let isUserInteracting = false;
+let onTouchStartX = 0, onTouchStartY = 0;
+let lon = 0, lat = 0, phi = 0, theta = 0;
+let touchZoomDistanceStart = 0, touchZoomDistanceEnd = 0;
 
-/* ─── Touch orbit básico ─── */
-let lon = 0, lat = 0, dist = 0;
-let dx = 0, dy = 0, dragging = false;
+export function initialize() {
+  // 1) Inicia o core (cria scene, camera, renderer e HUDs)
+  initializeCore();
+  document.body.appendChild(renderer.domElement);
 
-renderer.domElement.addEventListener('touchstart', e => {
-  if (e.touches.length !== 1) return;
-  e.preventDefault();                // empurra o default pra evitar scroll
-  dragging = true;
-  dx = e.touches[0].clientX;
-  dy = e.touches[0].clientY;
-});
+  // 2) Camera levemente afastada do centro (evita 0,0,0 exato)
+  camera.position.set(0, 0, 0.1);
 
-renderer.domElement.addEventListener('touchmove', e => {
-  if (!dragging || e.touches.length !== 1) return;
-  e.preventDefault();                // evita scroll da página
-  lon += (dx - e.touches[0].clientX) * 0.1;
-  lat += (e.touches[0].clientY - dy) * 0.1;
-  dx = e.touches[0].clientX;
-  dy = e.touches[0].clientY;
-});
+  // 3) Listeners de toque
+  renderer.domElement.addEventListener('touchstart', onTouchStart, false);
+  renderer.domElement.addEventListener('touchmove', onTouchMove, false);
+  renderer.domElement.addEventListener('touchend', onTouchEnd, false);
 
-renderer.domElement.addEventListener('touchend', e => {
-  e.preventDefault();
-  dragging = false;
-});
+  // 4) Bloqueia gestos nativos do navegador (touch-action:none no CSS já ajuda)
+  window.addEventListener('gesturestart', e => e.preventDefault());
+  window.addEventListener('gesturechange', e => e.preventDefault());
 
-/* opcional: dois dedos para dar zoom */
-let initialDist = 0;
-renderer.domElement.addEventListener('touchstart', e => {
-  if (e.touches.length === 2) {
-    e.preventDefault();
-    const dx2 = e.touches[0].clientX - e.touches[1].clientX;
-    const dy2 = e.touches[0].clientY - e.touches[1].clientY;
-    initialDist = Math.hypot(dx2, dy2);
-  }
-});
-renderer.domElement.addEventListener('touchmove', e => {
-  if (e.touches.length === 2) {
-    e.preventDefault();
-    const dx2 = e.touches[0].clientX - e.touches[1].clientX;
-    const dy2 = e.touches[0].clientY - e.touches[1].clientY;
-    const newDist = Math.hypot(dx2, dy2);
-    dist = Math.max(0, Math.min(2000, dist - (newDist - initialDist) * 0.5));
-    initialDist = newDist;
-  }
-});
-
-/* ─── lista & primeira mídia ─── */
-const sel = document.getElementById('mediaSelect');
-
-fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
-  .then(r => r.json())
-  .then(files => {
-    const media = files.filter(
-      f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name)
-    );
-
-    if (!media.length) {
-      console.error('Nada em /media');
-      return;
-    }
-
-    media.forEach(f => {
-      const o = document.createElement('option');
-      o.value = f.download_url;
-      o.text  = f.name;
-      o.dataset.name = f.name;
-      sel.appendChild(o);
-    });
-
-    sel.selectedIndex = 0;
-    loadCurrent();
-  })
-  .catch(err => console.error('fetch media falhou:', err));
-
-document.getElementById('btnLoad').onclick = () => loadCurrent();
-
-function loadCurrent() {
-  const opt    = sel.options[sel.selectedIndex];
-  const name   = opt.dataset.name;
-  const stereo = isStereoName(name);
-  loadTexture(opt.value, stereo, tex => createSphere(tex, stereo), name);
+  // 5) Inicia loop de animação
+  animate();
 }
 
-/* ─── render loop ─── */
-renderer.setAnimationLoop(() => {
-  updateLoadingPosition();
-
-  const phi   = THREE.MathUtils.degToRad(90 - lat);
-  const theta = THREE.MathUtils.degToRad(lon);
-
-  if (dist > 0) {
-    camera.position.set(
-      dist * Math.sin(phi) * Math.cos(theta),
-      dist * Math.cos(phi),
-      dist * Math.sin(phi) * Math.sin(theta)
-    );
-  } else {
-    camera.position.set(0, 0, 0);
+function onTouchStart(event) {
+  isUserInteracting = true;
+  if (event.touches.length === 1) {
+    // Swipe
+    onTouchStartX = event.touches[0].pageX;
+    onTouchStartY = event.touches[0].pageY;
+  } else if (event.touches.length === 2) {
+    // Pinch-zoom: calcula distância inicial
+    const dx = event.touches[0].pageX - event.touches[1].pageX;
+    const dy = event.touches[0].pageY - event.touches[1].pageY;
+    touchZoomDistanceStart = Math.sqrt(dx * dx + dy * dy);
   }
+}
 
-  camera.lookAt(
-    Math.sin(phi) * Math.cos(theta),
-    Math.cos(phi),
-    Math.sin(phi) * Math.sin(theta)
-  );
+function onTouchMove(event) {
+  if (isUserInteracting) {
+    if (event.touches.length === 1) {
+      // Swipe para girar câmera
+      const deltaX = event.touches[0].pageX - onTouchStartX;
+      const deltaY = event.touches[0].pageY - onTouchStartY;
+      lon -= deltaX * 0.1;
+      lat += deltaY * 0.1;
+      onTouchStartX = event.touches[0].pageX;
+      onTouchStartY = event.touches[0].pageY;
+    } else if (event.touches.length === 2) {
+      // Pinch-zoom
+      const dx = event.touches[0].pageX - event.touches[1].pageX;
+      const dy = event.touches[0].pageY - event.touches[1].pageY;
+      touchZoomDistanceEnd = Math.sqrt(dx * dx + dy * dy);
+      const zoomFactor = (touchZoomDistanceStart / touchZoomDistanceEnd);
+      camera.fov = THREE.MathUtils.clamp(camera.fov * zoomFactor, 30, 100);
+      camera.updateProjectionMatrix();
+      touchZoomDistanceStart = touchZoomDistanceEnd;
+    }
+  }
+}
 
+function onTouchEnd(/*event*/) {
+  isUserInteracting = false;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  lat = Math.max(-85, Math.min(85, lat));
+  phi = THREE.MathUtils.degToRad(90 - lat);
+  theta = THREE.MathUtils.degToRad(lon);
+
+  const target = new THREE.Vector3();
+  target.x = Math.sin(phi) * Math.cos(theta);
+  target.y = Math.cos(phi);
+  target.z = Math.sin(phi) * Math.sin(theta);
+  camera.lookAt(target);
+
+  updateHUDPositions();
   renderer.render(scene, camera);
-});
+}
+
+export function loadMedia(url, isStereo) {
+  loadMediaInSphere(url, isStereo);
+}

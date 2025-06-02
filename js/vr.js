@@ -1,203 +1,114 @@
 // vr.js
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
 import {
-  THREE,
+  initializeCore,
+  loadMediaInSphere,
   scene,
   camera,
   renderer,
-  loadTexture,
-  createSphere,
   showLoading,
   hideLoading,
-  updateLoadingPosition,
   showButtonHUD,
-  hideButtonHUD,
-  updateButtonPosition,
-  currentVid,
-  showLogHUD,
-  hideLogHUD,
-  updateLogPosition
+  updateHUDPositions
 } from './core.js';
-import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/VRButton.js';
 
-renderer.xr.enabled = true;
-document.body.appendChild(VRButton.createButton(renderer));
+let currentSession = null;
 
-/* helper */
-const isStereoName = n => /_stereo/i.test(n);
-
-/* ---------- buffer de log ---------- */
-const originalLog = console.log.bind(console);
-let logBuffer = [];
-let logVisible = false; // controla se o HUD de log está visível
-
-console.log = (...args) => {
-  originalLog(...args);
-  logBuffer.push(args.map(String).join(' '));
-  if (logVisible) {
-    const text = logBuffer.slice(-10).join('\n');
-    showLogHUD(text);
-  }
+// Map de códigos de botão do gamepad para nome legível
+const BUTTON_NAMES = {
+  0: 'Trigger (0)',
+  1: 'Grip (1)',
+  3: 'Thumbstick (3)',
+  4: 'A (4)',
+  5: 'B (5)'
 };
 
-/* ---------- função de autoplay persistente ---------- */
-function keepTryingPlay() {
-  if (!currentVid) {
-    console.log('[vr] keepTryingPlay: currentVid é null');
-    return;
-  }
-  console.log('[vr] keepTryingPlay: tentando play do vídeo');
-  currentVid.play().catch(e => console.log('[vr] keepTryingPlay erro:', e));
-  const id = setInterval(() => {
-    if (!currentVid) {
-      clearInterval(id);
-      return;
-    }
-    if (!currentVid.paused) {
-      clearInterval(id);
-      return;
-    }
-    console.log('[vr] keepTryingPlay (intervalo): tentando play novamente');
-    currentVid.play().catch(e => console.log('[vr] intervalo play erro:', e));
-  }, 500);
-}
+/**
+ * INITIALIZE VR
+ * - Habilita XR no renderer
+ * - Cria VRButton e injeta no DOM
+ * - Define camada da câmera para exibir corretamente esferas estéreo
+ */
+export function initialize() {
+  // 1) Inicia o core (cria cena, câmera, renderer, HUDs)
+  initializeCore();
 
-/* destrava autoplay a cada select */
-renderer.xr.addEventListener('sessionstart', () => {
-  const s = renderer.xr.getSession();
-  if (!s) {
-    console.log('[vr] sessionstart: sem sessão VR');
-    return;
-  }
-  console.log('[vr] sessionstart: adicionando listener select');
-  s.addEventListener('select', () => {
-    console.log('[vr] select evento VR: tentando play');
-    if (currentVid && currentVid.paused) {
-      currentVid.play().catch(e => console.log('[vr] select play erro:', e));
-    }
+  // 2) Habilita XR e insere botão “Enter VR”
+  renderer.xr.enabled = true;
+  document.body.appendChild(renderer.domElement);
+  document.body.appendChild(VRButton.createButton(renderer));
+
+  // 3) Configura câmera para usar camadas: 
+  //    - layer 0 = mono (usado quando não for stereo)
+  //    - layer 1 = olho esquerdo, layer 2 = olho direito (pra stereo)
+  camera.layers.enable(0);
+  camera.layers.disable(1);
+  camera.layers.disable(2);
+
+  // 4) Ao iniciar sessão XR, capturamos o session para depois monitorar gamepads
+  renderer.xr.addEventListener('sessionstart', (event) => {
+    currentSession = event.session;
+    // Se quiser, aqui pode configurar options adicionais (e.g. hand-tracking)
   });
-});
+  renderer.xr.addEventListener('sessionend', () => {
+    currentSession = null;
+  });
 
-/* ---------- dropdown de mídia ---------- */
-const sel = document.getElementById('mediaSelect');
-
-fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
-  .then(r => r.json())
-  .then(files => {
-    console.log('[vr] fetch media OK, total:', files.length);
-    files.filter(f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name))
-         .forEach(f => {
-           const o = document.createElement('option');
-           o.value = f.download_url;
-           o.text  = f.name;
-           o.dataset.name = f.name;
-           sel.appendChild(o);
-           console.log('[vr] dropdown adicionou:', f.name);
-         });
-    sel.selectedIndex = 0;
-    console.log('[vr] dropdown: índice inicial 0');
-  })
-  .catch(err => console.log('[vr] Fetch media falhou:', err));
-
-document.getElementById('btnLoad').onclick = () => {
-  console.log('[vr] btnLoad clicado (fora do VR)');
-  loadCurrent();
-  keepTryingPlay();
-};
-
-/* carrega a mídia selecionada */
-function loadCurrent() {
-  const opt    = sel.options[sel.selectedIndex];
-  const name   = opt.dataset.name;
-  const stereo = isStereoName(name);
-
-  console.log('[vr] loadCurrent →', name, 'estéreo?', stereo);
-  loadTexture(opt.value, stereo,
-              tex => {
-                console.log('[vr] loadTexture callback: textura carregada para', name);
-                createSphere(tex, stereo);
-                console.log('[vr] createSphere OK para', name);
-              },
-              name);
+  // 5) Inicia loop de animação em VR
+  renderer.setAnimationLoop(animate);
 }
 
-/* ---------- gamepad VR ---------- */
-let prevButtons = [];
-
-renderer.setAnimationLoop(() => {
-  updateLoadingPosition();
-  updateButtonPosition();
-  if (logVisible) updateLogPosition();
-
+/**
+ * ANIMATE (loop em VR)
+ * - Renderiza a cena em XR
+ * - Checa input do gamepad para liberar autoplay e exibir HUD
+ * - Atualiza HUDs de Loading e Button Pressed
+ */
+function animate() {
+  // 1) Monitora gamepads conectados
   const session = renderer.xr.getSession();
   if (session) {
-    session.inputSources.forEach(src => {
-      if (!src.gamepad || src.handedness !== 'right') return;
-      const gp = src.gamepad;
-      const now = gp.buttons.map(b => b.pressed);
-
-      now.forEach((pressed, i) => {
-        if (pressed && !prevButtons[i]) {
-          console.log(`[vr] Botão ${i} DOWN`);
-          showButtonHUD(`Botão ${i}`);
-
-          // 3 = thumbstick pressionado → mostrar HUD de log
-          if (i === 3) {
-            console.log('[vr] thumbstick (3) pressionado → mostrar LOG HUD');
-            logVisible = true;
-            showLogHUD(logBuffer.slice(-10).join('\n'));
+    const inputSources = session.inputSources;
+    inputSources.forEach(source => {
+      if (source.gamepad) {
+        source.gamepad.buttons.forEach((btn, idx) => {
+          if (btn.pressed && BUTTON_NAMES[idx]) {
+            // Exibe HUD de botão (por 2 segundos)
+            showButtonHUD(BUTTON_NAMES[idx]);
+            // Se vídeo estiver pausado por falta de interação, poderíamos disparar um "play()" aqui
           }
-          // 0 = trigger → carregar mídia + autoplay
-          if (i === 0) {
-            console.log('[vr] trigger (0) pressionado → loadCurrent + keepTryingPlay');
-            loadCurrent();
-            keepTryingPlay();
-          }
-          // 4 = A → próximo índice
-          if (i === 4) {
-            sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
-            console.log('[vr] A (4) pressionado → índice agora', sel.selectedIndex);
-          }
-          // 5 = B → índice anterior
-          if (i === 5) {
-            sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-            console.log('[vr] B (5) pressionado → índice agora', sel.selectedIndex);
-          }
-          // 1 = grip → mostrar loading HUD
-          if (i === 1) {
-            const nomeAtual = sel.options[sel.selectedIndex].dataset.name;
-            console.log('[vr] grip (1) pressionado → showLoading', nomeAtual);
-            showLoading(nomeAtual);
-          }
-        }
-      });
-
-      // Se soltou o thumbstick (3), esconde HUD de log
-      if (!now[3] && prevButtons[3]) {
-        console.log('[vr] thumbstick (3) solto → esconder LOG HUD');
-        logVisible = false;
-        hideLogHUD();
+        });
       }
-      // Se soltou o grip (1), esconde loading HUD
-      if (!now[1] && prevButtons[1]) {
-        console.log('[vr] grip (1) solto → hideLoading');
-        hideLoading();
-      }
-      // Se nenhum botão pressionado, esconde HUD de botão
-      if (!now.some(Boolean)) {
-        hideButtonHUD();
-      }
-
-      prevButtons = now;
     });
-  } else {
-    prevButtons = [];
-    hideButtonHUD();
-    hideLoading();
-    if (logVisible) {
-      logVisible = false;
-      hideLogHUD();
-    }
   }
 
+  // 2) Atualiza HUDs (posiciona Loading/ Button em frente aos olhos)
+  updateHUDPositions();
+
+  // 3) Renderiza frame em XR
   renderer.render(scene, camera);
-});
+}
+
+/**
+ * loadMedia(url, isStereo)
+ *  - Chamado pelo loader.js quando o usuário clica "Carregar 360"
+ *  - Aqui vamos:
+ *     • Ajustar camadas da câmera para stereo x mono
+ *     • Chamar loadMediaInSphere (que automaticamente mostra/hide o HUD de loading)
+ */
+export function loadMedia(url, isStereo) {
+  // Se for stereo, habilita camadas 1 e 2; caso contrário, habilita só a camada 0
+  if (isStereo) {
+    camera.layers.enable(1);
+    camera.layers.enable(2);
+    camera.layers.disable(0);
+  } else {
+    camera.layers.enable(0);
+    camera.layers.disable(1);
+    camera.layers.disable(2);
+  }
+
+  // Chama o core para carregar o recurso
+  loadMediaInSphere(url, isStereo);
+}
