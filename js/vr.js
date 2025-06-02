@@ -29,23 +29,24 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
     const media = files.filter(
       f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name)
     );
-    if (!imgs.length) {
+    if (!media.length) {
       console.error('Nada em /media');
       return;
     }
 
-    imgs.forEach(f => {
+    media.forEach(f => {
       const o = document.createElement('option');
       o.value = f.download_url;
-      o.text = f.name;
+      o.text  = f.name;
       o.dataset.name = f.name;
       sel.appendChild(o);
     });
 
     sel.selectedIndex = 0;
-    loadCurrent(); // carrega a primeira
+    loadCurrent();
   })
   .catch(err => console.error('Fetch media falhou:', err));
+
 
 /* ---------- Botão “Carregar” do menu ---------- */
 document.getElementById('btnLoad').onclick = () => loadCurrent();
