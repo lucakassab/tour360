@@ -1,4 +1,4 @@
-import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js?module';
+import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
 
 export let scene, camera, renderer;
 let currentMesh = null;
