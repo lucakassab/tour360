@@ -1,6 +1,18 @@
 // desktop.js
-import { initializeCore, loadMediaInSphere, scene, camera, renderer, updateHUDPositions } from './core.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js';
+import {
+  initializeCore,
+  loadMediaInSphere,
+  scene,
+  camera,
+  renderer,
+  updateHUDPositions
+} from './core.js';
+
+// **ANTES** você tinha algo tipo:
+// import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js';
+// Isso dá pau porque esse arquivo faz `import “… from 'three'”` e o browser reclama.
+// **AGORA** vamos usar o Skypack, que já reescreve tudo pra URLs válidas:
+import { OrbitControls } from 'https://cdn.skypack.dev/three@0.158.0/examples/jsm/controls/OrbitControls.js';
 
 let controls;
 

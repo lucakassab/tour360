@@ -1,6 +1,13 @@
 // mobile.js
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-import { initializeCore, loadMediaInSphere, scene, camera, renderer, updateHUDPositions } from './core.js';
+import {
+  initializeCore,
+  loadMediaInSphere,
+  scene,
+  camera,
+  renderer,
+  updateHUDPositions
+} from './core.js';
 
 let isUserInteracting = false;
 let onTouchStartX = 0, onTouchStartY = 0;

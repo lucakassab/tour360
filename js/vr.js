@@ -1,6 +1,9 @@
 // vr.js
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-import { VRButton } from 'https://unpkg.com/three@0.158.0/examples/jsm/webxr/VRButton.js?module';
+// **ANTES**: import { VRButton } from 'https://unpkg.com/three@0.158.0/examples/jsm/webxr/VRButton.js?module';
+// **DEPOIS**:
+import { VRButton } from 'https://cdn.skypack.dev/three@0.158.0/examples/jsm/webxr/VRButton.js';
+
 import {
   initializeCore,
   loadMediaInSphere,
@@ -42,7 +45,6 @@ export function initialize() {
 
   renderer.setAnimationLoop(animate);
 }
-
 
 /**
  * ANIMATE (loop em VR)
