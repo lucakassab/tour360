@@ -159,38 +159,62 @@ export function loadTexture(url,isStereo,cb,msg='Loading…'){
   }
 
   // ---------- VÍDEO ----------
-  if (VID_RE.test(url)){
+  if (VID_RE.test(url)) {
     const vid = document.createElement('video');
     vid.crossOrigin = 'anonymous';
-    vid.muted = true;
-    vid.loop  = true;
-    vid.playsInline = true;
-    vid.src   = url;
-    vid.preload = 'auto';
-    vid.style.display='none';
-    document.body.appendChild(vid);     // precisa ficar no DOM p/ autoplay no iOS
+    vid.muted       = true;      // obrigatório p/ autoplay
+    vid.loop        = true;      // loop infinito
+    vid.autoplay    = true;      // dica p/ browsers teimosos
+    vid.playsInline = true;      // Safari iOS não sair do full-screen
+    vid.preload     = 'auto';
+    vid.src         = url;
+    vid.style.display = 'none';  // não precisa aparecer no DOM
+    document.body.appendChild(vid); // iOS exige estar no DOM p/ autoplay
 
-    const onReady = ()=>{
-      const tex = new THREE.VideoTexture(vid);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.minFilter  = THREE.LinearFilter;
-      tex.generateMipmaps = false;
-
-      try{ cb(tex,isStereo); }finally{ hideLoading(); }
-      vid.play().catch(e=>console.warn('autoplay falhou:',e));
-      vid.remove();                      // não precisa ficar visível
+    const startVideo = () => {
+      // tenta tocar, e se falhar, espera primeiro clique no documento
+      const p = vid.play();
+      if (p && p.catch) {
+        p.catch(() => {
+          const resume = () => {
+            vid.play().finally(() => document.removeEventListener('click', resume, true));
+          };
+          document.addEventListener('click', resume, true);
+        });
+      }
     };
 
-    // Safari iOS às vezes não dispara loadeddata se autoplay bloqueado;
-    // então tenta play() e cai no canplay/canplaythrough.
-    vid.addEventListener('loadeddata', onReady, {once:true});
-    vid.addEventListener('error', e=>{console.error('Erro vídeo',e); hideLoading();},{once:true});
+    // quando já tiver dados suficientes, cria a textura
+    vid.addEventListener(
+      'loadeddata',
+      () => {
+        const tex = new THREE.VideoTexture(vid);
+        tex.colorSpace      = THREE.SRGBColorSpace;
+        tex.minFilter       = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+
+        try {
+          cb(tex, isStereo);
+        } finally {
+          hideLoading();
+        }
+        startVideo();            // garante autoplay + loop
+        vid.remove();            // pode sair do DOM depois
+      },
+      { once: true }
+    );
+
+    vid.addEventListener(
+      'error',
+      e => {
+        console.error('Erro carregando vídeo:', e);
+        hideLoading();
+      },
+      { once: true }
+    );
+
     return;
   }
-
-  console.error('Extensão não suportada:', url);
-  hideLoading();
-}
 
 /* ───────── HUD de Botão (mesmo de antes) ───────── */
 let buttonSprite=null;
