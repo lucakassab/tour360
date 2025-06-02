@@ -20,23 +20,28 @@ document.body.appendChild(VRButton.createButton(renderer));
 /* helper “_stereo” */
 const isStereoName = n => /_stereo/i.test(n);
 
-/* guarda timestamp do último gesto no VR */
+/* timestamp do último gesto VR */
 window.lastVRGesture = 0;
 
-/* ---------- Carrega lista + primeira ---------- */
+/* -------------- força play ------------ */
+function forcePlayIfPaused(delay = 0) {
+  setTimeout(() => {
+    const v = window.currentVid;
+    if (v && v.paused) v.play().catch(() => {});
+  }, delay);
+}
+
+/* ---------- lista + primeira ---------- */
 const sel = document.getElementById('mediaSelect');
 
 fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
   .then(r => r.json())
   .then(files => {
-    const media = files.filter(
-      f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name)
-    );
+    const media = files.filter(f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name));
     if (!media.length) {
       console.error('Nada em /media');
       return;
     }
-
     media.forEach(f => {
       const o = document.createElement('option');
       o.value = f.download_url;
@@ -44,24 +49,25 @@ fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
       o.dataset.name = f.name;
       sel.appendChild(o);
     });
-
     sel.selectedIndex = 0;
     loadCurrent();
   })
   .catch(err => console.error('Fetch media falhou:', err));
 
-/* ---------- Botão “Carregar” do menu ---------- */
+/* ---------- botão “Carregar” ---------- */
 document.getElementById('btnLoad').onclick = () => {
-  window.lastVRGesture = performance.now(); // último gesto (embora seja clique desktop)
+  window.lastVRGesture = performance.now();
   loadCurrent();
 };
 
-/* carrega a opção selecionada */
+/* carrega mídia selecionada */
 function loadCurrent() {
   const opt    = sel.options[sel.selectedIndex];
-  const name   = opt.dataset.name;
-  const stereo = isStereoName(name);
-  loadTexture(opt.value, stereo, tex => createSphere(tex, stereo), name);
+  const stereo = isStereoName(opt.dataset.name);
+  loadTexture(opt.value, stereo, tex => createSphere(tex, stereo), opt.dataset.name);
+  /* tenta tocar caso seja vídeo — primeiro logo, depois 1 s após buffer */
+  forcePlayIfPaused(0);
+  forcePlayIfPaused(1000);
 }
 
 /* ---------- Gamepad ---------- */
@@ -75,35 +81,32 @@ renderer.setAnimationLoop(() => {
   if (session) {
     session.inputSources.forEach(src => {
       if (src.gamepad && src.handedness === 'right') {
-        const gp = src.gamepad;
-        const nowPressed = gp.buttons.map(b => b.pressed);
+        const gp          = src.gamepad;
+        const nowPressed  = gp.buttons.map(b => b.pressed);
 
         for (let i = 0; i < nowPressed.length; i++) {
           if (nowPressed[i] && !prevButtons[i]) {
             showButtonHUD(`Botão ${i}`);
-            window.lastVRGesture = performance.now(); // registra gesto VR
+            window.lastVRGesture = performance.now();
 
-            if (i === 4) {
-              sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+            if (i === 4 || i === 5) {
+              sel.selectedIndex =
+                (i === 4)
+                  ? (sel.selectedIndex + 1) % sel.options.length
+                  : (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
               loadCurrent();
-            } else if (i === 5) {
-              sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
-              loadCurrent();
+              forcePlayIfPaused(0);      // usa o próprio gesto 4/5
             }
 
             if (i === 1) {
-              const opt = sel.options[sel.selectedIndex];
-              showLoading(opt.dataset.name);
+              const name = sel.options[sel.selectedIndex].dataset.name;
+              showLoading(name);
             }
           }
         }
 
-        if (!nowPressed[1] && prevButtons[1]) {
-          hideLoading();
-        }
-
-        const stillAnyPressed = nowPressed.some(p => p);
-        if (!stillAnyPressed) hideButtonHUD();
+        if (!nowPressed[1] && prevButtons[1]) hideLoading();
+        if (!nowPressed.some(p => p))        hideButtonHUD();
 
         prevButtons = nowPressed;
       }

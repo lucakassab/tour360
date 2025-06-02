@@ -178,13 +178,11 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     return;
   }
 
-/* ---------- VÍDEO ---------- */
+  /* ---------- VÍDEO ---------- */
   if (VID_RE.test(url)) {
     const vid = document.createElement('video');
-
-    // Config. básicas
     vid.crossOrigin  = 'anonymous';
-    vid.src          = url;        // usa URL direto (nada de fetch blob)
+    vid.src          = url;
     vid.muted        = true;
     vid.loop         = true;
     vid.playsInline  = true;
@@ -194,22 +192,39 @@ export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
     document.body.appendChild(vid);
     currentVid = vid;
 
-    /* ―― tenta tocar AQUI, ainda no contexto do gesto ―― */
     const tryPlay = () => vid.play().catch(() => {});
-    tryPlay();
+    tryPlay();                                   // 1ª tentativa (gesto atual)
+    document.addEventListener('click', tryPlay, { once:true, capture:true });
 
-    /* fallback: clique desktop/mobile */
-    document.addEventListener('click', tryPlay, { once: true, capture: true });
-
-    /* fallback: qualquer botão VR depois */
+    /* ❶ — ↯ qualquer botão do controle VR (não só select) */
     if (renderer.xr.isPresenting) {
       const session = renderer.xr.getSession();
-      const resume  = () => {
+      const onInput = e => {
         if (vid.paused) tryPlay();
-        if (!vid.paused) session.removeEventListener('select', resume);
+        if (!vid.paused) session.removeEventListener('inputsourceschange', onInput);
       };
-      session.addEventListener('select', resume);
+      session.addEventListener('inputsourceschange', onInput);
     }
+
+    /* ❷ — gera textura e tenta play outra vez quando já houver dados */
+    const onReady = () => {
+      const tex = new THREE.VideoTexture(vid);
+      tex.colorSpace      = THREE.SRGBColorSpace;
+      tex.minFilter       = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+
+      if (vid.requestVideoFrameCallback) {
+        const upd = () => { tex.needsUpdate = true; vid.requestVideoFrameCallback(upd); };
+        vid.requestVideoFrameCallback(upd);
+      }
+
+      try { cb(tex, isStereo); } finally { hideLoading(); }
+      if (vid.paused) tryPlay();                 // 2ª tentativa, buffer já cheio
+    };
+    if (vid.readyState >= 2) onReady();
+    else vid.addEventListener('loadeddata', onReady, { once:true });
+    return;
+  }
 
     /* cria textura quando tiver dados */
     const onReady = () => {
