@@ -1,46 +1,102 @@
-// desktop.js
-import { initializeCore, loadMediaInSphere, scene, camera, renderer, updateHUDPositions } from './core.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js';
+// desktop.js (sem grandes mudanças, já estava otimizado)
+import {
+  THREE,
+  scene,
+  camera,
+  renderer,
+  loadTexture,
+  createSphere,
+  updateLoadingPosition
+} from './core.js';
 
-let controls;
+/* detecta “_stereo” */
+const isStereoName = n => /_stereo/i.test(n);
 
-export function initialize() {
-  // 1) Inicia o core (cria scene, camera, renderer e HUDs)
-  initializeCore();
+/* ─── Controles de mouse / scroll ─── */
+let camDist = 0,
+    lon     = 0,
+    lat     = 0,
+    onDx    = 0,
+    onDy    = 0,
+    dragging = false;
 
-  // 2) Adiciona o canvas do render ao body
-  document.body.appendChild(renderer.domElement);
+window.addEventListener('wheel', e => {
+  camDist = Math.max(0, Math.min(2000, camDist - e.deltaY * 0.5));
+});
 
-  // 3) Define posição inicial da câmera (está dentro da esfera, mas afastada levemente do centro)
-  camera.position.set(0, 0, 0.1);
+renderer.domElement.addEventListener('mousedown', e => {
+  dragging = true;
+  onDx = e.clientX;
+  onDy = e.clientY;
+});
 
-  // 4) OrbitControls: mouse ou touch (se for tela touch)
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enablePan = false;       // não permite translação, só rotação
-  controls.minDistance = 0.1;
-  controls.maxDistance = 1000;
-  controls.rotateSpeed = 0.4;
-  controls.zoomSpeed = 1.0;
+renderer.domElement.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  lon += (onDx - e.clientX) * 0.1;
+  lat += (e.clientY - onDy) * 0.1;
+  onDx = e.clientX;
+  onDy = e.clientY;
+});
 
-  // 5) Quando scroll, faz zoom automaticamente (já vem no OrbitControls)
-  // 6) Inicia loop de animação
-  animate();
+renderer.domElement.addEventListener('mouseup', () => {
+  dragging = false;
+});
+
+/* ─── Carrega lista & primeira mídia (imagem ou vídeo) ─── */
+const selDesk = document.getElementById('mediaSelect');
+
+fetch('https://api.github.com/repos/lucakassab/tour360/contents/media')
+  .then(r => r.json())
+  .then(files => {
+    const media = files.filter(
+      f => f.type === 'file' && /\.(jpe?g|png|mp4|webm|mov)$/i.test(f.name)
+    );
+    if (!media.length) {
+      console.error('Nenhum arquivo em /media.');
+      return;
+    }
+    media.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.download_url;
+      o.text  = f.name;
+      o.dataset.name = f.name;
+      selDesk.appendChild(o);
+    });
+    selDesk.selectedIndex = 0;
+    loadCurrent();
+  })
+  .catch(err => console.error('Falha no fetch:', err));
+
+document.getElementById('btnLoad').onclick = () => loadCurrent();
+
+function loadCurrent() {
+  const opt    = selDesk.options[selDesk.selectedIndex];
+  const name   = opt.dataset.name;
+  const stereo = isStereoName(name);
+  loadTexture(opt.value, stereo, tex => createSphere(tex, stereo), name);
 }
 
-function animate() {
-  requestAnimationFrame(animate);
+/* ─── render loop ─── */
+renderer.setAnimationLoop(() => {
+  updateLoadingPosition();
 
-  // Atualiza controles e HUDs a cada frame
-  controls.update();
-  updateHUDPositions();
+  const phi   = THREE.MathUtils.degToRad(90 - lat);
+  const theta = THREE.MathUtils.degToRad(lon);
+
+  if (camDist > 0) {
+    camera.position.set(
+      camDist * Math.sin(phi) * Math.cos(theta),
+      camDist * Math.cos(phi),
+      camDist * Math.sin(phi) * Math.sin(theta)
+    );
+  } else {
+    camera.position.set(0, 0, 0);
+  }
+  camera.lookAt(
+    Math.sin(phi) * Math.cos(theta),
+    Math.cos(phi),
+    Math.sin(phi) * Math.sin(theta)
+  );
 
   renderer.render(scene, camera);
-}
-
-/**
- * loadMedia(url, isStereo)
- * Apenas repassa para o core carregar a mídia
- */
-export function loadMedia(url, isStereo) {
-  loadMediaInSphere(url, isStereo);
-}
+});

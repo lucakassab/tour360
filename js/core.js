@@ -1,227 +1,374 @@
-// core.js
+/* -------------- Core compartilhado -------------- */
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+export { THREE };
 
-export let scene, camera, renderer;
-let currentMesh = null;
-let loadingMesh = null;
-let buttonHUDMesh = null;
+/* ───────── SETUP BÁSICO ───────── */
+export const scene    = new THREE.Scene();
+export const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
+export const renderer = new THREE.WebGLRenderer({ antialias: true });
 
-// Variáveis internas HUD
-let loadingCanvas, loadingTexture;
-let buttonCanvas, buttonTexture;
-let buttonTimeout = null;
+// Ajusta pixelRatio menor em dispositivos móveis pra poupar GPU
+const isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
+renderer.setPixelRatio(isMobileDevice ? Math.min(window.devicePixelRatio, 1) : window.devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
 
-/**
- * INITIALIZE CORE
- * Cria cena, câmera, renderer e HUDs (Loading e Button).
- */
-export function initializeCore() {
-  // 1) Cena
-  scene = new THREE.Scene();
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
 
-  // 2) Câmera
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-  camera.position.set(0, 0, 0);
-  scene.add(camera);
+/* ───────── HUD LOADING ───────── */
+let loadingSprite = null;
+let loadingCnt    = 0;
+export function showLoading(msg = 'Loading…') {
+  if (loadingSprite) {
+    scene.remove(loadingSprite);
+    loadingSprite.material.map.dispose();
+    loadingSprite.material.dispose();
+    loadingSprite = null;
+  }
+  loadingCnt++;
 
-  // 3) Renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  // Força sRGB como espaço de cor de saída
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const W = 512, H = 128;
+  const cv  = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = 'bold 32px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(msg, W / 2, H / 2);
 
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+  const mat = new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(cv),
+    depthTest: false,
+    depthWrite: false
+  });
+  loadingSprite = new THREE.Sprite(mat);
+  loadingSprite.scale.set(4, 1, 1);
+  loadingSprite.renderOrder = 9999;
+  scene.add(loadingSprite);
+  updateLoadingPosition();
+}
+export function hideLoading() {
+  loadingCnt = Math.max(loadingCnt - 1, 0);
+  if (loadingCnt || !loadingSprite) return;
+  scene.remove(loadingSprite);
+  loadingSprite.material.map.dispose();
+  loadingSprite.material.dispose();
+  loadingSprite = null;
+}
+const _loadDir  = new THREE.Vector3(0,0,-1);
+const _loadPos  = new THREE.Vector3();
+const _loadQuat = new THREE.Quaternion();
+export function updateLoadingPosition() {
+  if (!loadingSprite) return;
+  const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
+  headCam.updateMatrixWorld();
+  headCam.getWorldPosition(_loadPos);
+  headCam.getWorldQuaternion(_loadQuat);
+  loadingSprite.position
+    .copy(_loadDir)
+    .applyQuaternion(_loadQuat)
+    .multiplyScalar(3.5)
+    .add(_loadPos);
+  loadingSprite.quaternion.copy(_loadQuat);
+}
+
+/* ───────── LAYERS ───────── */
+export const layerMono  = 0;
+export const layerLeft  = 1;
+export const layerRight = 2;
+
+/* ───────── Limpa vídeo anterior ───────── */
+export let currentVid = null;
+function stopCurrentVid() {
+  if (!currentVid) return;
+  console.log('[core] stopCurrentVid: pausando e removendo vídeo anterior');
+  currentVid.pause();
+  currentVid.remove();
+  currentVid = null;
+}
+
+/* ───────── Helpers para destruir esferas ───────── */
+let sphereMono  = null,
+    sphereLeft  = null,
+    sphereRight = null;
+
+function disposeSphere(s) {
+  if (!s) return;
+  scene.remove(s);
+  s.geometry.dispose();
+  s.material.map?.dispose?.();
+  s.material.dispose();
+}
+
+/* ───────── Cria esfera (foto ou vídeo) ───────── */
+export function createSphere(tex, isStereo) {
+  const session = renderer.xr.getSession?.();
+  if (tex.image?.tagName === 'VIDEO' && session && 'XRWebGLBinding' in window) {
+    console.log('[core] createSphere: usando XRWebGLBinding para VR Layers');
+    const gl      = renderer.getContext();
+    const binding = new XRWebGLBinding(session, gl);
+    const layout  = isStereo ? 'stereo-top-bottom' : 'mono';
+    const layer   = binding.createEquirectLayer(tex.image, { layout, radius: 500, colorFormat: 'sRGB' });
+    session.updateRenderState({ layers: [layer] });
+    return;
+  }
+
+  // Fallback clássico (esfera invertida)
+  disposeSphere(sphereMono);
+  disposeSphere(sphereLeft);
+  disposeSphere(sphereRight);
+  sphereMono = sphereLeft = sphereRight = null;
+
+  const segW = isMobileDevice || session ? 16 : 32;
+  const segH = isMobileDevice || session ?  8 : 16;
+  const geo  = new THREE.SphereGeometry(500, segW, segH);
+
+  const setup = t => {
+    t.colorSpace      = THREE.SRGBColorSpace;
+    t.wrapS           = t.wrapT = THREE.ClampToEdgeWrapping;
+    t.minFilter       = THREE.LinearFilter;
+    t.generateMipmaps = false;
+  };
+
+  if (!isStereo) {
+    setup(tex);
+    sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide }));
+    sphereMono.layers.set(layerMono);
+    scene.add(sphereMono);
+    return;
+  }
+
+  // Estéreo top/bottom
+  const bot = tex.clone(); setup(bot); bot.repeat.set(1,0.5); bot.offset.set(0,0);
+  sphereMono = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: bot, side: THREE.BackSide }));
+  sphereMono.layers.set(layerMono);
+  scene.add(sphereMono);
+
+  sphereLeft = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: bot.clone(), side: THREE.BackSide })
+  );
+  sphereLeft.layers.set(layerLeft);
+  scene.add(sphereLeft);
+
+  const top = tex.clone(); setup(top); top.repeat.set(1,0.5); top.offset.set(0,0.5);
+  sphereRight = new THREE.Mesh(
+    geo.clone(),
+    new THREE.MeshBasicMaterial({ map: top, side: THREE.BackSide })
+  );
+  sphereRight.layers.set(layerRight);
+  scene.add(sphereRight);
+}
+
+/* ───────── loadTexture: IMG ou VÍDEO ───────── */
+const IMG_RE = /\.(jpe?g|png)$/i;
+const VID_RE = /\.(mp4|webm|mov)$/i;
+
+export function loadTexture(url, isStereo, cb, msg = 'Loading…') {
+  showLoading(msg);
+  stopCurrentVid();
+  console.log('[core] loadTexture iniciado para:', url);
+
+  if (IMG_RE.test(url)) {
+    new THREE.TextureLoader().load(
+      url,
+      tex => { 
+        console.log('[core] loadTexture: imagem carregada');
+        try { cb(tex, isStereo); } finally { hideLoading(); } 
+      },
+      undefined,
+      err => { console.error('[core] loadTexture (IMG) erro:', err); hideLoading(); }
+    );
+    return;
+  }
+
+  /* ---------- VÍDEO ---------- */
+  if (VID_RE.test(url)) {
+    console.log('[core] loadTexture: criando <video> para', url);
+    const vid = document.createElement('video');
+    vid.crossOrigin  = 'anonymous';
+    vid.src          = url;
+    vid.muted        = true;
+    vid.loop         = true;
+    vid.playsInline  = true;
+    vid.autoplay     = true;
+    vid.preload      = 'auto';
+    vid.style.display = 'none';
+    document.body.appendChild(vid);
+    currentVid = vid;
+    window.currentVid = vid; // também expõe em window para compatibilidade
+
+    // Tenta tocar imediatamente
+    const tryPlay = () => {
+      console.log('[core] tryPlay(): tentando play do vídeo');
+      vid.play().catch(e => console.log('[core] tryPlay erro:', e));
+    };
+    tryPlay();
+
+    // fallback clique desktop/mobile
+    document.addEventListener('click', tryPlay, { once: true, capture: true });
+
+    // Se estiver em VR, qualquer seleção de fonte força nova tentativa
+    if (renderer.xr.isPresenting) {
+      const session = renderer.xr.getSession();
+      const onInput = () => {
+        console.log('[core] inputsourceschange: tentando play se pausado');
+        if (vid.paused) tryPlay();
+      };
+      session.addEventListener('inputsourceschange', onInput);
+    }
+
+    // Quando metadata carregar, criamos o VideoTexture
+    const onReady = () => {
+      console.log('[core] onReady(): vídeo pronto (loadedmetadata)');
+      const tex = new THREE.VideoTexture(vid);
+      tex.colorSpace      = THREE.SRGBColorSpace;
+      tex.minFilter       = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+
+      if (vid.requestVideoFrameCallback) {
+        const upd = () => {
+          tex.needsUpdate = true;
+          vid.requestVideoFrameCallback(upd);
+        };
+        vid.requestVideoFrameCallback(upd);
+      }
+
+      console.log('[core] onReady: chamando callback de createSphere');
+      try { cb(tex, isStereo); } finally { hideLoading(); }
+      if (vid.paused) {
+        console.log('[core] onReady(): vídeo ainda pausado, nova tentativa');
+        tryPlay();
+      }
+    };
+
+    if (vid.readyState >= 1) {
+      // já carregou metadata
+      onReady();
+    } else {
+      vid.addEventListener('loadedmetadata', onReady, { once: true });
+    }
+
+    return;
+  }
+
+  console.error('[core] Extensão não suportada:', url);
+  hideLoading();
+}   // fim loadTexture
+
+/* ───────── HUD de Botão ───────── */
+let buttonSprite = null;
+export function showButtonHUD(msg = '') {
+  if (buttonSprite) {
+    scene.remove(buttonSprite);
+    buttonSprite.material.map.dispose();
+    buttonSprite.material.dispose();
+  }
+  const W = 512, H = 128;
+  const cv = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = 'rgba(30,30,30,0.8)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillStyle = '#ff3333';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(msg, W / 2, H / 2);
+
+  buttonSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(cv),
+    depthTest: false,
+    depthWrite: false
+  }));
+  buttonSprite.scale.set(4, 1, 1);
+  buttonSprite.renderOrder = 9999;
+  scene.add(buttonSprite);
+  updateButtonPosition();
+}
+export function hideButtonHUD() {
+  if (!buttonSprite) return;
+  scene.remove(buttonSprite);
+  buttonSprite.material.map.dispose();
+  buttonSprite.material.dispose();
+  buttonSprite = null;
+}
+const _btnDir = new THREE.Vector3(0,0,-1);
+const _btnPos = new THREE.Vector3();
+const _btnQuat = new THREE.Quaternion();
+export function updateButtonPosition() {
+  if (!buttonSprite) return;
+  const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
+  headCam.updateMatrixWorld();
+  headCam.getWorldPosition(_btnPos);
+  headCam.getWorldQuaternion(_btnQuat);
+  const pos = _btnDir.clone().applyQuaternion(_btnQuat).multiplyScalar(3.5).add(_btnPos);
+  pos.y -= 0.8;
+  buttonSprite.position.copy(pos);
+  buttonSprite.quaternion.copy(_btnQuat);
+}
+
+/* ───────── HUD de Log (botão 3) ───────── */
+let logSprite = null;
+export function showLogHUD(text = '') {
+  if (logSprite) {
+    scene.remove(logSprite);
+    logSprite.material.map.dispose();
+    logSprite.material.dispose();
+  }
+
+  const lines = text.split('\n').slice(-10);
+  const W = 1024, H = 256;
+  const cv = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const ctx = cv.getContext('2d');
+
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = '18px monospace';
+  ctx.fillStyle = '#0f0';
+  ctx.textBaseline = 'top';
+
+  lines.forEach((line, i) => {
+    ctx.fillText(line, 10, i * 24);
   });
 
-  // 4) HUD “Loading...”
-  loadingCanvas = document.createElement('canvas');
-  loadingCanvas.width = 512;
-  loadingCanvas.height = 128;
-  const ctxLoad = loadingCanvas.getContext('2d');
-  ctxLoad.fillStyle = 'rgba(0,0,0,0.7)';
-  ctxLoad.fillRect(0, 0, loadingCanvas.width, loadingCanvas.height);
-  ctxLoad.font = '48px sans-serif';
-  ctxLoad.fillStyle = '#ffffff';
-  ctxLoad.textAlign = 'center';
-  ctxLoad.fillText('Loading...', loadingCanvas.width / 2, loadingCanvas.height / 2 + 16);
+  logSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(cv),
+    depthTest: false,
+    depthWrite: false
+  }));
 
-  loadingTexture = new THREE.CanvasTexture(loadingCanvas);
-  const planeGeo = new THREE.PlaneGeometry(1.5, 0.4);
-  const planeMat = new THREE.MeshBasicMaterial({ map: loadingTexture, transparent: true });
-  loadingMesh = new THREE.Mesh(planeGeo, planeMat);
-  loadingMesh.visible = false;
-  scene.add(loadingMesh);
-
-  // 5) HUD “Button Pressed”
-  buttonCanvas = document.createElement('canvas');
-  buttonCanvas.width = 512;
-  buttonCanvas.height = 128;
-  const ctxBtn = buttonCanvas.getContext('2d');
-  ctxBtn.fillStyle = 'rgba(0,0,0,0.7)';
-  ctxBtn.fillRect(0, 0, buttonCanvas.width, buttonCanvas.height);
-  ctxBtn.font = 'bold 42px sans-serif';
-  ctxBtn.fillStyle = '#ffdd00';
-  ctxBtn.textAlign = 'center';
-  ctxBtn.fillText('Button: —', buttonCanvas.width / 2, buttonCanvas.height / 2 + 16);
-
-  buttonTexture = new THREE.CanvasTexture(buttonCanvas);
-  const btnGeo = new THREE.PlaneGeometry(1.5, 0.4);
-  const btnMat = new THREE.MeshBasicMaterial({ map: buttonTexture, transparent: true });
-  buttonHUDMesh = new THREE.Mesh(btnGeo, btnMat);
-  buttonHUDMesh.visible = false;
-  scene.add(buttonHUDMesh);
+  logSprite.scale.set(6, 1.5, 1);
+  logSprite.renderOrder = 9999;
+  scene.add(logSprite);
+  updateLogPosition();
 }
 
-export function showLoading() {
-  loadingMesh.visible = true;
+export function hideLogHUD() {
+  if (!logSprite) return;
+  scene.remove(logSprite);
+  logSprite.material.map.dispose();
+  logSprite.material.dispose();
+  logSprite = null;
 }
 
-export function hideLoading() {
-  loadingMesh.visible = false;
-}
-
-export function updateHUDPositions() {
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-
-  if (loadingMesh.visible) {
-    loadingMesh.position.copy(camera.position).add(dir.clone().multiplyScalar(2));
-    loadingMesh.quaternion.copy(camera.quaternion);
-  }
-  if (buttonHUDMesh.visible) {
-    const posBtn = camera.position.clone().add(dir.clone().multiplyScalar(1.5));
-    posBtn.y -= 0.5;
-    buttonHUDMesh.position.copy(posBtn);
-    buttonHUDMesh.quaternion.copy(camera.quaternion);
-  }
-}
-
-export function showButtonHUD(buttonName) {
-  const ctx = buttonCanvas.getContext('2d');
-  ctx.clearRect(0, 0, buttonCanvas.width, buttonCanvas.height);
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(0, 0, buttonCanvas.width, buttonCanvas.height);
-  ctx.fillStyle = '#ffdd00';
-  ctx.font = 'bold 42px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`Button: ${buttonName}`, buttonCanvas.width / 2, buttonCanvas.height / 2 + 16);
-  buttonTexture.needsUpdate = true;
-
-  buttonHUDMesh.visible = true;
-  if (buttonTimeout) clearTimeout(buttonTimeout);
-  buttonTimeout = setTimeout(() => {
-    buttonHUDMesh.visible = false;
-  }, 2000);
-}
-
-/**
- * LOAD MEDIA (imagem ou vídeo) NA ESFERA 360°
- * Corrige cores e exibe apenas metade no modo 2D se for mídia estéreo.
- */
-export async function loadMediaInSphere(url, isStereo) {
-  showLoading();
-
-  // Remove mesh anterior
-  if (currentMesh) {
-    scene.remove(currentMesh);
-    currentMesh.traverse(node => {
-      if (node.isMesh) {
-        if (node.material.map) node.material.map.dispose();
-        node.geometry.dispose();
-        node.material.dispose();
-      }
-    });
-    currentMesh = null;
-  }
-
-  // Gera geometria da esfera invertida
-  const geo = new THREE.SphereGeometry(500, 60, 40);
-  geo.scale(-1, 1, 1);
-
-  // Detecta extensão e carrega textura (imagem ou vídeo)
-  const ext = url.split('.').pop().toLowerCase();
-  let texture;
-  if (['mp4', 'webm', 'mov'].includes(ext)) {
-    // Vídeo
-    const video = document.createElement('video');
-    video.src = url;
-    video.crossOrigin = 'anonymous';
-    video.loop = true;
-    video.muted = true;
-    video.playsInline = true;
-    try {
-      await video.play().catch(() => {});
-    } catch (e) {
-      console.warn('Vídeo bloqueado, aguardando interação do usuário.');
-    }
-    texture = new THREE.VideoTexture(video);
-    texture.minFilter = THREE.LinearFilter;
-    texture.format = THREE.RGBFormat;
-    texture.colorSpace = THREE.SRGBColorSpace;
-  } else {
-    // Imagem
-    const loader = new THREE.TextureLoader();
-    texture = await new Promise((res, rej) => {
-      loader.load(
-        url,
-        tex => {
-          // Garante que a textura seja tratada em sRGB
-          tex.colorSpace = THREE.SRGBColorSpace;
-          res(tex);
-        },
-        undefined,
-        err => {
-          console.error('Erro ao carregar imagem:', err);
-          rej(err);
-        }
-      );
-    });
-  }
-
-  // Se for estéreo e NÃO ESTIVER em VR, exibe apenas metade superior
-  if (isStereo && !renderer.xr.enabled) {
-    const mat = new THREE.MeshBasicMaterial({ map: texture });
-    mat.map.repeat.set(1, 0.5);
-    mat.map.offset.set(0, 0.5);
-    mat.map.needsUpdate = true;
-    currentMesh = new THREE.Mesh(geo, mat);
-    scene.add(currentMesh);
-    hideLoading();
-    return;
-  }
-
-  // Se for estéreo e ESTIVER em VR, cria duas esferas (layer 1 = olho esquerdo / layer 2 = olho direito)
-  if (isStereo && renderer.xr.enabled) {
-    // Olho esquerdo (metade superior da textura)
-    const matL = new THREE.MeshBasicMaterial({ map: texture.clone() });
-    matL.map.repeat.set(1, 0.5);
-    matL.map.offset.set(0, 0.5);
-    matL.map.needsUpdate = true;
-    const meshL = new THREE.Mesh(geo.clone(), matL);
-    meshL.layers.set(1);
-
-    // Olho direito (metade inferior da textura)
-    const matR = new THREE.MeshBasicMaterial({ map: texture.clone() });
-    matR.map.repeat.set(1, 0.5);
-    matR.map.offset.set(0, 0);
-    matR.map.needsUpdate = true;
-    const meshR = new THREE.Mesh(geo.clone(), matR);
-    meshR.layers.set(2);
-
-    currentMesh = new THREE.Group();
-    currentMesh.add(meshL, meshR);
-    scene.add(currentMesh);
-    hideLoading();
-    return;
-  }
-
-  // Caso mono (ou fallback)
-  const matMono = new THREE.MeshBasicMaterial({ map: texture });
-  currentMesh = new THREE.Mesh(geo, matMono);
-  scene.add(currentMesh);
-  hideLoading();
+const _logDir = new THREE.Vector3(0, 0, -1);
+const _logPos = new THREE.Vector3();
+const _logQuat = new THREE.Quaternion();
+export function updateLogPosition() {
+  if (!logSprite) return;
+  const headCam = (renderer.xr.isPresenting && renderer.xr.getCamera(camera)) || camera;
+  headCam.updateMatrixWorld();
+  headCam.getWorldPosition(_logPos);
+  headCam.getWorldQuaternion(_logQuat);
+  const pos = _logDir.clone().applyQuaternion(_logQuat).multiplyScalar(3.5).add(_logPos);
+  pos.y += 0.5; // abaixei para 0.5
+  logSprite.position.copy(pos);
+  logSprite.quaternion.copy(_logQuat);
 }
