@@ -32,9 +32,15 @@
     .muted { color: rgba(255,255,255,0.72); font-size: 13px; line-height: 1.35; margin-top: 10px; }
     #status { margin-top: 10px; font-size: 14px; color: rgba(255,255,255,0.85); }
     #canvasWrap { position: fixed; inset: 0; display: none; }
-    #hint { position: fixed; left: 12px; bottom: 12px; padding: 10px 12px; border-radius: 12px;
-            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.12);
-            color: rgba(255,255,255,0.85); font-size: 13px; display: none; }
+    #hint {
+      position: fixed; left: 12px; bottom: 12px;
+      padding: 10px 12px; border-radius: 12px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.85);
+      font-size: 13px;
+      display: none;
+    }
     code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; }
   </style>
 </head>
@@ -48,10 +54,10 @@
         <button id="swapBtn" class="ghost" title="Inverte olho (top/bottom)">Inverter Olhos</button>
       </div>
 
-      <div id="status">Pronto. Abre isso no Quest e clica em <b>Carregar Tour</b>.</div>
+      <div id="status">Pronto. Abre isso no Quest e clica em Carregar Tour.</div>
 
       <div class="muted">
-        Controles no VR: <b>A</b> = próxima, <b>B</b> = anterior. (Índices padrão no perfil Oculus/Touch: A=button[4], B=button[5]). :contentReference[oaicite:1]{index=1}<br/>
+        Controles no VR: <b>A</b> = próxima, <b>B</b> = anterior.<br/>
         Se teu estéreo vier invertido, clica em <b>Inverter Olhos</b> antes ou durante o VR.
       </div>
     </div>
@@ -65,22 +71,18 @@
 
     // ========= CONFIG =========
     const CONFIG = {
-      // pasta no repo (relativa à raiz do repo)
       imageFolder: 'tour',
-
-      // branch do repo (normalmente main)
       branch: 'main',
 
-      // se você usa domínio custom e a detecção falhar, bota fixo:
-      // github: { owner: 'SEU_USER', repo: 'SEU_REPO' }
+      // Se estiver usando GitHub Pages padrão e quiser fixar:
+      // github: { owner: 'lucakassab', repo: 'tour360' },
       github: { owner: null, repo: null },
 
-      // Base do site (se quiser forçar). Null = tenta inferir.
+      // Se tiver domínio custom ou quiser fixar a base:
+      // siteBaseOverride: 'https://lucakassab.github.io/tour360/',
       siteBaseOverride: null,
 
-      // Estéreo top/bottom:
-      // true  = metade de CIMA vai pro olho ESQUERDO, metade de BAIXO pro olho DIREITO (mais comum)
-      // false = invertido
+      // true = metade de CIMA pro olho ESQ (com o corte correto)
       topIsLeft: true,
     };
 
@@ -104,19 +106,12 @@
       if (CONFIG.github.owner && CONFIG.github.repo) return { owner: CONFIG.github.owner, repo: CONFIG.github.repo };
 
       const host = location.hostname.toLowerCase();
-      // padrão: username.github.io
       if (host.endsWith('github.io')) {
         const owner = host.split('.')[0];
         const parts = location.pathname.split('/').filter(Boolean);
-
-        // project page: /REPO/...
-        // user page: /...
         const repo = (parts.length > 0) ? parts[0] : `${owner}.github.io`;
         return { owner, repo };
       }
-
-      // domínio custom: não dá pra adivinhar com 100% certeza
-      // então fica "null" e a gente tenta usar a API com repo informado pelo user
       return { owner: CONFIG.github.owner, repo: CONFIG.github.repo };
     }
 
@@ -126,28 +121,21 @@
       const origin = location.origin;
       const host = location.hostname.toLowerCase();
 
-      // Em project pages, normalmente é https://owner.github.io/repo/
-      // Em user pages, é https://owner.github.io/
-      if (host === `${owner}.github.io`) {
+      if (owner && host === `${owner}.github.io`) {
         if (repo && repo !== `${owner}.github.io`) return `${origin}/${repo}/`;
         return `${origin}/`;
       }
-
-      // domínio custom: assume raiz do domínio
       return `${origin}/`;
     }
 
     async function fetchImageListFromGitHub(owner, repo) {
       if (!owner || !repo) {
-        throw new Error('Não consegui inferir owner/repo (domínio custom?). Preenche CONFIG.github.owner/repo.');
+        throw new Error('Não consegui inferir owner/repo. Preenche CONFIG.github.owner/repo.');
       }
 
-      // GitHub Contents API :contentReference[oaicite:2]{index=2}
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(CONFIG.imageFolder)}?ref=${encodeURIComponent(CONFIG.branch)}`;
 
-      const res = await fetch(apiUrl, {
-        headers: { 'Accept': 'application/vnd.github+json' }
-      });
+      const res = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github+json' } });
 
       if (!res.ok) {
         const txt = await res.text().catch(() => '');
@@ -155,9 +143,7 @@
       }
 
       const data = await res.json();
-      if (!Array.isArray(data)) {
-        throw new Error('A pasta não retornou uma lista (confere se CONFIG.imageFolder aponta pra uma pasta).');
-      }
+      if (!Array.isArray(data)) throw new Error('A pasta não retornou uma lista (confere imageFolder).');
 
       const exts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
       const files = data
@@ -180,8 +166,7 @@
     let images = [];
     let currentIndex = 0;
 
-    // Edge detect dos botões (pra não ficar spammando)
-    const prevPressed = new Map(); // key: `${handedness}:${btnIndex}` -> boolean
+    const prevPressed = new Map();
 
     function isJustPressed(handedness, gamepad, btnIndex) {
       const btn = gamepad?.buttons?.[btnIndex];
@@ -242,7 +227,6 @@
       camera.position.set(0, 1.6, 0);
 
       sphereGeo = new THREE.SphereGeometry(10, 64, 48);
-      // não precisa inverter escala porque usamos BackSide no material
 
       window.addEventListener('resize', () => {
         if (!renderer || !camera) return;
@@ -251,7 +235,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
 
-      // teclado no desktop (debug)
+      // debug desktop
       window.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') nextImage();
         if (e.key === 'ArrowLeft') prevImage();
@@ -259,13 +243,14 @@
     }
 
     function rebuildSpheresWithTexture(texture) {
-      // limpa anterior
       if (leftSphere) scene.remove(leftSphere);
       if (rightSphere) scene.remove(rightSphere);
 
       const yScale = 0.5;
-      const topOffset = 0.5;
-      const bottomOffset = 0.0;
+
+      // ✅ Com tex.flipY = true, o "topo" do arquivo está em v=[0..0.5]
+      const topOffset = 0.0;
+      const bottomOffset = 0.5;
 
       const leftYOffset  = CONFIG.topIsLeft ? topOffset : bottomOffset;
       const rightYOffset = CONFIG.topIsLeft ? bottomOffset : topOffset;
@@ -276,8 +261,7 @@
       leftSphere = new THREE.Mesh(sphereGeo, leftMat);
       rightSphere = new THREE.Mesh(sphereGeo, rightMat);
 
-      // Truq de layers do three+WebXR:
-      // layer 1 = olho esquerdo, layer 2 = olho direito (layer 0 aparece nos dois). :contentReference[oaicite:3]{index=3}
+      // layer 1 = olho esquerdo, layer 2 = olho direito
       leftSphere.layers.set(1);
       rightSphere.layers.set(2);
 
@@ -291,7 +275,6 @@
 
       setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})`);
 
-      // libera textura antiga (GPU)
       if (currentTexture) {
         currentTexture.dispose();
         currentTexture = null;
@@ -300,16 +283,12 @@
       const loader = new THREE.TextureLoader();
 
       const tex = await new Promise((resolve, reject) => {
-        loader.load(
-          item.url,
-          t => resolve(t),
-          undefined,
-          err => reject(err)
-        );
+        loader.load(item.url, t => resolve(t), undefined, err => reject(err));
       });
 
-      // importante pra offsets top/bottom baterem do jeito esperado
-      tex.flipY = false;
+      // ✅ deixa no padrão (true). Isso corrige o "de cabeça pra baixo"
+      tex.flipY = true;
+
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -339,11 +318,11 @@
 
       for (const src of session.inputSources) {
         if (src?.targetRayMode !== 'tracked-pointer') continue;
-        if (src?.handedness !== 'right') continue; // A/B ficam no controle direito
+        if (src?.handedness !== 'right') continue; // A/B no controle direito
         const gp = src.gamepad;
         if (!gp) continue;
 
-        // No perfil oculus-touch: a-button = buttons[4], b-button = buttons[5] :contentReference[oaicite:4]{index=4}
+        // Oculus Touch: A=buttons[4], B=buttons[5] (geralmente)
         if (isJustPressed('right', gp, 4)) nextImage();
         if (isJustPressed('right', gp, 5)) prevImage();
       }
@@ -376,14 +355,10 @@
       appEl.style.display = 'none';
     }
 
-    // ========= UI Actions =========
     swapBtn.addEventListener('click', () => {
       CONFIG.topIsLeft = !CONFIG.topIsLeft;
       setStatus(CONFIG.topIsLeft ? 'Olhos: TOP->ESQ / BOTTOM->DIR' : 'Olhos: TOP->DIR / BOTTOM->ESQ');
-
-      if (currentTexture) {
-        rebuildSpheresWithTexture(currentTexture);
-      }
+      if (currentTexture) rebuildSpheresWithTexture(currentTexture);
     });
 
     loadBtn.addEventListener('click', async () => {
@@ -397,7 +372,6 @@
         const list = await fetchImageListFromGitHub(owner, repo);
         if (!list.length) throw new Error(`Nenhuma imagem achada em /${CONFIG.imageFolder}/`);
 
-        // monta URLs pelo próprio GitHub Pages (mesma origem)
         images = list.map(it => ({
           name: it.name,
           url: new URL(it.path, siteBase).toString()
@@ -412,16 +386,13 @@
         setStatus('Entrando em VR...');
         startRenderLoop();
         await enterVR();
-
       } catch (err) {
         panic('Deu merda pra iniciar o tour', err);
       } finally {
-        // se entrou em VR, o botão some; se falhou, reabilita
         if (appEl.style.display !== 'none') loadBtn.disabled = false;
       }
     });
 
-    // Mensagem inicial
     setStatus('Pronto. Clica em "Carregar Tour".');
   </script>
 </body>
