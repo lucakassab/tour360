@@ -56,8 +56,7 @@
       <div id="status">Pronto. Abre no Quest e clica em Carregar Tour.</div>
 
       <div class="muted">
-        Controles no VR: <b>A</b> = próxima, <b>B</b> = anterior.<br/>
-        Se o estéreo ficar invertido, usa <b>Inverter Olhos</b>.
+        Controles no VR: <b>A</b> = próxima, <b>B</b> = anterior.
       </div>
     </div>
   </div>
@@ -72,33 +71,18 @@
     const CONFIG = {
       imageFolder: 'tour',
       branch: 'main',
-
-      // Se quiser fixar (evita inferência falhar):
-      // github: { owner: 'lucakassab', repo: 'tour360' },
       github: { owner: null, repo: null },
-
-      // Se quiser fixar base:
-      // siteBaseOverride: 'https://lucakassab.github.io/tour360/',
       siteBaseOverride: null,
 
-      // === Estéreo ===
+      // stereo
       swapEyes: false,
 
-      // === Qualidade XR ===
-      xrFramebufferScaleFactor: 1.25, // 1.0..1.5 (mais alto = mais nítido, mais pesado)
-      xrFoveation: 0.0,               // 0 = mais fiel, menos blur periférico
+      // qualidade XR
+      xrFramebufferScaleFactor: 1.25,
+      xrFoveation: 0.0,
 
-      // === Textura / sampling ===
-      // “distorção” muitas vezes é shimmer/aliasing. Mipmaps + anisotropy ajudam.
+      // sampling (mipmaps ajudam shimmer; se quiser mais nitidez “crua”, bota false)
       useMipmaps: true,
-      anisotropyMax: true, // usa o máximo suportado
-      // Dica: LinearMipmapLinear é o mais “bonitinho” (menos shimmer)
-      minFilter: 'LinearMipmapLinear', // 'Linear' | 'LinearMipmapLinear'
-      magFilter: 'Linear',             // 'Linear' | 'Nearest'
-
-      // === Decode / cor (ImageBitmap) ===
-      // 'default' respeita conversão/ICC do browser; 'none' pode combinar melhor se o Quest estiver “ignorando” ICC.
-      imageBitmapColorSpaceConversion: 'default', // 'default' | 'none'
     };
 
     // ========= UI =========
@@ -116,7 +100,6 @@
       loadBtn.disabled = false;
     }
 
-    // ========= GitHub Pages / Repo detection =========
     function inferGitHubRepo() {
       if (CONFIG.github.owner && CONFIG.github.repo) return { owner: CONFIG.github.owner, repo: CONFIG.github.repo };
 
@@ -196,9 +179,9 @@
       return now && !was;
     }
 
-    // Shader com color management: precisa aplicar colorspace_fragment em ShaderMaterial. :contentReference[oaicite:1]{index=1}
+    // Shader com output colorspace (pra não dar cor errada em ShaderMaterial)
     function makeStereoMaterial(texture, yOffset, yScale) {
-      const mat = new THREE.ShaderMaterial({
+      return new THREE.ShaderMaterial({
         uniforms: {
           map: { value: texture },
           yOffset: { value: yOffset },
@@ -223,20 +206,15 @@
             vec2 uv = vUv;
             uv.y = uv.y * yScale + yOffset;
 
-            // Se a textura estiver marcada como SRGBColorSpace, o three vai tratar o decode corretamente.
-            // O que faltava era o OUTPUT conversion:
             gl_FragColor = texture2D(map, uv);
 
-            // Converte do espaço linear para o output do renderer (SRGB), garantindo cor correta:
             #include <colorspace_fragment>
           }
         `,
         side: THREE.BackSide,
         depthWrite: false,
-        toneMapped: false, // sem tonemapping em shader custom
+        toneMapped: false,
       });
-
-      return mat;
     }
 
     function initThreeIfNeeded() {
@@ -253,11 +231,9 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
 
-      // pipeline neutro
-      renderer.outputColorSpace = THREE.SRGBColorSpace; // docs
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.NoToneMapping;
 
-      // qualidade no XR
       if (renderer.xr.setFramebufferScaleFactor) renderer.xr.setFramebufferScaleFactor(CONFIG.xrFramebufferScaleFactor);
       if (renderer.xr.setFoveation) renderer.xr.setFoveation(CONFIG.xrFoveation);
 
@@ -269,10 +245,9 @@
 
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
 
-      // ✅ MUITO IMPORTANTE: panorama precisa camera NO CENTRO da esfera
+      // ✅ centro da esfera = sem distorção por offset
       camera.position.set(0, 0, 0);
 
-      // mais segmentos = menos artefato em bordas (sampling)
       sphereGeo = new THREE.SphereGeometry(10, 128, 96);
 
       window.addEventListener('resize', () => {
@@ -281,11 +256,32 @@
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
+    }
 
-      window.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight') nextImage();
-        if (e.key === 'ArrowLeft') prevImage();
-      });
+    function applyTextureQuality(tex) {
+      // flipY padrão do loader (true). Topo do arquivo vira v=[0..0.5]
+      tex.flipY = true;
+
+      // textura com cor em sRGB
+      tex.colorSpace = THREE.SRGBColorSpace;
+
+      // sampling
+      const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
+      tex.anisotropy = Math.max(1, maxAniso);
+
+      if (CONFIG.useMipmaps) {
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+      } else {
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+      }
+
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.needsUpdate = true;
     }
 
     function rebuildSpheresWithTexture(texture) {
@@ -293,12 +289,10 @@
       if (rightSphere) scene.remove(rightSphere);
 
       const yScale = 0.5;
-
-      // Com flipY=true, topo do arquivo = v[0..0.5]
-      const topOffset = 0.0;
+      const topOffset = 0.0;     // com flipY=true
       const bottomOffset = 0.5;
 
-      // swapEyes inverte o que vai pra cada olho
+      // swapEyes = inverte L/R
       const leftYOffset  = CONFIG.swapEyes ? bottomOffset : topOffset;
       const rightYOffset = CONFIG.swapEyes ? topOffset : bottomOffset;
 
@@ -308,52 +302,11 @@
       leftSphere = new THREE.Mesh(sphereGeo, leftMat);
       rightSphere = new THREE.Mesh(sphereGeo, rightMat);
 
-      // layer 1 = esquerdo, layer 2 = direito
       leftSphere.layers.set(1);
       rightSphere.layers.set(2);
 
       scene.add(leftSphere);
       scene.add(rightSphere);
-    }
-
-    function applyTextureQuality(tex) {
-      tex.flipY = true;
-      tex.colorSpace = THREE.SRGBColorSpace; // textura com “cor”
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.ClampToEdgeWrapping;
-
-      const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
-      tex.anisotropy = CONFIG.anisotropyMax ? Math.max(1, maxAniso) : 1;
-
-      const mag = (CONFIG.magFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
-
-      if (CONFIG.useMipmaps) {
-        tex.generateMipmaps = true;
-        tex.minFilter = (CONFIG.minFilter === 'Linear') ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
-        tex.magFilter = mag;
-      } else {
-        tex.generateMipmaps = false;
-        tex.minFilter = THREE.LinearFilter;
-        tex.magFilter = mag;
-      }
-
-      tex.needsUpdate = true;
-    }
-
-    async function loadTextureImageBitmap(url) {
-      const res = await fetch(url, { cache: 'force-cache' });
-      if (!res.ok) throw new Error(`Falha fetch: HTTP ${res.status}`);
-      const blob = await res.blob();
-
-      const bitmap = await createImageBitmap(blob, {
-        imageOrientation: 'none',
-        premultiplyAlpha: 'none',
-        colorSpaceConversion: CONFIG.imageBitmapColorSpaceConversion, // 'default' | 'none'
-      });
-
-      const tex = new THREE.Texture(bitmap);
-      tex.needsUpdate = true;
-      return tex;
     }
 
     async function loadTextureForIndex(idx) {
@@ -367,8 +320,12 @@
         currentTexture = null;
       }
 
-      // ✅ ImageBitmap dá mais controle do decode / cor
-      const tex = await loadTextureImageBitmap(item.url);
+      const loader = new THREE.TextureLoader();
+      loader.setCrossOrigin('anonymous');
+
+      const tex = await new Promise((resolve, reject) => {
+        loader.load(item.url, resolve, undefined, reject);
+      });
 
       applyTextureQuality(tex);
       currentTexture = tex;
@@ -378,15 +335,10 @@
       const ih = tex.image?.height ?? 0;
       const mts = renderer?.capabilities?.maxTextureSize ?? 0;
       const warn = (mts && (iw > mts || ih > mts))
-        ? `\n⚠️ ${iw}x${ih} > maxTextureSize ${mts} (GPU pode downscale no upload)`
+        ? `\n⚠️ ${iw}x${ih} > maxTextureSize ${mts} (GPU pode downscale)`
         : '';
 
-      setStatus(
-        `OK: ${item.name} (${idx + 1}/${images.length})\n` +
-        `Res: ${iw}x${ih} | maxTextureSize: ${mts}\n` +
-        `XR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}\n` +
-        `decode colorSpaceConversion: ${CONFIG.imageBitmapColorSpaceConversion}${warn}`
-      );
+      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${iw}x${ih} | maxTextureSize: ${mts}${warn}`);
     }
 
     function nextImage() {
@@ -411,9 +363,8 @@
         const gp = src.gamepad;
         if (!gp) continue;
 
-        // Oculus Touch geralmente: A=4, B=5
-        if (isJustPressed('right', gp, 4)) nextImage();
-        if (isJustPressed('right', gp, 5)) prevImage();
+        if (isJustPressed('right', gp, 4)) nextImage(); // A
+        if (isJustPressed('right', gp, 5)) prevImage(); // B
       }
     }
 
@@ -444,7 +395,7 @@
       appEl.style.display = 'none';
     }
 
-    // ========= UI =========
+    // ========= UI Actions =========
     swapBtn.addEventListener('click', () => {
       CONFIG.swapEyes = !CONFIG.swapEyes;
       setStatus(CONFIG.swapEyes ? 'Swap L/R: ON' : 'Swap L/R: OFF');
