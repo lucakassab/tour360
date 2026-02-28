@@ -49,14 +49,15 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar Tour22</button>
-        <button id="swapBtn" class="ghost" title="Swap Left/Right">Inverter Olhos</button>
+        <button id="loadBtn">3Carregar Tour3</button>
+        <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
       <div id="status">Pronto. Abre no Quest e clica em Carregar Tour.</div>
 
       <div class="muted">
-        Controles no VR: <b>A</b> = próxima, <b>B</b> = anterior.
+        Controles no VR: <b>A</b> = próxima, <b>B</b> = anterior.<br/>
+        Se o estéreo ficar invertido, usa <b>Inverter Olhos</b>.
       </div>
     </div>
   </div>
@@ -70,19 +71,34 @@
     // ========= CONFIG =========
     const CONFIG = {
       imageFolder: 'tour',
+
+      // Se seu repo for "master", troca pra 'master'
       branch: 'main',
+
+      // Se quiser fixar (evita inferência falhar em domínio custom):
+      // github: { owner: 'lucakassab', repo: 'tour360' },
       github: { owner: null, repo: null },
+
+      // Se quiser fixar base do site:
+      // siteBaseOverride: 'https://lucakassab.github.io/tour360/',
       siteBaseOverride: null,
 
-      // stereo
+      // ===== Estéreo (Top/Bottom) =====
+      // swapEyes = true inverte left/right (resolve estéreo invertido)
       swapEyes: false,
 
-      // qualidade XR
+      // ===== Qualidade XR =====
+      // 1.0 = padrão. 1.25~1.5 costuma melhorar nitidez (pode custar FPS).
       xrFramebufferScaleFactor: 1.25,
+      // 0 = sem foveation (mais nítido), 1 = mais performance (mais blur periférico)
       xrFoveation: 0.0,
 
-      // sampling (mipmaps ajudam shimmer; se quiser mais nitidez “crua”, bota false)
-      useMipmaps: true,
+      // ===== Qualidade da textura =====
+      // Mipmaps podem dar blur em panorama. Pra máxima nitidez: false.
+      useMipmaps: false,
+      // Se quiser “mais duro” ainda (pixel mais seco), testa NearestFilter no magFilter.
+      magFilter: 'Linear',     // 'Linear' | 'Nearest'
+      minFilter: 'Linear',     // 'Linear' | 'Nearest' (se useMipmaps=true, usaremos LinearMipmapLinear)
     };
 
     // ========= UI =========
@@ -100,6 +116,7 @@
       loadBtn.disabled = false;
     }
 
+    // ========= GitHub Pages / Repo detection =========
     function inferGitHubRepo() {
       if (CONFIG.github.owner && CONFIG.github.repo) return { owner: CONFIG.github.owner, repo: CONFIG.github.repo };
 
@@ -129,8 +146,8 @@
     async function fetchImageListFromGitHub(owner, repo) {
       if (!owner || !repo) throw new Error('Não consegui inferir owner/repo. Preenche CONFIG.github.owner/repo.');
 
-      const tryBranches = [CONFIG.branch, CONFIG.branch === 'main' ? 'master' : 'main']
-        .filter((v, i, a) => v && a.indexOf(v) === i);
+      // tenta branch configurada; se der 404, tenta fallback main/master
+      const tryBranches = [CONFIG.branch, CONFIG.branch === 'main' ? 'master' : 'main'].filter((v, i, a) => v && a.indexOf(v) === i);
 
       for (const br of tryBranches) {
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(CONFIG.imageFolder)}?ref=${encodeURIComponent(br)}`;
@@ -158,7 +175,7 @@
         }
       }
 
-      throw new Error(`Não achei /${CONFIG.imageFolder}/ nas branches (${tryBranches.join(', ')}).`);
+      throw new Error(`Não achei a pasta /${CONFIG.imageFolder}/ nas branches testadas (${tryBranches.join(', ')}).`);
     }
 
     // ========= Three/WebXR =========
@@ -179,7 +196,6 @@
       return now && !was;
     }
 
-    // Shader com output colorspace (pra não dar cor errada em ShaderMaterial)
     function makeStereoMaterial(texture, yOffset, yScale) {
       return new THREE.ShaderMaterial({
         uniforms: {
@@ -200,40 +216,30 @@
           uniform float yScale;
           varying vec2 vUv;
 
-          #include <colorspace_pars_fragment>
-
           void main() {
             vec2 uv = vUv;
             uv.y = uv.y * yScale + yOffset;
-
             gl_FragColor = texture2D(map, uv);
-
-            #include <colorspace_fragment>
           }
         `,
         side: THREE.BackSide,
         depthWrite: false,
-        toneMapped: false,
       });
     }
 
     function initThreeIfNeeded() {
       if (renderer) return;
 
-      renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: false,
-        premultipliedAlpha: false,
-        powerPreference: 'high-performance',
-      });
-
+      renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio || 1);
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
 
+      // cor correta e sem “pipeline de cinema” alterando a foto
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.NoToneMapping;
 
+      // ✅ qualidade no XR (nitidez)
       if (renderer.xr.setFramebufferScaleFactor) renderer.xr.setFramebufferScaleFactor(CONFIG.xrFramebufferScaleFactor);
       if (renderer.xr.setFoveation) renderer.xr.setFoveation(CONFIG.xrFoveation);
 
@@ -244,11 +250,10 @@
       scene.background = new THREE.Color(0x000000);
 
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
+      camera.position.set(0, 1.6, 0);
 
-      // ✅ centro da esfera = sem distorção por offset
-      camera.position.set(0, 0, 0);
-
-      sphereGeo = new THREE.SphereGeometry(10, 128, 96);
+      // um pouco mais de segments ajuda a não “quadrar” o sampling em alguns casos
+      sphereGeo = new THREE.SphereGeometry(10, 96, 72);
 
       window.addEventListener('resize', () => {
         if (!renderer || !camera) return;
@@ -256,32 +261,11 @@
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
-    }
 
-    function applyTextureQuality(tex) {
-      // flipY padrão do loader (true). Topo do arquivo vira v=[0..0.5]
-      tex.flipY = true;
-
-      // textura com cor em sRGB
-      tex.colorSpace = THREE.SRGBColorSpace;
-
-      // sampling
-      const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
-      tex.anisotropy = Math.max(1, maxAniso);
-
-      if (CONFIG.useMipmaps) {
-        tex.generateMipmaps = true;
-        tex.minFilter = THREE.LinearMipmapLinearFilter;
-        tex.magFilter = THREE.LinearFilter;
-      } else {
-        tex.generateMipmaps = false;
-        tex.minFilter = THREE.LinearFilter;
-        tex.magFilter = THREE.LinearFilter;
-      }
-
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.ClampToEdgeWrapping;
-      tex.needsUpdate = true;
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') nextImage();
+        if (e.key === 'ArrowLeft') prevImage();
+      });
     }
 
     function rebuildSpheresWithTexture(texture) {
@@ -289,10 +273,12 @@
       if (rightSphere) scene.remove(rightSphere);
 
       const yScale = 0.5;
-      const topOffset = 0.0;     // com flipY=true
+
+      // Com tex.flipY=true, topo do arquivo é v=[0..0.5]
+      const topOffset = 0.0;
       const bottomOffset = 0.5;
 
-      // swapEyes = inverte L/R
+      // swapEyes inverte left/right
       const leftYOffset  = CONFIG.swapEyes ? bottomOffset : topOffset;
       const rightYOffset = CONFIG.swapEyes ? topOffset : bottomOffset;
 
@@ -302,11 +288,37 @@
       leftSphere = new THREE.Mesh(sphereGeo, leftMat);
       rightSphere = new THREE.Mesh(sphereGeo, rightMat);
 
+      // layer 1 = olho esquerdo, layer 2 = olho direito
       leftSphere.layers.set(1);
       rightSphere.layers.set(2);
 
       scene.add(leftSphere);
       scene.add(rightSphere);
+    }
+
+    function applyTextureQuality(tex) {
+      // evita “mip blur” e tenta preservar detalhe
+      tex.flipY = true;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+
+      const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
+      tex.anisotropy = Math.max(1, maxAniso);
+
+      const mag = (CONFIG.magFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
+
+      if (CONFIG.useMipmaps) {
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = mag;
+      } else {
+        tex.generateMipmaps = false;
+        tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
+        tex.magFilter = mag;
+      }
+
+      tex.needsUpdate = true;
     }
 
     async function loadTextureForIndex(idx) {
@@ -321,24 +333,23 @@
       }
 
       const loader = new THREE.TextureLoader();
-      loader.setCrossOrigin('anonymous');
-
       const tex = await new Promise((resolve, reject) => {
-        loader.load(item.url, resolve, undefined, reject);
+        loader.load(item.url, t => resolve(t), undefined, err => reject(err));
       });
 
       applyTextureQuality(tex);
       currentTexture = tex;
       rebuildSpheresWithTexture(tex);
 
+      // Diagnóstico de limitação de GPU (downscale no upload pode acontecer se for gigante)
       const iw = tex.image?.width ?? 0;
       const ih = tex.image?.height ?? 0;
       const mts = renderer?.capabilities?.maxTextureSize ?? 0;
       const warn = (mts && (iw > mts || ih > mts))
-        ? `\n⚠️ ${iw}x${ih} > maxTextureSize ${mts} (GPU pode downscale)`
+        ? `\n⚠️ Atenção: imagem ${iw}x${ih} > maxTextureSize ${mts}. O GPU pode downscale.`
         : '';
 
-      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${iw}x${ih} | maxTextureSize: ${mts}${warn}`);
+      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${iw}x${ih} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}${warn}`);
     }
 
     function nextImage() {
@@ -363,8 +374,9 @@
         const gp = src.gamepad;
         if (!gp) continue;
 
-        if (isJustPressed('right', gp, 4)) nextImage(); // A
-        if (isJustPressed('right', gp, 5)) prevImage(); // B
+        // Oculus Touch (geralmente): A=4, B=5
+        if (isJustPressed('right', gp, 4)) nextImage();
+        if (isJustPressed('right', gp, 5)) prevImage();
       }
     }
 
@@ -398,7 +410,7 @@
     // ========= UI Actions =========
     swapBtn.addEventListener('click', () => {
       CONFIG.swapEyes = !CONFIG.swapEyes;
-      setStatus(CONFIG.swapEyes ? 'Swap L/R: ON' : 'Swap L/R: OFF');
+      setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
       if (currentTexture) rebuildSpheresWithTexture(currentTexture);
     });
 
@@ -438,4 +450,3 @@
   </script>
 </body>
 </html>
-
