@@ -50,7 +50,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar Tour</button>
+        <button id="loadBtn">Carregar Tour2</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -220,7 +220,7 @@
 
     function applyTextureQuality(tex) {
       // ✅ FIX: sem flipY; com offset/repeat fica certo e não vira de cabeça pra baixo
-      tex.flipY = false;
+      tex.flipY = true;
 
       tex.colorSpace = THREE.SRGBColorSpace;
 
