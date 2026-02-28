@@ -53,7 +53,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar Tour B</button>
+        <button id="loadBtn">Carregar Tour</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -99,6 +99,7 @@
         height: 0.13,
         followPos: 0.18,
         followRot: 0.22,
+        maxNameChars: 24, // ✅ aqui
       }
     };
 
@@ -256,13 +257,17 @@
       labelCtx.font = '600 54px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
       labelCtx.textBaseline = 'middle';
 
-      const maxWidth = ww - 44;
-      let t = text;
-      while (labelCtx.measureText(t).width > maxWidth && t.length > 5) t = t.slice(0, -2);
-      if (t !== text) t = t + '…';
+      // ✅ agora não mede pixels pra decidir "...", o texto já vem truncado por char
+      labelCtx.fillText(text, x + 26, y + hh / 2);
 
-      labelCtx.fillText(t, x + 26, y + hh / 2);
       labelTex.needsUpdate = true;
+    }
+
+    function trimName(name) {
+      const max = CONFIG.label.maxNameChars ?? 24;
+      if (!name) return '';
+      if (name.length <= max) return name;
+      return name.slice(0, max) + '…';
     }
 
     function updateLabelTextFromScene() {
@@ -271,14 +276,11 @@
 
       if (!images.length) { drawLabelText('—'); return; }
       const item = images[currentIndex];
-      const name = item?.name ?? '(sem nome)';
+      const name = trimName(item?.name ?? '(sem nome)');
       drawLabelText(`${currentIndex + 1}/${images.length} — ${name}`);
     }
 
-    function setLabelVisible(v) {
-      if (!labelRoot) return;
-      labelRoot.visible = v;
-    }
+    function setLabelVisible(v) { if (labelRoot) labelRoot.visible = v; }
 
     function toggleLabel() {
       labelEnabledRuntime = !labelEnabledRuntime;
@@ -550,16 +552,14 @@
 
       for (const src of session.inputSources) {
         if (src?.targetRayMode !== 'tracked-pointer') continue;
-        if (src?.handedness !== 'right') continue; // usa o right controller
+        if (src?.handedness !== 'right') continue;
         const gp = src.gamepad;
         if (!gp) continue;
 
-        // A=4, B=5
         if (isJustPressed('right', gp, 4)) nextImage();
         if (isJustPressed('right', gp, 5)) prevImage();
 
-        // Trigger (index finger) normalmente é o botão 0
-        if (isJustPressed('right', gp, 0)) toggleLabel();
+        if (isJustPressed('right', gp, 0)) toggleLabel(); // trigger
       }
     }
 
@@ -575,7 +575,6 @@
       renderer.setAnimationLoop(() => {
         pollControllerButtons();
 
-        // anti-“fisheye”: esfera segue a cabeça (remove transladação)
         if (renderer.xr.isPresenting) {
           const xrCam = renderer.xr.getCamera(camera);
           panoRoot.position.copy(xrCam.position);
@@ -584,7 +583,6 @@
         }
 
         updateHeadLockedLabel();
-
         renderer.render(scene, camera);
       });
     }
@@ -611,7 +609,6 @@
       appEl.style.display = 'none';
     }
 
-    // ========= UI Actions =========
     swapBtn.addEventListener('click', () => {
       CONFIG.swapEyes = !CONFIG.swapEyes;
       setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
@@ -657,4 +654,3 @@
   </script>
 </body>
 </html>
-
