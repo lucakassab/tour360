@@ -53,7 +53,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar Tour</button>
+        <button id="loadBtn">Carregar o Tour</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -99,7 +99,7 @@
         height: 0.13,
         followPos: 0.18,
         followRot: 0.22,
-        maxNameChars: 24, // ✅ aqui
+        maxNameChars: 24,
       }
     };
 
@@ -117,6 +117,7 @@
       loadBtn.disabled = false;
     }
 
+    // ========= GitHub Pages / Repo detection =========
     function inferGitHubRepo() {
       if (CONFIG.github.owner && CONFIG.github.repo) return { owner: CONFIG.github.owner, repo: CONFIG.github.repo };
       const host = location.hostname.toLowerCase();
@@ -179,10 +180,16 @@
     let renderer, scene, camera;
     let sphereGeo, leftSphere, rightSphere;
     let panoRoot;
+
     let currentBaseTexture = null;
     let leftTex = null, rightTex = null;
+
     let images = [];
-    let currentIndex = 0;
+    let currentIndex = 0;   // índice efetivamente carregado
+
+    // ===== Scheduler de carregamento (fix do bug A/B) =====
+    let navLoading = false;
+    let navPendingIndex = null;
 
     // ===== Label 3D =====
     let labelRoot, labelMesh, labelCanvas, labelCtx, labelTex;
@@ -257,9 +264,7 @@
       labelCtx.font = '600 54px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
       labelCtx.textBaseline = 'middle';
 
-      // ✅ agora não mede pixels pra decidir "...", o texto já vem truncado por char
       labelCtx.fillText(text, x + 26, y + hh / 2);
-
       labelTex.needsUpdate = true;
     }
 
@@ -270,14 +275,16 @@
       return name.slice(0, max) + '…';
     }
 
-    function updateLabelTextFromScene() {
+    // loading=true coloca um ⏳ na frente (pra não confundir quando apertar A/B rápido)
+    function updateLabelText(indexToShow = currentIndex, loading = false) {
       if (!CONFIG.label.enabled) return;
       if (!labelRoot) initLabel3D();
 
       if (!images.length) { drawLabelText('—'); return; }
-      const item = images[currentIndex];
+      const item = images[indexToShow];
       const name = trimName(item?.name ?? '(sem nome)');
-      drawLabelText(`${currentIndex + 1}/${images.length} — ${name}`);
+      const prefix = loading ? '⏳ ' : '';
+      drawLabelText(`${prefix}${indexToShow + 1}/${images.length} — ${name}`);
     }
 
     function setLabelVisible(v) { if (labelRoot) labelRoot.visible = v; }
@@ -311,7 +318,7 @@
       labelRoot.visible = true;
     }
 
-    // ========= Input =========
+    // ========= Input (debounce) =========
     const prevPressed = new Map();
     function isJustPressed(handedness, gamepad, btnIndex) {
       const btn = gamepad?.buttons?.[btnIndex];
@@ -365,8 +372,8 @@
       });
 
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight') nextImage();
-        if (e.key === 'ArrowLeft') prevImage();
+        if (e.key === 'ArrowRight') requestNavigate((currentIndex + 1) % images.length);
+        if (e.key === 'ArrowLeft') requestNavigate((currentIndex - 1 + images.length) % images.length);
       });
     }
 
@@ -417,7 +424,7 @@
       if (bmp) {
         const w = bmp.width, h = bmp.height;
         const need = (w > maxTexSize || h > maxTexSize);
-        if (!need) return { image: bmp, kind: 'bitmap', resized: false, srcW: w, srcH: h, outW: w, outH: h };
+        if (!need) return { image: bmp, kind: 'bitmap', resized: false, outW: w, outH: h };
 
         const scale = Math.min(maxTexSize / w, maxTexSize / h);
         const outW = Math.max(1, Math.floor(w * scale));
@@ -426,11 +433,11 @@
         try {
           const resized = await createImageBitmap(blob, { resizeWidth: outW, resizeHeight: outH, resizeQuality: 'high' });
           bmp.close?.();
-          return { image: resized, kind: 'bitmap', resized: true, srcW: w, srcH: h, outW, outH };
+          return { image: resized, kind: 'bitmap', resized: true, outW, outH };
         } catch {
           const canvas = await toCanvas(bmp, outW, outH);
           bmp.close?.();
-          return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
+          return { image: canvas, kind: 'canvas', resized: true, outW, outH };
         }
       }
 
@@ -445,14 +452,14 @@
       const w = img.naturalWidth || img.width;
       const h = img.naturalHeight || img.height;
       const need = (w > maxTexSize || h > maxTexSize);
-      if (!need) return { image: img, kind: 'img', resized: false, srcW: w, srcH: h, outW: w, outH: h };
+      if (!need) return { image: img, kind: 'img', resized: false, outW: w, outH: h };
 
       const scale = Math.min(maxTexSize / w, maxTexSize / h);
       const outW = Math.max(1, Math.floor(w * scale));
       const outH = Math.max(1, Math.floor(h * scale));
 
       const canvas = await toCanvas(img, outW, outH);
-      return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
+      return { image: canvas, kind: 'canvas', resized: true, outW, outH };
     }
 
     function disposeEyeTextures() {
@@ -465,6 +472,7 @@
       if (rightSphere) panoRoot.remove(rightSphere);
       disposeEyeTextures();
 
+      // vertical corrigido via UV
       const yRepeat = -0.5;
       const topOffset = 1.0;
       const bottomOffset = 0.5;
@@ -523,27 +531,41 @@
       currentBaseTexture = tex;
       rebuildSpheresWithBaseTexture(tex);
 
-      const warn = loaded.resized
-        ? `\n⚠️ Downscale: ${loaded.srcW}x${loaded.srcH} -> ${loaded.outW}x${loaded.outH} (limite GPU ${maxTexSize})`
-        : '';
-
-      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}${warn}`);
-
-      updateLabelTextFromScene();
+      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}`);
     }
 
-    function nextImage() {
+    // ✅ navegação robusta: só confirma índice quando carregou
+    function requestNavigate(targetIndex) {
       if (!images.length) return;
-      currentIndex = (currentIndex + 1) % images.length;
-      updateLabelTextFromScene();
-      loadTextureForIndex(currentIndex).catch(err => panic('Falha carregando textura', err));
+      const idx = (targetIndex + images.length) % images.length;
+
+      navPendingIndex = idx;
+
+      // legenda já mostra o alvo com ⏳
+      updateLabelText(idx, true);
+
+      if (!navLoading) {
+        processNavigationQueue().catch(err => panic('Falha no scheduler de navegação', err));
+      }
     }
 
-    function prevImage() {
-      if (!images.length) return;
-      currentIndex = (currentIndex - 1 + images.length) % images.length;
-      updateLabelTextFromScene();
-      loadTextureForIndex(currentIndex).catch(err => panic('Falha carregando textura', err));
+    async function processNavigationQueue() {
+      navLoading = true;
+      while (navPendingIndex !== null) {
+        const idx = navPendingIndex;
+        navPendingIndex = null;
+
+        try {
+          await loadTextureForIndex(idx);
+          currentIndex = idx;          // ✅ só aqui atualiza o índice real
+          updateLabelText(currentIndex, false);
+        } catch (err) {
+          // se falhar, deixa a legenda voltar pro índice real
+          updateLabelText(currentIndex, false);
+          throw err;
+        }
+      }
+      navLoading = false;
     }
 
     function pollControllerButtons() {
@@ -556,10 +578,12 @@
         const gp = src.gamepad;
         if (!gp) continue;
 
-        if (isJustPressed('right', gp, 4)) nextImage();
-        if (isJustPressed('right', gp, 5)) prevImage();
+        // A=4, B=5
+        if (isJustPressed('right', gp, 4)) requestNavigate(currentIndex + 1);
+        if (isJustPressed('right', gp, 5)) requestNavigate(currentIndex - 1);
 
-        if (isJustPressed('right', gp, 0)) toggleLabel(); // trigger
+        // Trigger (geralmente btn 0)
+        if (isJustPressed('right', gp, 0)) toggleLabel();
       }
     }
 
@@ -575,6 +599,7 @@
       renderer.setAnimationLoop(() => {
         pollControllerButtons();
 
+        // anti-“fisheye”: esfera segue a cabeça
         if (renderer.xr.isPresenting) {
           const xrCam = renderer.xr.getCamera(camera);
           panoRoot.position.copy(xrCam.position);
@@ -609,11 +634,12 @@
       appEl.style.display = 'none';
     }
 
+    // ========= UI Actions =========
     swapBtn.addEventListener('click', () => {
       CONFIG.swapEyes = !CONFIG.swapEyes;
       setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
       if (currentBaseTexture) rebuildSpheresWithBaseTexture(currentBaseTexture);
-      updateLabelTextFromScene();
+      updateLabelText(currentIndex, navLoading);
       try { forceXREyeLayers(); } catch {}
     });
 
@@ -637,10 +663,12 @@
         images = list.map(it => ({ name: it.name, url: new URL(it.path, siteBase).toString() }));
 
         currentIndex = 0;
-        updateLabelTextFromScene();
+        updateLabelText(currentIndex, true);
 
         setStatus(`Achei ${images.length} imagem(ns). Carregando a primeira...`);
-        await loadTextureForIndex(0);
+
+        // carrega a primeira usando o scheduler (pra já padronizar)
+        requestNavigate(0);
 
         forceXREyeLayers();
       } catch (err) {
