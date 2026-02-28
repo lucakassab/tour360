@@ -53,7 +53,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar o Tour</button>
+        <button id="loadBtn">Carregar Tour</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -139,6 +139,13 @@
       return `${origin}/`;
     }
 
+    // monta URL com encode POR SEGMENTO (blinda espaço, acento, # etc)
+    function toSiteUrl(path, base) {
+      const clean = String(path || '').replace(/^\/+/, '');
+      const encoded = clean.split('/').map(encodeURIComponent).join('/');
+      return new URL(encoded, base).toString();
+    }
+
     async function fetchImageListFromGitHub(owner, repo) {
       if (!owner || !repo) throw new Error('Não consegui inferir owner/repo. Preenche CONFIG.github.owner/repo.');
 
@@ -161,7 +168,11 @@
               for (const e of exts) if (n.endsWith(e)) return true;
               return false;
             })
-            .map(it => ({ name: it.name, path: it.path }))
+            .map(it => ({
+              name: it.name,
+              path: it.path,
+              download_url: it.download_url || null
+            }))
             .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
         }
 
@@ -502,15 +513,35 @@
       const mts = renderer?.capabilities?.maxTextureSize ?? 0;
       const maxTexSize = mts || 4096;
 
-      setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})\nmaxTextureSize: ${mts}`);
-
       if (currentBaseTexture) {
         currentBaseTexture.userData?._bitmap?.close?.();
         currentBaseTexture.dispose();
         currentBaseTexture = null;
       }
 
-      const loaded = await loadImageMaybeDownscale(item.url, maxTexSize);
+      // tenta Pages primeiro (mesma origem), se falhar cai pro RAW (download_url)
+      const urlsToTry = [item.url, item.fallbackUrl].filter(Boolean);
+
+      let loaded = null;
+      let lastErr = null;
+      let usedUrl = null;
+
+      for (const u of urlsToTry) {
+        try {
+          setStatus(
+            `Carregando: ${item.name} (${idx + 1}/${images.length})\n` +
+            `Tentando: ${u}\n` +
+            `maxTextureSize: ${mts}`
+          );
+          loaded = await loadImageMaybeDownscale(u, maxTexSize);
+          usedUrl = u;
+          break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+
+      if (!loaded) throw lastErr;
 
       let tex;
       if (loaded.kind === 'canvas') tex = new THREE.CanvasTexture(loaded.image);
@@ -525,7 +556,12 @@
         ? `\n⚠️ Downscale: ${loaded.srcW}x${loaded.srcH} -> ${loaded.outW}x${loaded.outH} (limite GPU ${maxTexSize})`
         : '';
 
-      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}${warn}`);
+      setStatus(
+        `OK: ${item.name} (${idx + 1}/${images.length})\n` +
+        `URL: ${usedUrl}\n` +
+        `Res: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}\n` +
+        `XR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}${warn}`
+      );
 
       updateLabelTextFromScene();
     }
@@ -550,7 +586,7 @@
 
       for (const src of session.inputSources) {
         if (src?.targetRayMode !== 'tracked-pointer') continue;
-        if (src?.handedness !== 'right') continue; // usa o right controller
+        if (src?.handedness !== 'right') continue;
         const gp = src.gamepad;
         if (!gp) continue;
 
@@ -584,7 +620,6 @@
         }
 
         updateHeadLockedLabel();
-
         renderer.render(scene, camera);
       });
     }
@@ -637,7 +672,11 @@
         const list = await fetchImageListFromGitHub(owner, repo);
         if (!list.length) throw new Error(`Nenhuma imagem achada em /${CONFIG.imageFolder}/`);
 
-        images = list.map(it => ({ name: it.name, url: new URL(it.path, siteBase).toString() }));
+        images = list.map(it => ({
+          name: it.name,
+          url: toSiteUrl(it.path, siteBase),       // GitHub Pages
+          fallbackUrl: it.download_url || null     // RAW
+        }));
 
         currentIndex = 0;
         updateLabelTextFromScene();
@@ -657,3 +696,4 @@
   </script>
 </body>
 </html>
+
