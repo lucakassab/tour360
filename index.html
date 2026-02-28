@@ -30,7 +30,7 @@
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .ghost { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.14); }
     .muted { color: rgba(255,255,255,0.72); font-size: 13px; line-height: 1.35; margin-top: 10px; }
-    #status { margin-top: 10px; font-size: 14px; color: rgba(255,255,255,0.85); }
+    #status { margin-top: 10px; font-size: 14px; color: rgba(255,255,255,0.85); white-space: pre-line; }
     #canvasWrap { position: fixed; inset: 0; display: none; }
     #hint {
       position: fixed; left: 12px; bottom: 12px;
@@ -41,7 +41,6 @@
       font-size: 13px;
       display: none;
     }
-    code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -51,14 +50,14 @@
 
       <div class="row">
         <button id="loadBtn">Carregar Tour</button>
-        <button id="swapBtn" class="ghost" title="Inverte olho (top/bottom)">Inverter Olhos</button>
+        <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
-      <div id="status">Pronto. Abre isso no Quest e clica em Carregar Tour.</div>
+      <div id="status">Pronto. Abre no Quest e clica em Carregar Tour.</div>
 
       <div class="muted">
         Controles no VR: <b>A</b> = próxima, <b>B</b> = anterior.<br/>
-        Se teu estéreo vier invertido, clica em <b>Inverter Olhos</b> antes ou durante o VR.
+        Se o estéreo ficar invertido, usa <b>Inverter Olhos</b>.
       </div>
     </div>
   </div>
@@ -72,18 +71,34 @@
     // ========= CONFIG =========
     const CONFIG = {
       imageFolder: 'tour',
+
+      // Se seu repo for "master", troca pra 'master'
       branch: 'main',
 
-      // Se estiver usando GitHub Pages padrão e quiser fixar:
+      // Se quiser fixar (evita inferência falhar em domínio custom):
       // github: { owner: 'lucakassab', repo: 'tour360' },
       github: { owner: null, repo: null },
 
-      // Se tiver domínio custom ou quiser fixar a base:
+      // Se quiser fixar base do site:
       // siteBaseOverride: 'https://lucakassab.github.io/tour360/',
       siteBaseOverride: null,
 
-      // true = metade de CIMA pro olho ESQ (com o corte correto)
-      topIsLeft: true,
+      // ===== Estéreo (Top/Bottom) =====
+      // swapEyes = true inverte left/right (resolve estéreo invertido)
+      swapEyes: false,
+
+      // ===== Qualidade XR =====
+      // 1.0 = padrão. 1.25~1.5 costuma melhorar nitidez (pode custar FPS).
+      xrFramebufferScaleFactor: 1.25,
+      // 0 = sem foveation (mais nítido), 1 = mais performance (mais blur periférico)
+      xrFoveation: 0.0,
+
+      // ===== Qualidade da textura =====
+      // Mipmaps podem dar blur em panorama. Pra máxima nitidez: false.
+      useMipmaps: false,
+      // Se quiser “mais duro” ainda (pixel mais seco), testa NearestFilter no magFilter.
+      magFilter: 'Linear',     // 'Linear' | 'Nearest'
+      minFilter: 'Linear',     // 'Linear' | 'Nearest' (se useMipmaps=true, usaremos LinearMipmapLinear)
     };
 
     // ========= UI =========
@@ -97,7 +112,7 @@
     function setStatus(msg) { statusEl.textContent = msg; }
     function panic(msg, err) {
       console.error(msg, err);
-      setStatus(`${msg}${err ? ' (abre o console pra ver o erro)' : ''}`);
+      setStatus(`${msg}${err ? '\n(Abre o console pra ver o erro)' : ''}`);
       loadBtn.disabled = false;
     }
 
@@ -129,34 +144,38 @@
     }
 
     async function fetchImageListFromGitHub(owner, repo) {
-      if (!owner || !repo) {
-        throw new Error('Não consegui inferir owner/repo. Preenche CONFIG.github.owner/repo.');
+      if (!owner || !repo) throw new Error('Não consegui inferir owner/repo. Preenche CONFIG.github.owner/repo.');
+
+      // tenta branch configurada; se der 404, tenta fallback main/master
+      const tryBranches = [CONFIG.branch, CONFIG.branch === 'main' ? 'master' : 'main'].filter((v, i, a) => v && a.indexOf(v) === i);
+
+      for (const br of tryBranches) {
+        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(CONFIG.imageFolder)}?ref=${encodeURIComponent(br)}`;
+        const res = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github+json' } });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (!Array.isArray(data)) throw new Error('A pasta não retornou uma lista (confere imageFolder).');
+
+          const exts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+          return data
+            .filter(it => it && it.type === 'file' && typeof it.name === 'string')
+            .filter(it => {
+              const n = it.name.toLowerCase();
+              for (const e of exts) if (n.endsWith(e)) return true;
+              return false;
+            })
+            .map(it => ({ name: it.name, path: it.path }))
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        }
+
+        if (res.status !== 404) {
+          const txt = await res.text().catch(() => '');
+          throw new Error(`GitHub API falhou: HTTP ${res.status}. ${txt}`);
+        }
       }
 
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(CONFIG.imageFolder)}?ref=${encodeURIComponent(CONFIG.branch)}`;
-
-      const res = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github+json' } });
-
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(`GitHub API falhou: HTTP ${res.status}. ${txt}`);
-      }
-
-      const data = await res.json();
-      if (!Array.isArray(data)) throw new Error('A pasta não retornou uma lista (confere imageFolder).');
-
-      const exts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-      const files = data
-        .filter(it => it && it.type === 'file' && typeof it.name === 'string')
-        .filter(it => {
-          const name = it.name.toLowerCase();
-          for (const e of exts) if (name.endsWith(e)) return true;
-          return false;
-        })
-        .map(it => ({ name: it.name, path: it.path }))
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-
-      return files;
+      throw new Error(`Não achei a pasta /${CONFIG.imageFolder}/ nas branches testadas (${tryBranches.join(', ')}).`);
     }
 
     // ========= Three/WebXR =========
@@ -167,7 +186,6 @@
     let currentIndex = 0;
 
     const prevPressed = new Map();
-
     function isJustPressed(handedness, gamepad, btnIndex) {
       const btn = gamepad?.buttons?.[btnIndex];
       if (!btn) return false;
@@ -213,9 +231,17 @@
       if (renderer) return;
 
       renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(window.devicePixelRatio || 1);
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
+
+      // cor correta e sem “pipeline de cinema” alterando a foto
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.NoToneMapping;
+
+      // ✅ qualidade no XR (nitidez)
+      if (renderer.xr.setFramebufferScaleFactor) renderer.xr.setFramebufferScaleFactor(CONFIG.xrFramebufferScaleFactor);
+      if (renderer.xr.setFoveation) renderer.xr.setFoveation(CONFIG.xrFoveation);
 
       canvasWrap.style.display = 'block';
       canvasWrap.appendChild(renderer.domElement);
@@ -226,7 +252,8 @@
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
       camera.position.set(0, 1.6, 0);
 
-      sphereGeo = new THREE.SphereGeometry(10, 64, 48);
+      // um pouco mais de segments ajuda a não “quadrar” o sampling em alguns casos
+      sphereGeo = new THREE.SphereGeometry(10, 96, 72);
 
       window.addEventListener('resize', () => {
         if (!renderer || !camera) return;
@@ -235,7 +262,6 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
 
-      // debug desktop
       window.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') nextImage();
         if (e.key === 'ArrowLeft') prevImage();
@@ -248,12 +274,13 @@
 
       const yScale = 0.5;
 
-      // ✅ Com tex.flipY = true, o "topo" do arquivo está em v=[0..0.5]
+      // Com tex.flipY=true, topo do arquivo é v=[0..0.5]
       const topOffset = 0.0;
       const bottomOffset = 0.5;
 
-      const leftYOffset  = CONFIG.topIsLeft ? topOffset : bottomOffset;
-      const rightYOffset = CONFIG.topIsLeft ? bottomOffset : topOffset;
+      // swapEyes inverte left/right
+      const leftYOffset  = CONFIG.swapEyes ? bottomOffset : topOffset;
+      const rightYOffset = CONFIG.swapEyes ? topOffset : bottomOffset;
 
       const leftMat = makeStereoMaterial(texture, leftYOffset, yScale);
       const rightMat = makeStereoMaterial(texture, rightYOffset, yScale);
@@ -269,6 +296,31 @@
       scene.add(rightSphere);
     }
 
+    function applyTextureQuality(tex) {
+      // evita “mip blur” e tenta preservar detalhe
+      tex.flipY = true;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+
+      const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
+      tex.anisotropy = Math.max(1, maxAniso);
+
+      const mag = (CONFIG.magFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
+
+      if (CONFIG.useMipmaps) {
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = mag;
+      } else {
+        tex.generateMipmaps = false;
+        tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
+        tex.magFilter = mag;
+      }
+
+      tex.needsUpdate = true;
+    }
+
     async function loadTextureForIndex(idx) {
       const item = images[idx];
       if (!item) return;
@@ -281,23 +333,23 @@
       }
 
       const loader = new THREE.TextureLoader();
-
       const tex = await new Promise((resolve, reject) => {
         loader.load(item.url, t => resolve(t), undefined, err => reject(err));
       });
 
-      // ✅ deixa no padrão (true). Isso corrige o "de cabeça pra baixo"
-      tex.flipY = true;
-
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.ClampToEdgeWrapping;
-      tex.needsUpdate = true;
-
+      applyTextureQuality(tex);
       currentTexture = tex;
       rebuildSpheresWithTexture(tex);
 
-      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})`);
+      // Diagnóstico de limitação de GPU (downscale no upload pode acontecer se for gigante)
+      const iw = tex.image?.width ?? 0;
+      const ih = tex.image?.height ?? 0;
+      const mts = renderer?.capabilities?.maxTextureSize ?? 0;
+      const warn = (mts && (iw > mts || ih > mts))
+        ? `\n⚠️ Atenção: imagem ${iw}x${ih} > maxTextureSize ${mts}. O GPU pode downscale.`
+        : '';
+
+      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${iw}x${ih} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}${warn}`);
     }
 
     function nextImage() {
@@ -318,11 +370,11 @@
 
       for (const src of session.inputSources) {
         if (src?.targetRayMode !== 'tracked-pointer') continue;
-        if (src?.handedness !== 'right') continue; // A/B no controle direito
+        if (src?.handedness !== 'right') continue;
         const gp = src.gamepad;
         if (!gp) continue;
 
-        // Oculus Touch: A=buttons[4], B=buttons[5] (geralmente)
+        // Oculus Touch (geralmente): A=4, B=5
         if (isJustPressed('right', gp, 4)) nextImage();
         if (isJustPressed('right', gp, 5)) prevImage();
       }
@@ -355,9 +407,10 @@
       appEl.style.display = 'none';
     }
 
+    // ========= UI Actions =========
     swapBtn.addEventListener('click', () => {
-      CONFIG.topIsLeft = !CONFIG.topIsLeft;
-      setStatus(CONFIG.topIsLeft ? 'Olhos: TOP->ESQ / BOTTOM->DIR' : 'Olhos: TOP->DIR / BOTTOM->ESQ');
+      CONFIG.swapEyes = !CONFIG.swapEyes;
+      setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
       if (currentTexture) rebuildSpheresWithTexture(currentTexture);
     });
 
