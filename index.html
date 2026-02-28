@@ -40,6 +40,7 @@
       color: rgba(255,255,255,0.85);
       font-size: 13px;
       display: none;
+      z-index: 10;
     }
   </style>
 </head>
@@ -49,7 +50,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar Tour</button>
+        <button id="loadBtn">Carregar Tour0</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -68,9 +69,6 @@
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.183.1/build/three.module.js';
 
-    // ✅ (COR) garante que o ColorManagement do three tá ligado
-    THREE.ColorManagement.enabled = true;
-
     // ========= CONFIG =========
     const CONFIG = {
       imageFolder: 'tour',
@@ -84,8 +82,8 @@
       xrFoveation: 0.0,
 
       useMipmaps: false,
-      magFilter: 'Linear',
-      minFilter: 'Linear',
+      magFilter: 'Linear',     // 'Linear' | 'Nearest'
+      minFilter: 'Linear',     // 'Linear' | 'Nearest'
     };
 
     // ========= UI =========
@@ -133,7 +131,8 @@
     async function fetchImageListFromGitHub(owner, repo) {
       if (!owner || !repo) throw new Error('Não consegui inferir owner/repo. Preenche CONFIG.github.owner/repo.');
 
-      const tryBranches = [CONFIG.branch, CONFIG.branch === 'main' ? 'master' : 'main'].filter((v, i, a) => v && a.indexOf(v) === i);
+      const tryBranches = [CONFIG.branch, CONFIG.branch === 'main' ? 'master' : 'main']
+        .filter((v, i, a) => v && a.indexOf(v) === i);
 
       for (const br of tryBranches) {
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(CONFIG.imageFolder)}?ref=${encodeURIComponent(br)}`;
@@ -167,7 +166,8 @@
     // ========= Three/WebXR =========
     let renderer, scene, camera;
     let sphereGeo, leftSphere, rightSphere;
-    let currentTexture = null;
+    let currentBaseTexture = null;  // textura base (uma só)
+    let leftTex = null, rightTex = null; // clones pra offsets diferentes
     let images = [];
     let currentIndex = 0;
 
@@ -182,47 +182,6 @@
       return now && !was;
     }
 
-    // ✅ (COR) shader agora converte LINEAR -> outputColorSpace do renderer
-    function makeStereoMaterial(texture, yOffset, yScale) {
-      return new THREE.ShaderMaterial({
-        uniforms: {
-          map: { value: texture },
-          yOffset: { value: yOffset },
-          yScale: { value: yScale },
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform sampler2D map;
-          uniform float yOffset;
-          uniform float yScale;
-          varying vec2 vUv;
-
-          #include <common>
-          #include <colorspace_pars_fragment>
-
-          void main() {
-            vec2 uv = vUv;
-            uv.y = uv.y * yScale + yOffset;
-
-            // tex.colorSpace = SRGBColorSpace -> amostragem retorna LINEAR
-            gl_FragColor = texture2D(map, uv);
-
-            // converte LINEAR -> renderer.outputColorSpace (SRGB)
-            #include <colorspace_fragment>
-          }
-        `,
-        side: THREE.BackSide,
-        depthWrite: false,
-        toneMapped: false, // ✅ (COR) impede qualquer interferência de tone mapping
-      });
-    }
-
     function initThreeIfNeeded() {
       if (renderer) return;
 
@@ -231,7 +190,7 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
 
-      // ✅ (COR) pipeline correto: sRGB output e sem tone mapping
+      // ✅ COR: output sRGB + sem tone mapping (mantém foto fiel)
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.NoToneMapping;
       renderer.toneMappingExposure = 1.0;
@@ -248,6 +207,10 @@
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
       camera.position.set(0, 1.6, 0);
 
+      // fora do XR (debug): deixa ver as duas layers
+      camera.layers.enable(1);
+      camera.layers.enable(2);
+
       sphereGeo = new THREE.SphereGeometry(10, 96, 72);
 
       window.addEventListener('resize', () => {
@@ -263,38 +226,15 @@
       });
     }
 
-    function rebuildSpheresWithTexture(texture) {
-      if (leftSphere) scene.remove(leftSphere);
-      if (rightSphere) scene.remove(rightSphere);
-
-      const yScale = 0.5;
-
-      const topOffset = 0.0;
-      const bottomOffset = 0.5;
-
-      const leftYOffset  = CONFIG.swapEyes ? bottomOffset : topOffset;
-      const rightYOffset = CONFIG.swapEyes ? topOffset : bottomOffset;
-
-      const leftMat = makeStereoMaterial(texture, leftYOffset, yScale);
-      const rightMat = makeStereoMaterial(texture, rightYOffset, yScale);
-
-      leftSphere = new THREE.Mesh(sphereGeo, leftMat);
-      rightSphere = new THREE.Mesh(sphereGeo, rightMat);
-
-      leftSphere.layers.set(1);
-      rightSphere.layers.set(2);
-
-      scene.add(leftSphere);
-      scene.add(rightSphere);
-    }
-
     function applyTextureQuality(tex) {
       tex.flipY = true;
 
-      // (COR) mantém textura como sRGB
+      // ✅ COR: a foto é sRGB (JPG/PNG normal)
       tex.colorSpace = THREE.SRGBColorSpace;
 
+      // panorama precisa repetir no eixo X pra não dar “corte” na emenda
       tex.wrapS = THREE.RepeatWrapping;
+      // no Y é melhor clamp (top/bottom)
       tex.wrapT = THREE.ClampToEdgeWrapping;
 
       const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
@@ -315,34 +255,173 @@
       tex.needsUpdate = true;
     }
 
+    // ✅ Downscale automático pra não estourar maxTextureSize (9000 -> 8192 típico)
+    async function loadImageMaybeDownscale(url, maxTexSize) {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error(`Falha baixando imagem: HTTP ${res.status}`);
+      const blob = await res.blob();
+
+      // tenta ImageBitmap (melhor caminho)
+      let bmp = null;
+      try {
+        bmp = await createImageBitmap(blob);
+      } catch {}
+
+      const toCanvas = async (source, outW, outH) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(source, 0, 0, outW, outH);
+        return canvas;
+      };
+
+      if (bmp) {
+        const w = bmp.width, h = bmp.height;
+        const need = (w > maxTexSize || h > maxTexSize);
+
+        if (!need) return { image: bmp, kind: 'bitmap', resized: false, srcW: w, srcH: h, outW: w, outH: h };
+
+        const scale = Math.min(maxTexSize / w, maxTexSize / h);
+        const outW = Math.max(1, Math.floor(w * scale));
+        const outH = Math.max(1, Math.floor(h * scale));
+
+        // tenta resize via createImageBitmap
+        try {
+          const resized = await createImageBitmap(blob, {
+            resizeWidth: outW,
+            resizeHeight: outH,
+            resizeQuality: 'high'
+          });
+          bmp.close?.();
+          return { image: resized, kind: 'bitmap', resized: true, srcW: w, srcH: h, outW, outH };
+        } catch {
+          const canvas = await toCanvas(bmp, outW, outH);
+          bmp.close?.();
+          return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
+        }
+      }
+
+      // fallback via <img>
+      const img = await new Promise((resolve, reject) => {
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = () => resolve(im);
+        im.onerror = reject;
+        im.src = URL.createObjectURL(blob);
+      });
+
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const need = (w > maxTexSize || h > maxTexSize);
+
+      if (!need) return { image: img, kind: 'img', resized: false, srcW: w, srcH: h, outW: w, outH: h };
+
+      const scale = Math.min(maxTexSize / w, maxTexSize / h);
+      const outW = Math.max(1, Math.floor(w * scale));
+      const outH = Math.max(1, Math.floor(h * scale));
+
+      const canvas = await toCanvas(img, outW, outH);
+      return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
+    }
+
+    function disposeEyeTextures() {
+      if (leftTex) { leftTex.dispose(); leftTex = null; }
+      if (rightTex) { rightTex.dispose(); rightTex = null; }
+    }
+
+    function rebuildSpheresWithBaseTexture(baseTex) {
+      if (leftSphere) scene.remove(leftSphere);
+      if (rightSphere) scene.remove(rightSphere);
+
+      disposeEyeTextures();
+
+      const yScale = 0.5;
+      const topOffset = 0.0;
+      const bottomOffset = 0.5;
+
+      const leftYOffset  = CONFIG.swapEyes ? bottomOffset : topOffset;
+      const rightYOffset = CONFIG.swapEyes ? topOffset : bottomOffset;
+
+      // ✅ sem shader: dois clones com repeat/offset diferentes
+      leftTex = baseTex.clone();
+      rightTex = baseTex.clone();
+
+      // recorte top/bottom
+      leftTex.repeat.set(1, yScale);
+      rightTex.repeat.set(1, yScale);
+
+      // OBS: com flipY=true, teu mapeamento original considera topo em 0..0.5
+      leftTex.offset.set(0, leftYOffset);
+      rightTex.offset.set(0, rightYOffset);
+
+      applyTextureQuality(leftTex);
+      applyTextureQuality(rightTex);
+
+      const leftMat = new THREE.MeshBasicMaterial({
+        map: leftTex,
+        side: THREE.BackSide,
+        depthWrite: false,
+        toneMapped: false,
+      });
+
+      const rightMat = new THREE.MeshBasicMaterial({
+        map: rightTex,
+        side: THREE.BackSide,
+        depthWrite: false,
+        toneMapped: false,
+      });
+
+      leftSphere = new THREE.Mesh(sphereGeo, leftMat);
+      rightSphere = new THREE.Mesh(sphereGeo, rightMat);
+
+      leftSphere.layers.set(1);
+      rightSphere.layers.set(2);
+
+      scene.add(leftSphere);
+      scene.add(rightSphere);
+    }
+
     async function loadTextureForIndex(idx) {
       const item = images[idx];
       if (!item) return;
 
-      setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})`);
+      const mts = renderer?.capabilities?.maxTextureSize ?? 0;
+      const maxTexSize = mts || 4096;
 
-      if (currentTexture) {
-        currentTexture.dispose();
-        currentTexture = null;
+      setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})\nmaxTextureSize: ${mts}`);
+
+      if (currentBaseTexture) {
+        // fecha bitmap antigo se existir
+        currentBaseTexture.userData?._bitmap?.close?.();
+        currentBaseTexture.dispose();
+        currentBaseTexture = null;
       }
 
-      const loader = new THREE.TextureLoader();
-      const tex = await new Promise((resolve, reject) => {
-        loader.load(item.url, t => resolve(t), undefined, err => reject(err));
-      });
+      const loaded = await loadImageMaybeDownscale(item.url, maxTexSize);
+
+      let tex;
+      if (loaded.kind === 'canvas') {
+        tex = new THREE.CanvasTexture(loaded.image);
+      } else {
+        tex = new THREE.Texture(loaded.image);
+      }
+
+      // se for ImageBitmap, guarda pra fechar depois (evita leak)
+      if (loaded.kind === 'bitmap') tex.userData._bitmap = loaded.image;
 
       applyTextureQuality(tex);
-      currentTexture = tex;
-      rebuildSpheresWithTexture(tex);
+      currentBaseTexture = tex;
 
-      const iw = tex.image?.width ?? 0;
-      const ih = tex.image?.height ?? 0;
-      const mts = renderer?.capabilities?.maxTextureSize ?? 0;
-      const warn = (mts && (iw > mts || ih > mts))
-        ? `\n⚠️ Atenção: imagem ${iw}x${ih} > maxTextureSize ${mts}. O GPU pode downscale.`
+      rebuildSpheresWithBaseTexture(tex);
+
+      const warn = loaded.resized
+        ? `\n⚠️ Downscale: ${loaded.srcW}x${loaded.srcH} -> ${loaded.outW}x${loaded.outH} (limite GPU ${maxTexSize})`
         : '';
 
-      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${iw}x${ih} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}${warn}`);
+      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}${warn}`);
     }
 
     function nextImage() {
@@ -367,8 +446,8 @@
         const gp = src.gamepad;
         if (!gp) continue;
 
-        if (isJustPressed('right', gp, 4)) nextImage();
-        if (isJustPressed('right', gp, 5)) prevImage();
+        if (isJustPressed('right', gp, 4)) nextImage(); // A
+        if (isJustPressed('right', gp, 5)) prevImage(); // B
       }
     }
 
@@ -377,6 +456,14 @@
         pollControllerButtons();
         renderer.render(scene, camera);
       });
+    }
+
+    function forceXREyeLayers() {
+      const xrCam = renderer.xr.getCamera(camera);
+      if (xrCam && xrCam.cameras && xrCam.cameras.length >= 2) {
+        xrCam.cameras[0].layers.set(1); // esquerdo
+        xrCam.cameras[1].layers.set(2); // direito
+      }
     }
 
     async function enterVR() {
@@ -395,6 +482,8 @@
       });
 
       await renderer.xr.setSession(session);
+      forceXREyeLayers();
+
       hintEl.style.display = 'block';
       appEl.style.display = 'none';
     }
@@ -403,13 +492,21 @@
     swapBtn.addEventListener('click', () => {
       CONFIG.swapEyes = !CONFIG.swapEyes;
       setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
-      if (currentTexture) rebuildSpheresWithTexture(currentTexture);
+      if (currentBaseTexture) rebuildSpheresWithBaseTexture(currentBaseTexture);
+      try { forceXREyeLayers(); } catch {}
     });
 
     loadBtn.addEventListener('click', async () => {
       loadBtn.disabled = true;
 
       try {
+        initThreeIfNeeded();
+        startRenderLoop();
+
+        // entra no VR logo (user gesture)
+        setStatus('Entrando em VR...');
+        await enterVR();
+
         setStatus('Buscando imagens no repo...');
         const { owner, repo } = inferGitHubRepo();
         const siteBase = inferSiteBase(owner, repo);
@@ -423,14 +520,10 @@
         }));
 
         setStatus(`Achei ${images.length} imagem(ns). Carregando a primeira...`);
-
-        initThreeIfNeeded();
         await loadTextureForIndex(0);
         currentIndex = 0;
 
-        setStatus('Entrando em VR...');
-        startRenderLoop();
-        await enterVR();
+        forceXREyeLayers();
       } catch (err) {
         panic('Deu merda pra iniciar o tour', err);
       } finally {
