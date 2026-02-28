@@ -50,7 +50,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar Tour0</button>
+        <button id="loadBtn">Carregar Tour</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -69,7 +69,6 @@
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.183.1/build/three.module.js';
 
-    // ========= CONFIG =========
     const CONFIG = {
       imageFolder: 'tour',
       branch: 'main',
@@ -82,11 +81,10 @@
       xrFoveation: 0.0,
 
       useMipmaps: false,
-      magFilter: 'Linear',     // 'Linear' | 'Nearest'
-      minFilter: 'Linear',     // 'Linear' | 'Nearest'
+      magFilter: 'Linear',
+      minFilter: 'Linear',
     };
 
-    // ========= UI =========
     const appEl = document.getElementById('app');
     const loadBtn = document.getElementById('loadBtn');
     const swapBtn = document.getElementById('swapBtn');
@@ -101,10 +99,8 @@
       loadBtn.disabled = false;
     }
 
-    // ========= GitHub Pages / Repo detection =========
     function inferGitHubRepo() {
       if (CONFIG.github.owner && CONFIG.github.repo) return { owner: CONFIG.github.owner, repo: CONFIG.github.repo };
-
       const host = location.hostname.toLowerCase();
       if (host.endsWith('github.io')) {
         const owner = host.split('.')[0];
@@ -117,10 +113,8 @@
 
     function inferSiteBase(owner, repo) {
       if (CONFIG.siteBaseOverride) return CONFIG.siteBaseOverride;
-
       const origin = location.origin;
       const host = location.hostname.toLowerCase();
-
       if (owner && host === `${owner}.github.io`) {
         if (repo && repo !== `${owner}.github.io`) return `${origin}/${repo}/`;
         return `${origin}/`;
@@ -166,8 +160,8 @@
     // ========= Three/WebXR =========
     let renderer, scene, camera;
     let sphereGeo, leftSphere, rightSphere;
-    let currentBaseTexture = null;  // textura base (uma só)
-    let leftTex = null, rightTex = null; // clones pra offsets diferentes
+    let currentBaseTexture = null;
+    let leftTex = null, rightTex = null;
     let images = [];
     let currentIndex = 0;
 
@@ -190,7 +184,6 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
 
-      // ✅ COR: output sRGB + sem tone mapping (mantém foto fiel)
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.NoToneMapping;
       renderer.toneMappingExposure = 1.0;
@@ -207,7 +200,6 @@
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
       camera.position.set(0, 1.6, 0);
 
-      // fora do XR (debug): deixa ver as duas layers
       camera.layers.enable(1);
       camera.layers.enable(2);
 
@@ -227,14 +219,12 @@
     }
 
     function applyTextureQuality(tex) {
-      tex.flipY = true;
+      // ✅ FIX: sem flipY; com offset/repeat fica certo e não vira de cabeça pra baixo
+      tex.flipY = false;
 
-      // ✅ COR: a foto é sRGB (JPG/PNG normal)
       tex.colorSpace = THREE.SRGBColorSpace;
 
-      // panorama precisa repetir no eixo X pra não dar “corte” na emenda
       tex.wrapS = THREE.RepeatWrapping;
-      // no Y é melhor clamp (top/bottom)
       tex.wrapT = THREE.ClampToEdgeWrapping;
 
       const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
@@ -242,30 +232,20 @@
 
       const mag = (CONFIG.magFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
 
-      if (CONFIG.useMipmaps) {
-        tex.generateMipmaps = true;
-        tex.minFilter = THREE.LinearMipmapLinearFilter;
-        tex.magFilter = mag;
-      } else {
-        tex.generateMipmaps = false;
-        tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
-        tex.magFilter = mag;
-      }
+      tex.generateMipmaps = false;
+      tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
+      tex.magFilter = mag;
 
       tex.needsUpdate = true;
     }
 
-    // ✅ Downscale automático pra não estourar maxTextureSize (9000 -> 8192 típico)
     async function loadImageMaybeDownscale(url, maxTexSize) {
       const res = await fetch(url, { mode: 'cors' });
       if (!res.ok) throw new Error(`Falha baixando imagem: HTTP ${res.status}`);
       const blob = await res.blob();
 
-      // tenta ImageBitmap (melhor caminho)
       let bmp = null;
-      try {
-        bmp = await createImageBitmap(blob);
-      } catch {}
+      try { bmp = await createImageBitmap(blob); } catch {}
 
       const toCanvas = async (source, outW, outH) => {
         const canvas = document.createElement('canvas');
@@ -281,20 +261,14 @@
       if (bmp) {
         const w = bmp.width, h = bmp.height;
         const need = (w > maxTexSize || h > maxTexSize);
-
         if (!need) return { image: bmp, kind: 'bitmap', resized: false, srcW: w, srcH: h, outW: w, outH: h };
 
         const scale = Math.min(maxTexSize / w, maxTexSize / h);
         const outW = Math.max(1, Math.floor(w * scale));
         const outH = Math.max(1, Math.floor(h * scale));
 
-        // tenta resize via createImageBitmap
         try {
-          const resized = await createImageBitmap(blob, {
-            resizeWidth: outW,
-            resizeHeight: outH,
-            resizeQuality: 'high'
-          });
+          const resized = await createImageBitmap(blob, { resizeWidth: outW, resizeHeight: outH, resizeQuality: 'high' });
           bmp.close?.();
           return { image: resized, kind: 'bitmap', resized: true, srcW: w, srcH: h, outW, outH };
         } catch {
@@ -304,7 +278,6 @@
         }
       }
 
-      // fallback via <img>
       const img = await new Promise((resolve, reject) => {
         const im = new Image();
         im.crossOrigin = 'anonymous';
@@ -339,40 +312,28 @@
       disposeEyeTextures();
 
       const yScale = 0.5;
-      const topOffset = 0.0;
-      const bottomOffset = 0.5;
+
+      // ✅ FIX: com flipY=false, o "topo" do arquivo fica na metade de cima do UV (v=0.5..1.0)
+      const topOffset = 0.5;
+      const bottomOffset = 0.0;
 
       const leftYOffset  = CONFIG.swapEyes ? bottomOffset : topOffset;
       const rightYOffset = CONFIG.swapEyes ? topOffset : bottomOffset;
 
-      // ✅ sem shader: dois clones com repeat/offset diferentes
       leftTex = baseTex.clone();
       rightTex = baseTex.clone();
 
-      // recorte top/bottom
       leftTex.repeat.set(1, yScale);
       rightTex.repeat.set(1, yScale);
 
-      // OBS: com flipY=true, teu mapeamento original considera topo em 0..0.5
       leftTex.offset.set(0, leftYOffset);
       rightTex.offset.set(0, rightYOffset);
 
       applyTextureQuality(leftTex);
       applyTextureQuality(rightTex);
 
-      const leftMat = new THREE.MeshBasicMaterial({
-        map: leftTex,
-        side: THREE.BackSide,
-        depthWrite: false,
-        toneMapped: false,
-      });
-
-      const rightMat = new THREE.MeshBasicMaterial({
-        map: rightTex,
-        side: THREE.BackSide,
-        depthWrite: false,
-        toneMapped: false,
-      });
+      const leftMat = new THREE.MeshBasicMaterial({ map: leftTex, side: THREE.BackSide, depthWrite: false, toneMapped: false });
+      const rightMat = new THREE.MeshBasicMaterial({ map: rightTex, side: THREE.BackSide, depthWrite: false, toneMapped: false });
 
       leftSphere = new THREE.Mesh(sphereGeo, leftMat);
       rightSphere = new THREE.Mesh(sphereGeo, rightMat);
@@ -394,7 +355,6 @@
       setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})\nmaxTextureSize: ${mts}`);
 
       if (currentBaseTexture) {
-        // fecha bitmap antigo se existir
         currentBaseTexture.userData?._bitmap?.close?.();
         currentBaseTexture.dispose();
         currentBaseTexture = null;
@@ -403,18 +363,12 @@
       const loaded = await loadImageMaybeDownscale(item.url, maxTexSize);
 
       let tex;
-      if (loaded.kind === 'canvas') {
-        tex = new THREE.CanvasTexture(loaded.image);
-      } else {
-        tex = new THREE.Texture(loaded.image);
-      }
-
-      // se for ImageBitmap, guarda pra fechar depois (evita leak)
+      if (loaded.kind === 'canvas') tex = new THREE.CanvasTexture(loaded.image);
+      else tex = new THREE.Texture(loaded.image);
       if (loaded.kind === 'bitmap') tex.userData._bitmap = loaded.image;
 
       applyTextureQuality(tex);
       currentBaseTexture = tex;
-
       rebuildSpheresWithBaseTexture(tex);
 
       const warn = loaded.resized
@@ -446,8 +400,8 @@
         const gp = src.gamepad;
         if (!gp) continue;
 
-        if (isJustPressed('right', gp, 4)) nextImage(); // A
-        if (isJustPressed('right', gp, 5)) prevImage(); // B
+        if (isJustPressed('right', gp, 4)) nextImage();
+        if (isJustPressed('right', gp, 5)) prevImage();
       }
     }
 
@@ -461,8 +415,8 @@
     function forceXREyeLayers() {
       const xrCam = renderer.xr.getCamera(camera);
       if (xrCam && xrCam.cameras && xrCam.cameras.length >= 2) {
-        xrCam.cameras[0].layers.set(1); // esquerdo
-        xrCam.cameras[1].layers.set(2); // direito
+        xrCam.cameras[0].layers.set(1);
+        xrCam.cameras[1].layers.set(2);
       }
     }
 
@@ -471,9 +425,7 @@
       const supported = await navigator.xr.isSessionSupported('immersive-vr');
       if (!supported) throw new Error('Esse browser não suporta immersive-vr.');
 
-      const session = await navigator.xr.requestSession('immersive-vr', {
-        optionalFeatures: ['local-floor']
-      });
+      const session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] });
 
       session.addEventListener('end', () => {
         hintEl.style.display = 'none';
@@ -488,7 +440,6 @@
       appEl.style.display = 'none';
     }
 
-    // ========= UI Actions =========
     swapBtn.addEventListener('click', () => {
       CONFIG.swapEyes = !CONFIG.swapEyes;
       setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
@@ -503,7 +454,6 @@
         initThreeIfNeeded();
         startRenderLoop();
 
-        // entra no VR logo (user gesture)
         setStatus('Entrando em VR...');
         await enterVR();
 
@@ -514,10 +464,7 @@
         const list = await fetchImageListFromGitHub(owner, repo);
         if (!list.length) throw new Error(`Nenhuma imagem achada em /${CONFIG.imageFolder}/`);
 
-        images = list.map(it => ({
-          name: it.name,
-          url: new URL(it.path, siteBase).toString()
-        }));
+        images = list.map(it => ({ name: it.name, url: new URL(it.path, siteBase).toString() }));
 
         setStatus(`Achei ${images.length} imagem(ns). Carregando a primeira...`);
         await loadTextureForIndex(0);
