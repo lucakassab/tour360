@@ -49,7 +49,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">3Carregar Tour3</button>
+        <button id="loadBtn">4Carregar Tour4</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -68,37 +68,24 @@
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.183.1/build/three.module.js';
 
+    // ✅ garante que o pipeline de cor do three tá ligado
+    THREE.ColorManagement.enabled = true;
+
     // ========= CONFIG =========
     const CONFIG = {
       imageFolder: 'tour',
-
-      // Se seu repo for "master", troca pra 'master'
       branch: 'main',
-
-      // Se quiser fixar (evita inferência falhar em domínio custom):
-      // github: { owner: 'lucakassab', repo: 'tour360' },
       github: { owner: null, repo: null },
-
-      // Se quiser fixar base do site:
-      // siteBaseOverride: 'https://lucakassab.github.io/tour360/',
       siteBaseOverride: null,
 
-      // ===== Estéreo (Top/Bottom) =====
-      // swapEyes = true inverte left/right (resolve estéreo invertido)
       swapEyes: false,
 
-      // ===== Qualidade XR =====
-      // 1.0 = padrão. 1.25~1.5 costuma melhorar nitidez (pode custar FPS).
       xrFramebufferScaleFactor: 1.25,
-      // 0 = sem foveation (mais nítido), 1 = mais performance (mais blur periférico)
       xrFoveation: 0.0,
 
-      // ===== Qualidade da textura =====
-      // Mipmaps podem dar blur em panorama. Pra máxima nitidez: false.
       useMipmaps: false,
-      // Se quiser “mais duro” ainda (pixel mais seco), testa NearestFilter no magFilter.
       magFilter: 'Linear',     // 'Linear' | 'Nearest'
-      minFilter: 'Linear',     // 'Linear' | 'Nearest' (se useMipmaps=true, usaremos LinearMipmapLinear)
+      minFilter: 'Linear',     // 'Linear' | 'Nearest'
     };
 
     // ========= UI =========
@@ -146,8 +133,8 @@
     async function fetchImageListFromGitHub(owner, repo) {
       if (!owner || !repo) throw new Error('Não consegui inferir owner/repo. Preenche CONFIG.github.owner/repo.');
 
-      // tenta branch configurada; se der 404, tenta fallback main/master
-      const tryBranches = [CONFIG.branch, CONFIG.branch === 'main' ? 'master' : 'main'].filter((v, i, a) => v && a.indexOf(v) === i);
+      const tryBranches = [CONFIG.branch, CONFIG.branch === 'main' ? 'master' : 'main']
+        .filter((v, i, a) => v && a.indexOf(v) === i);
 
       for (const br of tryBranches) {
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(CONFIG.imageFolder)}?ref=${encodeURIComponent(br)}`;
@@ -196,6 +183,7 @@
       return now && !was;
     }
 
+    // ✅ shader agora converte LINEAR -> outputColorSpace (senão escurece)
     function makeStereoMaterial(texture, yOffset, yScale) {
       return new THREE.ShaderMaterial({
         uniforms: {
@@ -216,14 +204,21 @@
           uniform float yScale;
           varying vec2 vUv;
 
+          #include <common>
+          #include <colorspace_pars_fragment>
+
           void main() {
             vec2 uv = vUv;
             uv.y = uv.y * yScale + yOffset;
-            gl_FragColor = texture2D(map, uv);
+
+            vec4 texel = texture2D(map, uv);
+
+            gl_FragColor = vec4(linearToOutputTexel(texel.rgb), texel.a);
           }
         `,
         side: THREE.BackSide,
         depthWrite: false,
+        toneMapped: false, // ✅ não deixa tone mapping mexer
       });
     }
 
@@ -235,11 +230,11 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
 
-      // cor correta e sem “pipeline de cinema” alterando a foto
+      // ✅ output correto + sem cinema
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.NoToneMapping;
+      renderer.toneMappingExposure = 1.0;
 
-      // ✅ qualidade no XR (nitidez)
       if (renderer.xr.setFramebufferScaleFactor) renderer.xr.setFramebufferScaleFactor(CONFIG.xrFramebufferScaleFactor);
       if (renderer.xr.setFoveation) renderer.xr.setFoveation(CONFIG.xrFoveation);
 
@@ -252,7 +247,6 @@
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
       camera.position.set(0, 1.6, 0);
 
-      // um pouco mais de segments ajuda a não “quadrar” o sampling em alguns casos
       sphereGeo = new THREE.SphereGeometry(10, 96, 72);
 
       window.addEventListener('resize', () => {
@@ -274,11 +268,9 @@
 
       const yScale = 0.5;
 
-      // Com tex.flipY=true, topo do arquivo é v=[0..0.5]
       const topOffset = 0.0;
       const bottomOffset = 0.5;
 
-      // swapEyes inverte left/right
       const leftYOffset  = CONFIG.swapEyes ? bottomOffset : topOffset;
       const rightYOffset = CONFIG.swapEyes ? topOffset : bottomOffset;
 
@@ -288,7 +280,6 @@
       leftSphere = new THREE.Mesh(sphereGeo, leftMat);
       rightSphere = new THREE.Mesh(sphereGeo, rightMat);
 
-      // layer 1 = olho esquerdo, layer 2 = olho direito
       leftSphere.layers.set(1);
       rightSphere.layers.set(2);
 
@@ -297,9 +288,11 @@
     }
 
     function applyTextureQuality(tex) {
-      // evita “mip blur” e tenta preservar detalhe
       tex.flipY = true;
+
+      // ✅ se suas imagens são JPG/PNG normais, isso aqui é o certo
       tex.colorSpace = THREE.SRGBColorSpace;
+
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
 
@@ -341,7 +334,6 @@
       currentTexture = tex;
       rebuildSpheresWithTexture(tex);
 
-      // Diagnóstico de limitação de GPU (downscale no upload pode acontecer se for gigante)
       const iw = tex.image?.width ?? 0;
       const ih = tex.image?.height ?? 0;
       const mts = renderer?.capabilities?.maxTextureSize ?? 0;
@@ -374,9 +366,8 @@
         const gp = src.gamepad;
         if (!gp) continue;
 
-        // Oculus Touch (geralmente): A=4, B=5
-        if (isJustPressed('right', gp, 4)) nextImage();
-        if (isJustPressed('right', gp, 5)) prevImage();
+        if (isJustPressed('right', gp, 4)) nextImage(); // A
+        if (isJustPressed('right', gp, 5)) prevImage(); // B
       }
     }
 
