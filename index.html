@@ -50,7 +50,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar Tour2</button>
+        <button id="loadBtn">Carregar Tour</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -219,11 +219,10 @@
     }
 
     function applyTextureQuality(tex) {
-      // ✅ FIX: sem flipY; com offset/repeat fica certo e não vira de cabeça pra baixo
-      tex.flipY = true;
+      // ✅ deixa a orientação por conta de repeat/offset (mais previsível)
+      tex.flipY = false;
 
       tex.colorSpace = THREE.SRGBColorSpace;
-
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
 
@@ -261,6 +260,7 @@
       if (bmp) {
         const w = bmp.width, h = bmp.height;
         const need = (w > maxTexSize || h > maxTexSize);
+
         if (!need) return { image: bmp, kind: 'bitmap', resized: false, srcW: w, srcH: h, outW: w, outH: h };
 
         const scale = Math.min(maxTexSize / w, maxTexSize / h);
@@ -308,14 +308,16 @@
     function rebuildSpheresWithBaseTexture(baseTex) {
       if (leftSphere) scene.remove(leftSphere);
       if (rightSphere) scene.remove(rightSphere);
-
       disposeEyeTextures();
 
-      const yScale = 0.5;
+      // ✅ FIX REAL: flip vertical via UV (repeat.y negativo)
+      const yRepeat = -0.5;
 
-      // ✅ FIX: com flipY=false, o "topo" do arquivo fica na metade de cima do UV (v=0.5..1.0)
-      const topOffset = 0.5;
-      const bottomOffset = 0.0;
+      // com repeat negativo:
+      // top half (0.5..1.0) => offset = 1.0
+      // bottom half (0.0..0.5) => offset = 0.5
+      const topOffset = 1.0;
+      const bottomOffset = 0.5;
 
       const leftYOffset  = CONFIG.swapEyes ? bottomOffset : topOffset;
       const rightYOffset = CONFIG.swapEyes ? topOffset : bottomOffset;
@@ -323,8 +325,8 @@
       leftTex = baseTex.clone();
       rightTex = baseTex.clone();
 
-      leftTex.repeat.set(1, yScale);
-      rightTex.repeat.set(1, yScale);
+      leftTex.repeat.set(1, yRepeat);
+      rightTex.repeat.set(1, yRepeat);
 
       leftTex.offset.set(0, leftYOffset);
       rightTex.offset.set(0, rightYOffset);
