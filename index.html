@@ -50,7 +50,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">1Carregar Tour1</button>
+        <button id="loadBtn">Carregar Tour</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -79,17 +79,14 @@
       github: { owner: null, repo: null },
       siteBaseOverride: null,
 
-      // Estéreo top/bottom
       swapEyes: false,
 
-      // Qualidade XR
-      xrFramebufferScaleFactor: 1.25,
+      xrFramebufferScaleFactor: 1.15, // 1.25 com 8k pode pesar no Quest; 1.15 é mais seguro
       xrFoveation: 0.0,
 
-      // Qualidade textura
       useMipmaps: false,
-      magFilter: 'Linear', // 'Linear' | 'Nearest'
-      minFilter: 'Linear', // 'Linear' | 'Nearest'
+      magFilter: 'Linear',
+      minFilter: 'Linear',
     };
 
     // ========= UI =========
@@ -187,7 +184,7 @@
       return now && !was;
     }
 
-    // ✅ shader com conversão de color space compatível com XR/Quest
+    // ✅ shader com conversão de color space (compatível com XR/Quest)
     function makeStereoMaterial(texture, yOffset, yScale) {
       return new THREE.ShaderMaterial({
         uniforms: {
@@ -220,7 +217,7 @@
 
             gl_FragColor = texel;
 
-            // converte LINEAR -> renderer.outputColorSpace (SRGB)
+            // converte LINEAR -> renderer.outputColorSpace
             #include <colorspace_fragment>
           }
         `,
@@ -234,19 +231,14 @@
       if (renderer) return;
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-      renderer.setPixelRatio(window.devicePixelRatio || 1);
+      renderer.setPixelRatio(1); // Quest agradece (principalmente com textura gigante)
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
 
-      // ✅ fidelidade de cor
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.NoToneMapping;
       renderer.toneMappingExposure = 1.0;
 
-      // ajuda a pegar erro de shader no console do browser/Quest
-      renderer.debug.checkShaderErrors = true;
-
-      // ✅ qualidade no XR
       if (renderer.xr.setFramebufferScaleFactor) renderer.xr.setFramebufferScaleFactor(CONFIG.xrFramebufferScaleFactor);
       if (renderer.xr.setFoveation) renderer.xr.setFoveation(CONFIG.xrFoveation);
 
@@ -259,7 +251,7 @@
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
       camera.position.set(0, 1.6, 0);
 
-      // ✅ IMPORTANTÍSSIMO: deixa a câmera enxergar as layers 1 e 2
+      // ✅ garante que a câmera enxerga as layers dos olhos (1 e 2)
       camera.layers.enable(1);
       camera.layers.enable(2);
 
@@ -297,7 +289,6 @@
       leftSphere = new THREE.Mesh(sphereGeo, leftMat);
       rightSphere = new THREE.Mesh(sphereGeo, rightMat);
 
-      // layer 1 = olho esquerdo, layer 2 = olho direito
       leftSphere.layers.set(1);
       rightSphere.layers.set(2);
 
@@ -308,10 +299,11 @@
     function applyTextureQuality(tex) {
       tex.flipY = true;
 
-      // ✅ imagens normais: sRGB
+      // ✅ imagens normais: sRGB (não P3, não ICC doidão)
       tex.colorSpace = THREE.SRGBColorSpace;
 
-      tex.wrapS = THREE.RepeatWrapping;
+      // ✅ CRÍTICO: nada de RepeatWrapping em textura NPOT gigante -> pode ficar "incomplete" e renderizar preto
+      tex.wrapS = THREE.ClampToEdgeWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
 
       const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
@@ -319,49 +311,142 @@
 
       const mag = (CONFIG.magFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
 
-      if (CONFIG.useMipmaps) {
-        tex.generateMipmaps = true;
-        tex.minFilter = THREE.LinearMipmapLinearFilter;
-        tex.magFilter = mag;
-      } else {
-        tex.generateMipmaps = false;
-        tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
-        tex.magFilter = mag;
-      }
+      tex.generateMipmaps = false;
+      tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
+      tex.magFilter = mag;
 
       tex.needsUpdate = true;
+    }
+
+    function forceXREyeLayers() {
+      const xrCam = renderer.xr.getCamera(camera);
+      if (xrCam && xrCam.cameras && xrCam.cameras.length >= 2) {
+        xrCam.cameras[0].layers.set(1); // esquerdo
+        xrCam.cameras[1].layers.set(2); // direito
+      }
+      camera.layers.enable(1);
+      camera.layers.enable(2);
+    }
+
+    // ====== Loader que downscale se passar do maxTextureSize ======
+    async function loadImageMaybeDownscale(url, maxTexSize) {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error(`Falha baixando imagem: HTTP ${res.status}`);
+      const blob = await res.blob();
+
+      // 1) tenta createImageBitmap com resize (melhor performance, quando suportado)
+      let bmp = null;
+      try {
+        bmp = await createImageBitmap(blob, {
+          premultiplyAlpha: 'none',
+          colorSpaceConversion: 'none'
+        });
+      } catch {
+        // fallback: alguns ambientes podem encrencar; se der ruim, joga pro <img>/<canvas> depois
+      }
+
+      if (bmp) {
+        const w = bmp.width, h = bmp.height;
+        const need = (w > maxTexSize || h > maxTexSize);
+
+        if (!need) {
+          return { image: bmp, kind: 'bitmap', resized: false, srcW: w, srcH: h, outW: w, outH: h };
+        }
+
+        const scale = Math.min(maxTexSize / w, maxTexSize / h);
+        const outW = Math.max(1, Math.floor(w * scale));
+        const outH = Math.max(1, Math.floor(h * scale));
+
+        // tenta resize via createImageBitmap (quando suportado)
+        try {
+          const resized = await createImageBitmap(blob, {
+            resizeWidth: outW,
+            resizeHeight: outH,
+            resizeQuality: 'high',
+            premultiplyAlpha: 'none',
+            colorSpaceConversion: 'none'
+          });
+          bmp.close?.();
+          return { image: resized, kind: 'bitmap', resized: true, srcW: w, srcH: h, outW, outH };
+        } catch {
+          // fallback via canvas
+          const canvas = document.createElement('canvas');
+          canvas.width = outW;
+          canvas.height = outH;
+          const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(bmp, 0, 0, outW, outH);
+          bmp.close?.();
+          return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
+        }
+      }
+
+      // 2) fallback total (sem ImageBitmap): usa <img> e desenha em canvas
+      const img = await new Promise((resolve, reject) => {
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = () => resolve(im);
+        im.onerror = (e) => reject(e);
+        im.src = URL.createObjectURL(blob);
+      });
+
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const need = (w > maxTexSize || h > maxTexSize);
+
+      if (!need) {
+        return { image: img, kind: 'img', resized: false, srcW: w, srcH: h, outW: w, outH: h };
+      }
+
+      const scale = Math.min(maxTexSize / w, maxTexSize / h);
+      const outW = Math.max(1, Math.floor(w * scale));
+      const outH = Math.max(1, Math.floor(h * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, outW, outH);
+
+      return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
     }
 
     async function loadTextureForIndex(idx) {
       const item = images[idx];
       if (!item) return;
 
-      setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})`);
+      const mts = renderer?.capabilities?.maxTextureSize ?? 0;
+      setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})\nmaxTextureSize: ${mts}`);
 
       if (currentTexture) {
         currentTexture.dispose();
         currentTexture = null;
       }
 
-      const loader = new THREE.TextureLoader();
-      const tex = await new Promise((resolve, reject) => {
-        loader.load(item.url, t => resolve(t), undefined, err => reject(err));
-      });
+      const maxTexSize = mts || 4096; // fallback
+      const loaded = await loadImageMaybeDownscale(item.url, maxTexSize);
+
+      let tex;
+      if (loaded.kind === 'canvas') {
+        tex = new THREE.CanvasTexture(loaded.image);
+      } else {
+        tex = new THREE.Texture(loaded.image);
+      }
 
       applyTextureQuality(tex);
       currentTexture = tex;
       rebuildSpheresWithTexture(tex);
 
-      const iw = tex.image?.width ?? 0;
-      const ih = tex.image?.height ?? 0;
-      const mts = renderer?.capabilities?.maxTextureSize ?? 0;
-      const warn = (mts && (iw > mts || ih > mts))
-        ? `\n⚠️ Atenção: imagem ${iw}x${ih} > maxTextureSize ${mts}. O GPU pode downscale.`
+      const warn = loaded.resized
+        ? `\n⚠️ Downscale: ${loaded.srcW}x${loaded.srcH} -> ${loaded.outW}x${loaded.outH} (limite GPU ${maxTexSize})`
         : '';
 
       setStatus(
         `OK: ${item.name} (${idx + 1}/${images.length})` +
-        `\nRes: ${iw}x${ih} | maxTextureSize: ${mts}` +
+        `\nRes: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}` +
         `\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}` +
         warn
       );
@@ -389,9 +474,8 @@
         const gp = src.gamepad;
         if (!gp) continue;
 
-        // Oculus Touch: A=4, B=5
-        if (isJustPressed('right', gp, 4)) nextImage();
-        if (isJustPressed('right', gp, 5)) prevImage();
+        if (isJustPressed('right', gp, 4)) nextImage(); // A
+        if (isJustPressed('right', gp, 5)) prevImage(); // B
       }
     }
 
@@ -400,19 +484,6 @@
         pollControllerButtons();
         renderer.render(scene, camera);
       });
-    }
-
-    function forceXREyeLayers() {
-      // ✅ no WebXR, o renderer usa uma ArrayCamera (xrCam) com subcâmeras por olho
-      const xrCam = renderer.xr.getCamera(camera);
-      if (xrCam && xrCam.cameras && xrCam.cameras.length >= 2) {
-        xrCam.cameras[0].layers.set(1); // esquerdo
-        xrCam.cameras[1].layers.set(2); // direito
-      }
-
-      // garante que a câmera base vê as duas também (debug e segurança)
-      camera.layers.enable(1);
-      camera.layers.enable(2);
     }
 
     async function enterVR() {
@@ -432,7 +503,7 @@
 
       await renderer.xr.setSession(session);
 
-      // ✅ CRÍTICO: setar layers por olho depois que a sessão existe
+      // ✅ CRÍTICO: setar layers por olho depois da sessão
       forceXREyeLayers();
 
       hintEl.style.display = 'block';
@@ -444,8 +515,6 @@
       CONFIG.swapEyes = !CONFIG.swapEyes;
       setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
       if (currentTexture) rebuildSpheresWithTexture(currentTexture);
-
-      // se já tá em XR, reafirma layers (não custa nada)
       try { forceXREyeLayers(); } catch {}
     });
 
@@ -465,19 +534,19 @@
           url: new URL(it.path, siteBase).toString()
         }));
 
-        setStatus(`Achei ${images.length} imagem(ns). Carregando a primeira...`);
+        setStatus(`Achei ${images.length} imagem(ns). Iniciando render...`);
 
         initThreeIfNeeded();
+        startRenderLoop();
+
+        setStatus(`Carregando a primeira...`);
         await loadTextureForIndex(0);
         currentIndex = 0;
-
-        // começa o loop ANTES do enterVR (ok)
-        startRenderLoop();
 
         setStatus('Entrando em VR...');
         await enterVR();
 
-        // reforça depois de entrar (porque alguns browsers recriam camera internamente)
+        // reforça (alguns browsers recriam camera internamente)
         forceXREyeLayers();
       } catch (err) {
         panic('Deu merda pra iniciar o tour', err);
