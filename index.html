@@ -99,7 +99,6 @@
         height: 0.13,
         followPos: 0.18,
         followRot: 0.22,
-        maxNameChars: 24,
       }
     };
 
@@ -117,7 +116,6 @@
       loadBtn.disabled = false;
     }
 
-    // ========= GitHub Pages / Repo detection =========
     function inferGitHubRepo() {
       if (CONFIG.github.owner && CONFIG.github.repo) return { owner: CONFIG.github.owner, repo: CONFIG.github.repo };
       const host = location.hostname.toLowerCase();
@@ -173,23 +171,17 @@
         }
       }
 
-      throw new Error(`Não achei a pasta /${CONFIG.imageFolder}/ nas branches testadas.`);
+      throw new Error(`Não achei a pasta /${CONFIG.imageFolder}/ nas branches testadas (${tryBranches.join(', ')}).`);
     }
 
     // ========= Three/WebXR =========
     let renderer, scene, camera;
     let sphereGeo, leftSphere, rightSphere;
     let panoRoot;
-
-    let images = [];
-    let currentIndex = 0;     // índice realmente em tela
-    let targetIndex = 0;      // último pedido do usuário
-    let loadSeq = 0;          // token/cancel
-    let isLoading = false;
-
-    // ===== base texture atual (pra manter imagem enquanto carrega a próxima) =====
     let currentBaseTexture = null;
     let leftTex = null, rightTex = null;
+    let images = [];
+    let currentIndex = 0;
 
     // ===== Label 3D =====
     let labelRoot, labelMesh, labelCanvas, labelCtx, labelTex;
@@ -200,13 +192,6 @@
     const _forward = new THREE.Vector3();
     const _right = new THREE.Vector3();
     const _up = new THREE.Vector3();
-
-    function trimName(name) {
-      const max = CONFIG.label.maxNameChars ?? 24;
-      if (!name) return '';
-      if (name.length <= max) return name;
-      return name.slice(0, max) + '…';
-    }
 
     function initLabel3D() {
       if (!CONFIG.label.enabled || labelRoot) return;
@@ -270,23 +255,31 @@
       labelCtx.fillStyle = 'rgba(255,255,255,0.92)';
       labelCtx.font = '600 54px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
       labelCtx.textBaseline = 'middle';
-      labelCtx.fillText(text, x + 26, y + hh / 2);
 
+      const maxWidth = ww - 44;
+      let t = text;
+      while (labelCtx.measureText(t).width > maxWidth && t.length > 5) t = t.slice(0, -2);
+      if (t !== text) t = t + '…';
+
+      labelCtx.fillText(t, x + 26, y + hh / 2);
       labelTex.needsUpdate = true;
     }
 
-    function updateLabel(index = currentIndex, loading = false) {
+    function updateLabelTextFromScene() {
       if (!CONFIG.label.enabled) return;
       if (!labelRoot) initLabel3D();
-      if (!images.length) { drawLabelText('—'); return; }
 
-      const item = images[index];
-      const name = trimName(item?.name ?? '(sem nome)');
-      const prefix = loading ? '⏳ ' : '';
-      drawLabelText(`${prefix}${index + 1}/${images.length} — ${name}`);
+      if (!images.length) { drawLabelText('—'); return; }
+      const item = images[currentIndex];
+      const name = item?.name ?? '(sem nome)';
+      drawLabelText(`${currentIndex + 1}/${images.length} — ${name}`);
     }
 
-    function setLabelVisible(v) { if (labelRoot) labelRoot.visible = v; }
+    function setLabelVisible(v) {
+      if (!labelRoot) return;
+      labelRoot.visible = v;
+    }
+
     function toggleLabel() {
       labelEnabledRuntime = !labelEnabledRuntime;
       setLabelVisible(renderer?.xr?.isPresenting ? labelEnabledRuntime : false);
@@ -316,7 +309,7 @@
       labelRoot.visible = true;
     }
 
-    // ========= Input (debounce) =========
+    // ========= Input =========
     const prevPressed = new Map();
     function isJustPressed(handedness, gamepad, btnIndex) {
       const btn = gamepad?.buttons?.[btnIndex];
@@ -370,10 +363,8 @@
       });
 
       window.addEventListener('keydown', (e) => {
-        if (!images.length) return;
-        const base = isLoading ? targetIndex : currentIndex;
-        if (e.key === 'ArrowRight') requestNavigate(base + 1);
-        if (e.key === 'ArrowLeft') requestNavigate(base - 1);
+        if (e.key === 'ArrowRight') nextImage();
+        if (e.key === 'ArrowLeft') prevImage();
       });
     }
 
@@ -389,9 +380,15 @@
 
       const mag = (CONFIG.magFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
 
-      tex.generateMipmaps = false;
-      tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
-      tex.magFilter = mag;
+      if (CONFIG.useMipmaps) {
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = mag;
+      } else {
+        tex.generateMipmaps = false;
+        tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
+        tex.magFilter = mag;
+      }
 
       tex.needsUpdate = true;
     }
@@ -418,7 +415,7 @@
       if (bmp) {
         const w = bmp.width, h = bmp.height;
         const need = (w > maxTexSize || h > maxTexSize);
-        if (!need) return { image: bmp, kind: 'bitmap', outW: w, outH: h, resized: false };
+        if (!need) return { image: bmp, kind: 'bitmap', resized: false, srcW: w, srcH: h, outW: w, outH: h };
 
         const scale = Math.min(maxTexSize / w, maxTexSize / h);
         const outW = Math.max(1, Math.floor(w * scale));
@@ -427,11 +424,11 @@
         try {
           const resized = await createImageBitmap(blob, { resizeWidth: outW, resizeHeight: outH, resizeQuality: 'high' });
           bmp.close?.();
-          return { image: resized, kind: 'bitmap', outW, outH, resized: true };
+          return { image: resized, kind: 'bitmap', resized: true, srcW: w, srcH: h, outW, outH };
         } catch {
           const canvas = await toCanvas(bmp, outW, outH);
           bmp.close?.();
-          return { image: canvas, kind: 'canvas', outW, outH, resized: true };
+          return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
         }
       }
 
@@ -446,14 +443,14 @@
       const w = img.naturalWidth || img.width;
       const h = img.naturalHeight || img.height;
       const need = (w > maxTexSize || h > maxTexSize);
-      if (!need) return { image: img, kind: 'img', outW: w, outH: h, resized: false };
+      if (!need) return { image: img, kind: 'img', resized: false, srcW: w, srcH: h, outW: w, outH: h };
 
       const scale = Math.min(maxTexSize / w, maxTexSize / h);
       const outW = Math.max(1, Math.floor(w * scale));
       const outH = Math.max(1, Math.floor(h * scale));
 
       const canvas = await toCanvas(img, outW, outH);
-      return { image: canvas, kind: 'canvas', outW, outH, resized: true };
+      return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
     }
 
     function disposeEyeTextures() {
@@ -466,7 +463,6 @@
       if (rightSphere) panoRoot.remove(rightSphere);
       disposeEyeTextures();
 
-      // vertical corrigido via UV
       const yRepeat = -0.5;
       const topOffset = 1.0;
       const bottomOffset = 0.5;
@@ -499,13 +495,7 @@
       panoRoot.add(rightSphere);
     }
 
-    function disposeBaseTexture(tex) {
-      if (!tex) return;
-      tex.userData?._bitmap?.close?.();
-      tex.dispose();
-    }
-
-    async function loadAndSwapToIndex(idx, token) {
+    async function loadTextureForIndex(idx) {
       const item = images[idx];
       if (!item) return;
 
@@ -513,60 +503,45 @@
       const maxTexSize = mts || 4096;
 
       setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})\nmaxTextureSize: ${mts}`);
-      updateLabel(idx, true);
+
+      if (currentBaseTexture) {
+        currentBaseTexture.userData?._bitmap?.close?.();
+        currentBaseTexture.dispose();
+        currentBaseTexture = null;
+      }
 
       const loaded = await loadImageMaybeDownscale(item.url, maxTexSize);
-      if (token !== loadSeq) {
-        // pedido ficou velho
-        loaded.image?.close?.();
-        return;
-      }
 
-      // cria textura nova (não mexe na atual até estar pronta)
-      let newTex;
-      if (loaded.kind === 'canvas') newTex = new THREE.CanvasTexture(loaded.image);
-      else newTex = new THREE.Texture(loaded.image);
+      let tex;
+      if (loaded.kind === 'canvas') tex = new THREE.CanvasTexture(loaded.image);
+      else tex = new THREE.Texture(loaded.image);
+      if (loaded.kind === 'bitmap') tex.userData._bitmap = loaded.image;
 
-      if (loaded.kind === 'bitmap') newTex.userData._bitmap = loaded.image;
+      applyTextureQuality(tex);
+      currentBaseTexture = tex;
+      rebuildSpheresWithBaseTexture(tex);
 
-      applyTextureQuality(newTex);
+      const warn = loaded.resized
+        ? `\n⚠️ Downscale: ${loaded.srcW}x${loaded.srcH} -> ${loaded.outW}x${loaded.outH} (limite GPU ${maxTexSize})`
+        : '';
 
-      if (token !== loadSeq) {
-        disposeBaseTexture(newTex);
-        return;
-      }
+      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}${warn}`);
 
-      // swap real: troca a esfera pra nova textura e só depois mata a antiga
-      const oldBase = currentBaseTexture;
-      currentBaseTexture = newTex;
-      rebuildSpheresWithBaseTexture(newTex);
-      disposeBaseTexture(oldBase);
-
-      currentIndex = idx;
-
-      setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}`);
-      updateLabel(currentIndex, false);
+      updateLabelTextFromScene();
     }
 
-    function requestNavigate(rawIndex) {
+    function nextImage() {
       if (!images.length) return;
-      const idx = (rawIndex + images.length) % images.length;
+      currentIndex = (currentIndex + 1) % images.length;
+      updateLabelTextFromScene();
+      loadTextureForIndex(currentIndex).catch(err => panic('Falha carregando textura', err));
+    }
 
-      targetIndex = idx;
-      isLoading = true;
-
-      const token = ++loadSeq;
-      loadAndSwapToIndex(idx, token)
-        .catch(err => {
-          if (token === loadSeq) {
-            isLoading = false;
-            updateLabel(currentIndex, false);
-          }
-          panic('Falha carregando textura', err);
-        })
-        .finally(() => {
-          if (token === loadSeq) isLoading = false;
-        });
+    function prevImage() {
+      if (!images.length) return;
+      currentIndex = (currentIndex - 1 + images.length) % images.length;
+      updateLabelTextFromScene();
+      loadTextureForIndex(currentIndex).catch(err => panic('Falha carregando textura', err));
     }
 
     function pollControllerButtons() {
@@ -575,17 +550,15 @@
 
       for (const src of session.inputSources) {
         if (src?.targetRayMode !== 'tracked-pointer') continue;
-        if (src?.handedness !== 'right') continue;
+        if (src?.handedness !== 'right') continue; // usa o right controller
         const gp = src.gamepad;
         if (!gp) continue;
 
-        const base = isLoading ? targetIndex : currentIndex;
-
         // A=4, B=5
-        if (isJustPressed('right', gp, 4)) requestNavigate(base + 1);
-        if (isJustPressed('right', gp, 5)) requestNavigate(base - 1);
+        if (isJustPressed('right', gp, 4)) nextImage();
+        if (isJustPressed('right', gp, 5)) prevImage();
 
-        // Trigger normalmente é 0
+        // Trigger (index finger) normalmente é o botão 0
         if (isJustPressed('right', gp, 0)) toggleLabel();
       }
     }
@@ -602,7 +575,7 @@
       renderer.setAnimationLoop(() => {
         pollControllerButtons();
 
-        // anti “fisheye”: esfera segue a cabeça
+        // anti-“fisheye”: esfera segue a cabeça (remove transladação)
         if (renderer.xr.isPresenting) {
           const xrCam = renderer.xr.getCamera(camera);
           panoRoot.position.copy(xrCam.position);
@@ -611,6 +584,7 @@
         }
 
         updateHeadLockedLabel();
+
         renderer.render(scene, camera);
       });
     }
@@ -641,13 +615,8 @@
     swapBtn.addEventListener('click', () => {
       CONFIG.swapEyes = !CONFIG.swapEyes;
       setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
-
-      // reaplica o recorte na textura atual
       if (currentBaseTexture) rebuildSpheresWithBaseTexture(currentBaseTexture);
-
-      // legenda continua
-      updateLabel(isLoading ? targetIndex : currentIndex, isLoading);
-
+      updateLabelTextFromScene();
       try { forceXREyeLayers(); } catch {}
     });
 
@@ -671,11 +640,10 @@
         images = list.map(it => ({ name: it.name, url: new URL(it.path, siteBase).toString() }));
 
         currentIndex = 0;
-        targetIndex = 0;
-        updateLabel(0, true);
+        updateLabelTextFromScene();
 
         setStatus(`Achei ${images.length} imagem(ns). Carregando a primeira...`);
-        requestNavigate(0);
+        await loadTextureForIndex(0);
 
         forceXREyeLayers();
       } catch (err) {
