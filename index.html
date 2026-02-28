@@ -53,7 +53,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar o Tour</button>
+        <button id="loadBtn">Carregar Tour</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -173,7 +173,7 @@
         }
       }
 
-      throw new Error(`Não achei a pasta /${CONFIG.imageFolder}/ nas branches testadas (${tryBranches.join(', ')}).`);
+      throw new Error(`Não achei a pasta /${CONFIG.imageFolder}/ nas branches testadas.`);
     }
 
     // ========= Three/WebXR =========
@@ -181,15 +181,15 @@
     let sphereGeo, leftSphere, rightSphere;
     let panoRoot;
 
+    let images = [];
+    let currentIndex = 0;     // índice realmente em tela
+    let targetIndex = 0;      // último pedido do usuário
+    let loadSeq = 0;          // token/cancel
+    let isLoading = false;
+
+    // ===== base texture atual (pra manter imagem enquanto carrega a próxima) =====
     let currentBaseTexture = null;
     let leftTex = null, rightTex = null;
-
-    let images = [];
-    let currentIndex = 0;   // índice efetivamente carregado
-
-    // ===== Scheduler de carregamento (fix do bug A/B) =====
-    let navLoading = false;
-    let navPendingIndex = null;
 
     // ===== Label 3D =====
     let labelRoot, labelMesh, labelCanvas, labelCtx, labelTex;
@@ -200,6 +200,13 @@
     const _forward = new THREE.Vector3();
     const _right = new THREE.Vector3();
     const _up = new THREE.Vector3();
+
+    function trimName(name) {
+      const max = CONFIG.label.maxNameChars ?? 24;
+      if (!name) return '';
+      if (name.length <= max) return name;
+      return name.slice(0, max) + '…';
+    }
 
     function initLabel3D() {
       if (!CONFIG.label.enabled || labelRoot) return;
@@ -263,32 +270,23 @@
       labelCtx.fillStyle = 'rgba(255,255,255,0.92)';
       labelCtx.font = '600 54px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
       labelCtx.textBaseline = 'middle';
-
       labelCtx.fillText(text, x + 26, y + hh / 2);
+
       labelTex.needsUpdate = true;
     }
 
-    function trimName(name) {
-      const max = CONFIG.label.maxNameChars ?? 24;
-      if (!name) return '';
-      if (name.length <= max) return name;
-      return name.slice(0, max) + '…';
-    }
-
-    // loading=true coloca um ⏳ na frente (pra não confundir quando apertar A/B rápido)
-    function updateLabelText(indexToShow = currentIndex, loading = false) {
+    function updateLabel(index = currentIndex, loading = false) {
       if (!CONFIG.label.enabled) return;
       if (!labelRoot) initLabel3D();
-
       if (!images.length) { drawLabelText('—'); return; }
-      const item = images[indexToShow];
+
+      const item = images[index];
       const name = trimName(item?.name ?? '(sem nome)');
       const prefix = loading ? '⏳ ' : '';
-      drawLabelText(`${prefix}${indexToShow + 1}/${images.length} — ${name}`);
+      drawLabelText(`${prefix}${index + 1}/${images.length} — ${name}`);
     }
 
     function setLabelVisible(v) { if (labelRoot) labelRoot.visible = v; }
-
     function toggleLabel() {
       labelEnabledRuntime = !labelEnabledRuntime;
       setLabelVisible(renderer?.xr?.isPresenting ? labelEnabledRuntime : false);
@@ -372,8 +370,10 @@
       });
 
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight') requestNavigate((currentIndex + 1) % images.length);
-        if (e.key === 'ArrowLeft') requestNavigate((currentIndex - 1 + images.length) % images.length);
+        if (!images.length) return;
+        const base = isLoading ? targetIndex : currentIndex;
+        if (e.key === 'ArrowRight') requestNavigate(base + 1);
+        if (e.key === 'ArrowLeft') requestNavigate(base - 1);
       });
     }
 
@@ -389,15 +389,9 @@
 
       const mag = (CONFIG.magFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
 
-      if (CONFIG.useMipmaps) {
-        tex.generateMipmaps = true;
-        tex.minFilter = THREE.LinearMipmapLinearFilter;
-        tex.magFilter = mag;
-      } else {
-        tex.generateMipmaps = false;
-        tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
-        tex.magFilter = mag;
-      }
+      tex.generateMipmaps = false;
+      tex.minFilter = (CONFIG.minFilter === 'Nearest') ? THREE.NearestFilter : THREE.LinearFilter;
+      tex.magFilter = mag;
 
       tex.needsUpdate = true;
     }
@@ -424,7 +418,7 @@
       if (bmp) {
         const w = bmp.width, h = bmp.height;
         const need = (w > maxTexSize || h > maxTexSize);
-        if (!need) return { image: bmp, kind: 'bitmap', resized: false, outW: w, outH: h };
+        if (!need) return { image: bmp, kind: 'bitmap', outW: w, outH: h, resized: false };
 
         const scale = Math.min(maxTexSize / w, maxTexSize / h);
         const outW = Math.max(1, Math.floor(w * scale));
@@ -433,11 +427,11 @@
         try {
           const resized = await createImageBitmap(blob, { resizeWidth: outW, resizeHeight: outH, resizeQuality: 'high' });
           bmp.close?.();
-          return { image: resized, kind: 'bitmap', resized: true, outW, outH };
+          return { image: resized, kind: 'bitmap', outW, outH, resized: true };
         } catch {
           const canvas = await toCanvas(bmp, outW, outH);
           bmp.close?.();
-          return { image: canvas, kind: 'canvas', resized: true, outW, outH };
+          return { image: canvas, kind: 'canvas', outW, outH, resized: true };
         }
       }
 
@@ -452,14 +446,14 @@
       const w = img.naturalWidth || img.width;
       const h = img.naturalHeight || img.height;
       const need = (w > maxTexSize || h > maxTexSize);
-      if (!need) return { image: img, kind: 'img', resized: false, outW: w, outH: h };
+      if (!need) return { image: img, kind: 'img', outW: w, outH: h, resized: false };
 
       const scale = Math.min(maxTexSize / w, maxTexSize / h);
       const outW = Math.max(1, Math.floor(w * scale));
       const outH = Math.max(1, Math.floor(h * scale));
 
       const canvas = await toCanvas(img, outW, outH);
-      return { image: canvas, kind: 'canvas', resized: true, outW, outH };
+      return { image: canvas, kind: 'canvas', outW, outH, resized: true };
     }
 
     function disposeEyeTextures() {
@@ -505,7 +499,13 @@
       panoRoot.add(rightSphere);
     }
 
-    async function loadTextureForIndex(idx) {
+    function disposeBaseTexture(tex) {
+      if (!tex) return;
+      tex.userData?._bitmap?.close?.();
+      tex.dispose();
+    }
+
+    async function loadAndSwapToIndex(idx, token) {
       const item = images[idx];
       if (!item) return;
 
@@ -513,59 +513,60 @@
       const maxTexSize = mts || 4096;
 
       setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})\nmaxTextureSize: ${mts}`);
-
-      if (currentBaseTexture) {
-        currentBaseTexture.userData?._bitmap?.close?.();
-        currentBaseTexture.dispose();
-        currentBaseTexture = null;
-      }
+      updateLabel(idx, true);
 
       const loaded = await loadImageMaybeDownscale(item.url, maxTexSize);
+      if (token !== loadSeq) {
+        // pedido ficou velho
+        loaded.image?.close?.();
+        return;
+      }
 
-      let tex;
-      if (loaded.kind === 'canvas') tex = new THREE.CanvasTexture(loaded.image);
-      else tex = new THREE.Texture(loaded.image);
-      if (loaded.kind === 'bitmap') tex.userData._bitmap = loaded.image;
+      // cria textura nova (não mexe na atual até estar pronta)
+      let newTex;
+      if (loaded.kind === 'canvas') newTex = new THREE.CanvasTexture(loaded.image);
+      else newTex = new THREE.Texture(loaded.image);
 
-      applyTextureQuality(tex);
-      currentBaseTexture = tex;
-      rebuildSpheresWithBaseTexture(tex);
+      if (loaded.kind === 'bitmap') newTex.userData._bitmap = loaded.image;
+
+      applyTextureQuality(newTex);
+
+      if (token !== loadSeq) {
+        disposeBaseTexture(newTex);
+        return;
+      }
+
+      // swap real: troca a esfera pra nova textura e só depois mata a antiga
+      const oldBase = currentBaseTexture;
+      currentBaseTexture = newTex;
+      rebuildSpheresWithBaseTexture(newTex);
+      disposeBaseTexture(oldBase);
+
+      currentIndex = idx;
 
       setStatus(`OK: ${item.name} (${idx + 1}/${images.length})\nRes: ${loaded.outW}x${loaded.outH} | maxTextureSize: ${mts}\nXR scale: ${CONFIG.xrFramebufferScaleFactor} | foveation: ${CONFIG.xrFoveation}`);
+      updateLabel(currentIndex, false);
     }
 
-    // ✅ navegação robusta: só confirma índice quando carregou
-    function requestNavigate(targetIndex) {
+    function requestNavigate(rawIndex) {
       if (!images.length) return;
-      const idx = (targetIndex + images.length) % images.length;
+      const idx = (rawIndex + images.length) % images.length;
 
-      navPendingIndex = idx;
+      targetIndex = idx;
+      isLoading = true;
 
-      // legenda já mostra o alvo com ⏳
-      updateLabelText(idx, true);
-
-      if (!navLoading) {
-        processNavigationQueue().catch(err => panic('Falha no scheduler de navegação', err));
-      }
-    }
-
-    async function processNavigationQueue() {
-      navLoading = true;
-      while (navPendingIndex !== null) {
-        const idx = navPendingIndex;
-        navPendingIndex = null;
-
-        try {
-          await loadTextureForIndex(idx);
-          currentIndex = idx;          // ✅ só aqui atualiza o índice real
-          updateLabelText(currentIndex, false);
-        } catch (err) {
-          // se falhar, deixa a legenda voltar pro índice real
-          updateLabelText(currentIndex, false);
-          throw err;
-        }
-      }
-      navLoading = false;
+      const token = ++loadSeq;
+      loadAndSwapToIndex(idx, token)
+        .catch(err => {
+          if (token === loadSeq) {
+            isLoading = false;
+            updateLabel(currentIndex, false);
+          }
+          panic('Falha carregando textura', err);
+        })
+        .finally(() => {
+          if (token === loadSeq) isLoading = false;
+        });
     }
 
     function pollControllerButtons() {
@@ -578,11 +579,13 @@
         const gp = src.gamepad;
         if (!gp) continue;
 
-        // A=4, B=5
-        if (isJustPressed('right', gp, 4)) requestNavigate(currentIndex + 1);
-        if (isJustPressed('right', gp, 5)) requestNavigate(currentIndex - 1);
+        const base = isLoading ? targetIndex : currentIndex;
 
-        // Trigger (geralmente btn 0)
+        // A=4, B=5
+        if (isJustPressed('right', gp, 4)) requestNavigate(base + 1);
+        if (isJustPressed('right', gp, 5)) requestNavigate(base - 1);
+
+        // Trigger normalmente é 0
         if (isJustPressed('right', gp, 0)) toggleLabel();
       }
     }
@@ -599,7 +602,7 @@
       renderer.setAnimationLoop(() => {
         pollControllerButtons();
 
-        // anti-“fisheye”: esfera segue a cabeça
+        // anti “fisheye”: esfera segue a cabeça
         if (renderer.xr.isPresenting) {
           const xrCam = renderer.xr.getCamera(camera);
           panoRoot.position.copy(xrCam.position);
@@ -638,8 +641,13 @@
     swapBtn.addEventListener('click', () => {
       CONFIG.swapEyes = !CONFIG.swapEyes;
       setStatus(CONFIG.swapEyes ? 'Olhos invertidos (swap L/R): ON' : 'Olhos invertidos (swap L/R): OFF');
+
+      // reaplica o recorte na textura atual
       if (currentBaseTexture) rebuildSpheresWithBaseTexture(currentBaseTexture);
-      updateLabelText(currentIndex, navLoading);
+
+      // legenda continua
+      updateLabel(isLoading ? targetIndex : currentIndex, isLoading);
+
       try { forceXREyeLayers(); } catch {}
     });
 
@@ -663,11 +671,10 @@
         images = list.map(it => ({ name: it.name, url: new URL(it.path, siteBase).toString() }));
 
         currentIndex = 0;
-        updateLabelText(currentIndex, true);
+        targetIndex = 0;
+        updateLabel(0, true);
 
         setStatus(`Achei ${images.length} imagem(ns). Carregando a primeira...`);
-
-        // carrega a primeira usando o scheduler (pra já padronizar)
         requestNavigate(0);
 
         forceXREyeLayers();
