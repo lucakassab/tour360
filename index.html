@@ -50,7 +50,7 @@
       <h1>Tour VR — 360° Estéreo (Top/Bottom)</h1>
 
       <div class="row">
-        <button id="loadBtn">Carregar Tour</button>
+        <button id="loadBtn">Carregar Tour6</button>
         <button id="swapBtn" class="ghost" title="Swap Left/Right (olhos)">Inverter Olhos</button>
       </div>
 
@@ -68,11 +68,8 @@
 
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.183.1/build/three.module.js';
-
-    // ✅ garante pipeline de cor ligado
     THREE.ColorManagement.enabled = true;
 
-    // ========= CONFIG =========
     const CONFIG = {
       imageFolder: 'tour',
       branch: 'main',
@@ -81,7 +78,7 @@
 
       swapEyes: false,
 
-      xrFramebufferScaleFactor: 1.15, // 1.25 com 8k pode pesar no Quest; 1.15 é mais seguro
+      xrFramebufferScaleFactor: 1.15,
       xrFoveation: 0.0,
 
       useMipmaps: false,
@@ -89,7 +86,6 @@
       minFilter: 'Linear',
     };
 
-    // ========= UI =========
     const appEl = document.getElementById('app');
     const loadBtn = document.getElementById('loadBtn');
     const swapBtn = document.getElementById('swapBtn');
@@ -104,10 +100,8 @@
       loadBtn.disabled = false;
     }
 
-    // ========= GitHub Pages / Repo detection =========
     function inferGitHubRepo() {
       if (CONFIG.github.owner && CONFIG.github.repo) return { owner: CONFIG.github.owner, repo: CONFIG.github.repo };
-
       const host = location.hostname.toLowerCase();
       if (host.endsWith('github.io')) {
         const owner = host.split('.')[0];
@@ -120,10 +114,8 @@
 
     function inferSiteBase(owner, repo) {
       if (CONFIG.siteBaseOverride) return CONFIG.siteBaseOverride;
-
       const origin = location.origin;
       const host = location.hostname.toLowerCase();
-
       if (owner && host === `${owner}.github.io`) {
         if (repo && repo !== `${owner}.github.io`) return `${origin}/${repo}/`;
         return `${origin}/`;
@@ -133,7 +125,6 @@
 
     async function fetchImageListFromGitHub(owner, repo) {
       if (!owner || !repo) throw new Error('Não consegui inferir owner/repo. Preenche CONFIG.github.owner/repo.');
-
       const tryBranches = [CONFIG.branch, CONFIG.branch === 'main' ? 'master' : 'main']
         .filter((v, i, a) => v && a.indexOf(v) === i);
 
@@ -144,7 +135,6 @@
         if (res.ok) {
           const data = await res.json();
           if (!Array.isArray(data)) throw new Error('A pasta não retornou uma lista (confere imageFolder).');
-
           const exts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
           return data
             .filter(it => it && it.type === 'file' && typeof it.name === 'string')
@@ -162,7 +152,6 @@
           throw new Error(`GitHub API falhou: HTTP ${res.status}. ${txt}`);
         }
       }
-
       throw new Error(`Não achei a pasta /${CONFIG.imageFolder}/ nas branches testadas (${tryBranches.join(', ')}).`);
     }
 
@@ -184,7 +173,6 @@
       return now && !was;
     }
 
-    // ✅ shader com conversão de color space (compatível com XR/Quest)
     function makeStereoMaterial(texture, yOffset, yScale) {
       return new THREE.ShaderMaterial({
         uniforms: {
@@ -217,7 +205,7 @@
 
             gl_FragColor = texel;
 
-            // converte LINEAR -> renderer.outputColorSpace
+            // LINEAR -> renderer.outputColorSpace (SRGB)
             #include <colorspace_fragment>
           }
         `,
@@ -231,7 +219,7 @@
       if (renderer) return;
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-      renderer.setPixelRatio(1); // Quest agradece (principalmente com textura gigante)
+      renderer.setPixelRatio(1); // Quest agradece
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
 
@@ -251,7 +239,7 @@
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
       camera.position.set(0, 1.6, 0);
 
-      // ✅ garante que a câmera enxerga as layers dos olhos (1 e 2)
+      // câmera base enxerga as layers 1 e 2
       camera.layers.enable(1);
       camera.layers.enable(2);
 
@@ -275,8 +263,6 @@
       if (rightSphere) scene.remove(rightSphere);
 
       const yScale = 0.5;
-
-      // com tex.flipY=true, topo do arquivo é v=[0..0.5]
       const topOffset = 0.0;
       const bottomOffset = 0.5;
 
@@ -298,11 +284,9 @@
 
     function applyTextureQuality(tex) {
       tex.flipY = true;
-
-      // ✅ imagens normais: sRGB (não P3, não ICC doidão)
       tex.colorSpace = THREE.SRGBColorSpace;
 
-      // ✅ CRÍTICO: nada de RepeatWrapping em textura NPOT gigante -> pode ficar "incomplete" e renderizar preto
+      // evita textura "incomplete" e black screen
       tex.wrapS = THREE.ClampToEdgeWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
 
@@ -321,43 +305,44 @@
     function forceXREyeLayers() {
       const xrCam = renderer.xr.getCamera(camera);
       if (xrCam && xrCam.cameras && xrCam.cameras.length >= 2) {
-        xrCam.cameras[0].layers.set(1); // esquerdo
-        xrCam.cameras[1].layers.set(2); // direito
+        xrCam.cameras[0].layers.set(1);
+        xrCam.cameras[1].layers.set(2);
       }
       camera.layers.enable(1);
       camera.layers.enable(2);
     }
 
-    // ====== Loader que downscale se passar do maxTextureSize ======
     async function loadImageMaybeDownscale(url, maxTexSize) {
       const res = await fetch(url, { mode: 'cors' });
       if (!res.ok) throw new Error(`Falha baixando imagem: HTTP ${res.status}`);
       const blob = await res.blob();
 
-      // 1) tenta createImageBitmap com resize (melhor performance, quando suportado)
+      // tenta ImageBitmap (rápido e bom)
       let bmp = null;
       try {
-        bmp = await createImageBitmap(blob, {
-          premultiplyAlpha: 'none',
-          colorSpaceConversion: 'none'
-        });
-      } catch {
-        // fallback: alguns ambientes podem encrencar; se der ruim, joga pro <img>/<canvas> depois
-      }
+        bmp = await createImageBitmap(blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+      } catch {}
+
+      const drawToCanvas = async (source, outW, outH) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(source, 0, 0, outW, outH);
+        return canvas;
+      };
 
       if (bmp) {
         const w = bmp.width, h = bmp.height;
         const need = (w > maxTexSize || h > maxTexSize);
-
-        if (!need) {
-          return { image: bmp, kind: 'bitmap', resized: false, srcW: w, srcH: h, outW: w, outH: h };
-        }
+        if (!need) return { image: bmp, kind: 'bitmap', resized: false, srcW: w, srcH: h, outW: w, outH: h };
 
         const scale = Math.min(maxTexSize / w, maxTexSize / h);
         const outW = Math.max(1, Math.floor(w * scale));
         const outH = Math.max(1, Math.floor(h * scale));
 
-        // tenta resize via createImageBitmap (quando suportado)
         try {
           const resized = await createImageBitmap(blob, {
             resizeWidth: outW,
@@ -369,48 +354,31 @@
           bmp.close?.();
           return { image: resized, kind: 'bitmap', resized: true, srcW: w, srcH: h, outW, outH };
         } catch {
-          // fallback via canvas
-          const canvas = document.createElement('canvas');
-          canvas.width = outW;
-          canvas.height = outH;
-          const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(bmp, 0, 0, outW, outH);
+          const canvas = await drawToCanvas(bmp, outW, outH);
           bmp.close?.();
           return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
         }
       }
 
-      // 2) fallback total (sem ImageBitmap): usa <img> e desenha em canvas
+      // fallback via <img>
       const img = await new Promise((resolve, reject) => {
         const im = new Image();
         im.crossOrigin = 'anonymous';
         im.onload = () => resolve(im);
-        im.onerror = (e) => reject(e);
+        im.onerror = reject;
         im.src = URL.createObjectURL(blob);
       });
 
       const w = img.naturalWidth || img.width;
       const h = img.naturalHeight || img.height;
       const need = (w > maxTexSize || h > maxTexSize);
-
-      if (!need) {
-        return { image: img, kind: 'img', resized: false, srcW: w, srcH: h, outW: w, outH: h };
-      }
+      if (!need) return { image: img, kind: 'img', resized: false, srcW: w, srcH: h, outW: w, outH: h };
 
       const scale = Math.min(maxTexSize / w, maxTexSize / h);
       const outW = Math.max(1, Math.floor(w * scale));
       const outH = Math.max(1, Math.floor(h * scale));
 
-      const canvas = document.createElement('canvas');
-      canvas.width = outW;
-      canvas.height = outH;
-      const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, outW, outH);
-
+      const canvas = await drawToCanvas(img, outW, outH);
       return { image: canvas, kind: 'canvas', resized: true, srcW: w, srcH: h, outW, outH };
     }
 
@@ -419,6 +387,8 @@
       if (!item) return;
 
       const mts = renderer?.capabilities?.maxTextureSize ?? 0;
+      const maxTexSize = mts || 4096;
+
       setStatus(`Carregando: ${item.name} (${idx + 1}/${images.length})\nmaxTextureSize: ${mts}`);
 
       if (currentTexture) {
@@ -426,15 +396,11 @@
         currentTexture = null;
       }
 
-      const maxTexSize = mts || 4096; // fallback
       const loaded = await loadImageMaybeDownscale(item.url, maxTexSize);
 
       let tex;
-      if (loaded.kind === 'canvas') {
-        tex = new THREE.CanvasTexture(loaded.image);
-      } else {
-        tex = new THREE.Texture(loaded.image);
-      }
+      if (loaded.kind === 'canvas') tex = new THREE.CanvasTexture(loaded.image);
+      else tex = new THREE.Texture(loaded.image);
 
       applyTextureQuality(tex);
       currentTexture = tex;
@@ -486,7 +452,8 @@
       });
     }
 
-    async function enterVR() {
+    async function enterVR_NOW_userGesture() {
+      // ⚠️ essa função deve ser chamada DIRETO no clique, antes de await pesado
       if (!('xr' in navigator)) throw new Error('WebXR não disponível nesse browser/device.');
       const supported = await navigator.xr.isSessionSupported('immersive-vr');
       if (!supported) throw new Error('Esse browser não suporta immersive-vr.');
@@ -502,8 +469,6 @@
       });
 
       await renderer.xr.setSession(session);
-
-      // ✅ CRÍTICO: setar layers por olho depois da sessão
       forceXREyeLayers();
 
       hintEl.style.display = 'block';
@@ -522,6 +487,15 @@
       loadBtn.disabled = true;
 
       try {
+        // ✅ 1) Inicializa three e loop (rápido)
+        initThreeIfNeeded();
+        startRenderLoop();
+
+        // ✅ 2) ENTRA NO VR IMEDIATO (preserva "user gesture")
+        setStatus('Entrando em VR...');
+        await enterVR_NOW_userGesture();
+
+        // ✅ 3) Agora sim faz o resto (fetch pesado)
         setStatus('Buscando imagens no repo...');
         const { owner, repo } = inferGitHubRepo();
         const siteBase = inferSiteBase(owner, repo);
@@ -534,19 +508,11 @@
           url: new URL(it.path, siteBase).toString()
         }));
 
-        setStatus(`Achei ${images.length} imagem(ns). Iniciando render...`);
-
-        initThreeIfNeeded();
-        startRenderLoop();
-
-        setStatus(`Carregando a primeira...`);
+        setStatus(`Achei ${images.length} imagem(ns). Carregando a primeira...`);
         await loadTextureForIndex(0);
         currentIndex = 0;
 
-        setStatus('Entrando em VR...');
-        await enterVR();
-
-        // reforça (alguns browsers recriam camera internamente)
+        // reforça layers (alguns browsers recriam internamente)
         forceXREyeLayers();
       } catch (err) {
         panic('Deu merda pra iniciar o tour', err);
