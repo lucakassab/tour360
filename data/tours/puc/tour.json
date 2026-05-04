@@ -75,7 +75,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -117,7 +117,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -159,7 +159,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]
@@ -226,7 +226,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -268,7 +268,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]
@@ -335,7 +335,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -377,7 +377,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]
@@ -444,7 +444,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -486,7 +486,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]
@@ -519,21 +519,21 @@
           "type": "scene_link",
           "target_scene": "puc-academia-banheiro",
           "position": {
-            "x": -6.396,
-            "y": -4.332,
-            "z": 2.079
+            "x": -6.448,
+            "y": -4.041,
+            "z": -2.468
           },
           "rotation": {
-            "yaw": 24,
-            "pitch": 0,
-            "roll": 0
+            "yaw": 90,
+            "pitch": 180,
+            "roll": 90
           },
-          "scale": 1,
-          "billboard": true,
+          "scale": 2,
+          "billboard": false,
           "marker_visible": true,
           "label": {
             "text": "PUC - Academia Banheiro.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -546,14 +546,14 @@
             },
             "scale": 1,
             "reference_depth": 8,
-            "billboard": true
+            "billboard": false
           },
           "target_tour": "puc",
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/Curva_Direita.png"
           }
         },
         {
@@ -561,21 +561,21 @@
           "type": "scene_link",
           "target_scene": "puc-gourmet",
           "position": {
-            "x": -5,
-            "y": 0.25,
-            "z": -8
+            "x": -6.537,
+            "y": -4.057,
+            "z": 2.191
           },
           "rotation": {
-            "yaw": -24,
-            "pitch": 0,
-            "roll": 0
+            "yaw": -90,
+            "pitch": 190,
+            "roll": 90
           },
-          "scale": 1,
-          "billboard": true,
+          "scale": 2,
+          "billboard": false,
           "marker_visible": true,
           "label": {
             "text": "Voltar para PUC - Gourmet.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -595,7 +595,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/Curva_Direita.png"
           }
         },
         {
@@ -606,18 +606,18 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": 4.873,
-            "y": -5.541,
-            "z": 3.092
+            "x": 3.258,
+            "y": -6.441,
+            "z": 3.45
           },
           "rotation": {
-            "yaw": 0,
-            "pitch": 0,
+            "yaw": 180,
+            "pitch": -90,
             "roll": 0
           },
-          "scale": 1,
+          "scale": 2,
           "reference_depth": 8,
-          "billboard": true,
+          "billboard": false,
           "marker_visible": true,
           "label": {
             "text": "PUC - Sauna.jpg",
@@ -637,7 +637,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/hotspot_pin_exit2.png"
           }
         }
       ]
@@ -704,7 +704,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -746,7 +746,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -788,7 +788,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]
@@ -855,7 +855,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -897,7 +897,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -939,7 +939,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -981,7 +981,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]
@@ -1048,7 +1048,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]
@@ -1115,7 +1115,7 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]
@@ -1182,7 +1182,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         },
         {
@@ -1224,7 +1224,7 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": null
+            "src": "./assets/icons/seta_cima3.png"
           }
         }
       ]

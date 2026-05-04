@@ -1,9 +1,12 @@
 from functools import partial
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+import json
 import socket
 import ssl
+import subprocess
 import sys
+from urllib.parse import urlparse
 
 HOST = "0.0.0.0"
 PORT = 8080
@@ -30,6 +33,36 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
         self.send_header("Expires", "0")
         super().end_headers()
 
+    def do_POST(self):
+        if self.path != "/__open_folder__":
+            self.send_error(404, "Endpoint not found")
+            return
+
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+            payload = self.rfile.read(content_length) if content_length > 0 else b"{}"
+            data = json.loads(payload.decode("utf-8") or "{}")
+            asset_path = str(data.get("assetPath", "")).strip()
+            target_folder = resolve_asset_folder(asset_path)
+            open_folder_in_explorer(target_folder)
+            self.send_json_response(200, {
+                "ok": True,
+                "folder": str(target_folder)
+            })
+        except Exception as error:
+            self.send_json_response(400, {
+                "ok": False,
+                "error": str(error)
+            })
+
+    def send_json_response(self, status_code, payload):
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
 
 class QuietThreadingHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
@@ -49,6 +82,35 @@ def get_local_ip():
             return sock.getsockname()[0]
     except Exception:
         return "127.0.0.1"
+
+
+def resolve_asset_folder(asset_path):
+    if not asset_path:
+        raise ValueError("Nenhum asset informado.")
+
+    parsed = urlparse(asset_path)
+    normalized_path = parsed.path if parsed.scheme else asset_path
+    normalized_path = normalized_path.replace("/", "\\").lstrip("\\")
+    candidate = (SITE_DIR / normalized_path).resolve()
+    if candidate.is_file():
+        candidate = candidate.parent
+
+    try:
+        candidate.relative_to(SITE_DIR.resolve())
+    except ValueError as error:
+        raise ValueError("O caminho solicitado esta fora da pasta do projeto.") from error
+
+    if not candidate.exists():
+        raise FileNotFoundError(f"Pasta do asset nao encontrada: {candidate}")
+
+    if not candidate.is_dir():
+        raise NotADirectoryError(f"O caminho resolvido nao e uma pasta: {candidate}")
+
+    return candidate
+
+
+def open_folder_in_explorer(folder_path):
+    subprocess.Popen(["explorer", str(folder_path)])
 
 
 if not CERT_FILE.exists():

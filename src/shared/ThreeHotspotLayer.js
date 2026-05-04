@@ -10,6 +10,12 @@ import {
 const MARKER_GEOMETRY = new THREE.PlaneGeometry(1, 1);
 const ACTIVE_TINT = new THREE.Color("#fff0c8");
 const IDLE_TINT = new THREE.Color("#ffffff");
+const MARKER_TEXTURE_SIZE = 256;
+const MARKER_OUTER_RADIUS = 88;
+const MARKER_BORDER_WIDTH = 6;
+const MARKER_GLYPH_RADIUS = 54;
+const MARKER_GLYPH_BORDER_WIDTH = 16;
+const MARKER_ICON_INSET = 14;
 
 export class ThreeHotspotLayer {
   constructor({ contentRoot, assetCache = null }) {
@@ -48,7 +54,7 @@ export class ThreeHotspotLayer {
       previousEntriesById.delete(hotspot.id);
       nextEntries.push(entry);
       if (entry.marker) {
-        nextInteractiveObjects.push(entry.marker);
+        nextInteractiveObjects.push(...entry.markerSurfaces);
       }
       if (entry.label) {
         nextInteractiveObjects.push(entry.label);
@@ -202,6 +208,7 @@ export class ThreeHotspotLayer {
       anchorPosition: vectorFrom(hotspot.position),
 
       marker: null,
+      markerSurfaces: [],
       markerGlow: null,
       markerConfig: null,
       markerBaseSize: 1,
@@ -237,14 +244,22 @@ export class ThreeHotspotLayer {
 
     if (!entry.marker) {
       const markerMaterial = createMarkerMaterial();
-      const marker = new THREE.Mesh(MARKER_GEOMETRY, markerMaterial);
+      const marker = new THREE.Group();
+      const markerFront = new THREE.Mesh(MARKER_GEOMETRY, markerMaterial);
+      const markerBack = new THREE.Mesh(MARKER_GEOMETRY, createMarkerMaterial());
       const markerGlow = createMarkerHighlightMesh();
 
+      markerFront.name = "wpa360-hotspot-marker-front";
+      markerBack.name = "wpa360-hotspot-marker-back";
+      markerBack.rotation.y = Math.PI;
       markerGlow.visible = false;
+      marker.add(markerFront);
+      marker.add(markerBack);
       marker.add(markerGlow);
       this.group.add(marker);
 
       entry.marker = marker;
+      entry.markerSurfaces = [markerFront, markerBack];
       entry.markerGlow = markerGlow;
     }
 
@@ -253,6 +268,10 @@ export class ThreeHotspotLayer {
     entry.marker.position.copy(entry.anchorPosition);
     entry.marker.userData.hotspotId = hotspot.id;
     entry.marker.userData.hotspotRole = "marker";
+    for (const surface of entry.markerSurfaces) {
+      surface.userData.hotspotId = hotspot.id;
+      surface.userData.hotspotRole = "marker";
+    }
     entry.markerConfig = {
       billboard: hotspot.billboard !== false,
       baseQuaternion: quaternionFromRotation(hotspot.rotation),
@@ -270,7 +289,7 @@ export class ThreeHotspotLayer {
     this.releaseEntryMarkerIcon(entry);
 
     if (!iconSrc) {
-      setMarkerMaterialMap(entry.marker.material, createDefaultMarkerTexture(), { shared: false });
+      this.setEntryMarkerTexture(entry, () => createDefaultMarkerTexture(), { shared: false });
       entry.markerIconSrc = null;
       return;
     }
@@ -283,11 +302,11 @@ export class ThreeHotspotLayer {
           return;
         }
 
-        setMarkerMaterialMap(entry.marker.material, texture, { shared: true });
+        this.setEntryMarkerTexture(entry, texture, { shared: true });
       })
       .catch(() => {
         if (entry.marker && entry.markerIconSrc === iconSrc) {
-          setMarkerMaterialMap(entry.marker.material, createDefaultMarkerTexture(), { shared: false });
+          this.setEntryMarkerTexture(entry, () => createDefaultMarkerTexture(), { shared: false });
         }
       });
   }
@@ -358,6 +377,7 @@ export class ThreeHotspotLayer {
     this.releaseEntryMarkerIcon(entry);
     disposeMarkerObject(entry.marker);
     entry.marker = null;
+    entry.markerSurfaces = [];
     entry.markerGlow = null;
     entry.markerConfig = null;
     entry.markerBaseSize = 1;
@@ -387,8 +407,7 @@ export class ThreeHotspotLayer {
       return existing.texture;
     }
 
-    const texture = new THREE.Texture(loadedAsset.image);
-    texture.needsUpdate = true;
+    const texture = createMarkerTextureWithIcon(loadedAsset.image);
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.generateMipmaps = true;
@@ -402,16 +421,16 @@ export class ThreeHotspotLayer {
 
   releaseEntryMarkerIcon(entry) {
     if (!entry?.markerIconSrc) {
-      if (entry?.marker?.material) {
-        releaseMarkerMaterialMap(entry.marker.material);
+      for (const material of this.getEntryMarkerMaterials(entry)) {
+        releaseMarkerMaterialMap(material);
       }
       return;
     }
 
     this.releaseMarkerIconTexture(entry.markerIconSrc);
-    if (entry?.marker?.material) {
-      entry.marker.material.userData.sharedMap = false;
-      entry.marker.material.map = null;
+    for (const material of this.getEntryMarkerMaterials(entry)) {
+      material.userData.sharedMap = false;
+      material.map = null;
     }
   }
 
@@ -451,6 +470,21 @@ export class ThreeHotspotLayer {
     return this.assetCache?.normalizeUrl?.(iconSrc) ?? String(iconSrc);
   }
 
+  getEntryMarkerMaterials(entry) {
+    return (entry?.markerSurfaces ?? [])
+      .map((surface) => surface?.material)
+      .filter(Boolean);
+  }
+
+  setEntryMarkerTexture(entry, textureOrFactory, { shared = false } = {}) {
+    for (const material of this.getEntryMarkerMaterials(entry)) {
+      const texture = typeof textureOrFactory === "function"
+        ? textureOrFactory()
+        : textureOrFactory;
+      setMarkerMaterialMap(material, texture, { shared });
+    }
+  }
+
   removeEntryLabel(entry) {
     if (!entry?.label) {
       return;
@@ -484,13 +518,14 @@ export class ThreeHotspotLayer {
           entry.markerBaseSize * markerScale,
           1
         );
-        entry.marker.renderOrder = isActive ? 10 : 2;
-
-        if (entry.marker.material?.color) {
-          entry.marker.material.color.copy(isActive ? ACTIVE_TINT : IDLE_TINT);
-        }
-        if ("opacity" in entry.marker.material) {
-          entry.marker.material.opacity = isActive ? 1 : 0.96;
+        for (const surface of entry.markerSurfaces) {
+          surface.renderOrder = isActive ? 10 : 2;
+          if (surface.material?.color) {
+            surface.material.color.copy(isActive ? ACTIVE_TINT : IDLE_TINT);
+          }
+          if ("opacity" in surface.material) {
+            surface.material.opacity = isActive ? 1 : 0.96;
+          }
         }
         if (entry.markerGlow) {
           entry.markerGlow.visible = isActive;
@@ -540,7 +575,7 @@ function createMarkerMaterial() {
     transparent: true,
     depthWrite: false,
     toneMapped: false,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
     color: IDLE_TINT.clone(),
     opacity: 0.96,
     userData: {
@@ -551,29 +586,125 @@ function createMarkerMaterial() {
 
 function createDefaultMarkerTexture() {
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 256;
+  canvas.width = MARKER_TEXTURE_SIZE;
+  canvas.height = MARKER_TEXTURE_SIZE;
   const ctx = canvas.getContext("2d");
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ctx.beginPath();
-  ctx.arc(128, 128, 82, 0, Math.PI * 2);
-  ctx.fillStyle = "#f0a85d";
-  ctx.fill();
-
-  ctx.lineWidth = 18;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(128, 128, 24, 0, Math.PI * 2);
-  ctx.fillStyle = "#0b2b33";
-  ctx.fill();
+  drawDefaultMarkerTextureBase(ctx, canvas.width, canvas.height);
+  drawDefaultMarkerGlyph(ctx, canvas.width, canvas.height);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+function createMarkerTextureWithIcon(iconImage) {
+  const canvas = document.createElement("canvas");
+  canvas.width = MARKER_TEXTURE_SIZE;
+  canvas.height = MARKER_TEXTURE_SIZE;
+  const ctx = canvas.getContext("2d");
+
+  drawDefaultMarkerTextureBase(ctx, canvas.width, canvas.height);
+  drawMarkerIconOverlay(ctx, iconImage, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function drawDefaultMarkerTextureBase(ctx, width, height) {
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+  ctx.shadowBlur = 26;
+  ctx.shadowOffsetY = 12;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, MARKER_OUTER_RADIUS, 0, Math.PI * 2);
+  ctx.fillStyle = createMarkerOuterGradient(ctx, centerX, centerY);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, MARKER_OUTER_RADIUS, 0, Math.PI * 2);
+  ctx.lineWidth = MARKER_BORDER_WIDTH;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.42)";
+  ctx.stroke();
+}
+
+function drawDefaultMarkerGlyph(ctx, width, height) {
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, MARKER_GLYPH_RADIUS, 0, Math.PI * 2);
+  ctx.fillStyle = createMarkerGlyphGradient(ctx, centerX, centerY);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, MARKER_GLYPH_RADIUS * 0.24, 0, Math.PI * 2);
+  ctx.fillStyle = "#0b2b33";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, MARKER_GLYPH_RADIUS, 0, Math.PI * 2);
+  ctx.lineWidth = MARKER_GLYPH_BORDER_WIDTH;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.86)";
+  ctx.stroke();
+}
+
+function drawMarkerIconOverlay(ctx, iconImage, width, height) {
+  const sourceWidth = Number(iconImage?.width ?? iconImage?.videoWidth ?? 0);
+  const sourceHeight = Number(iconImage?.height ?? iconImage?.videoHeight ?? 0);
+  if (sourceWidth <= 0 || sourceHeight <= 0) {
+    return;
+  }
+
+  const targetBoxSize = Math.max(1, Math.min(width, height) - MARKER_ICON_INSET * 2 - MARKER_BORDER_WIDTH * 2);
+  const fit = Math.min(targetBoxSize / sourceWidth, targetBoxSize / sourceHeight);
+  const drawWidth = sourceWidth * fit;
+  const drawHeight = sourceHeight * fit;
+  const drawX = (width - drawWidth) / 2;
+  const drawY = (height - drawHeight) / 2;
+
+  if (isImageBitmapSource(iconImage)) {
+    ctx.save();
+    ctx.translate(0, height);
+    ctx.scale(1, -1);
+    ctx.drawImage(iconImage, drawX, height - drawY - drawHeight, drawWidth, drawHeight);
+    ctx.restore();
+    return;
+  }
+
+  ctx.drawImage(iconImage, drawX, drawY, drawWidth, drawHeight);
+}
+
+function createMarkerOuterGradient(ctx, centerX, centerY) {
+  const gradient = ctx.createLinearGradient(
+    centerX - MARKER_OUTER_RADIUS,
+    centerY - MARKER_OUTER_RADIUS,
+    centerX + MARKER_OUTER_RADIUS,
+    centerY + MARKER_OUTER_RADIUS
+  );
+  gradient.addColorStop(0, "#fff5c8");
+  gradient.addColorStop(1, "#f0a85d");
+  return gradient;
+}
+
+function createMarkerGlyphGradient(ctx, centerX, centerY) {
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, MARKER_GLYPH_RADIUS);
+  gradient.addColorStop(0, "#fff7d6");
+  gradient.addColorStop(0.52, "#fff7d6");
+  gradient.addColorStop(0.53, "#f0a85d");
+  gradient.addColorStop(1, "#f0a85d");
+  return gradient;
+}
+
+function isImageBitmapSource(image) {
+  return typeof ImageBitmap !== "undefined" && image instanceof ImageBitmap;
 }
 
 function createMarkerHighlightMesh() {
@@ -702,13 +833,15 @@ function resolveScale(scale, referenceDepth) {
 }
 
 function quaternionFromRotation(rotation) {
-  const euler = new THREE.Euler(
-    THREE.MathUtils.degToRad(Number(rotation?.pitch ?? 0)),
-    THREE.MathUtils.degToRad(Number(rotation?.yaw ?? 0)),
-    THREE.MathUtils.degToRad(Number(rotation?.roll ?? 0)),
-    "YXZ"
-  );
-  return new THREE.Quaternion().setFromEuler(euler);
+  const yaw = THREE.MathUtils.degToRad(Number(rotation?.yaw ?? 0));
+  const pitch = THREE.MathUtils.degToRad(Number(rotation?.pitch ?? 0));
+  const roll = THREE.MathUtils.degToRad(Number(rotation?.roll ?? 0));
+
+  const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw);
+  const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch);
+  const qRoll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll);
+
+  return qRoll.multiply(qPitch).multiply(qYaw);
 }
 
 function vectorFrom(position) {

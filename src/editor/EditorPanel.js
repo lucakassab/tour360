@@ -6,6 +6,11 @@ export class EditorPanel {
     this.placementController = placementController;
     this.unsubscribe = null;
     this.controls = {};
+    this.transformClipboard = null;
+    this.activeTabId = "tour";
+    this.panelMinimized = false;
+    this.tabButtons = new Map();
+    this.tabPanels = new Map();
   }
 
   mount() {
@@ -13,22 +18,48 @@ export class EditorPanel {
     this.panel = document.createElement("aside");
     this.panel.className = "editor-panel";
     this.panel.setAttribute("aria-label", "Runtime tour editor");
+    this.controls.panelToggle = this.createPanelToggleButton();
+
+    const sections = [
+      { id: "tour", label: "Tour", help: "Dados gerais do tour.", content: this.createTourSection() },
+      { id: "scene", label: "Cena", help: "Configuracoes da cena selecionada.", content: this.createSceneSection() },
+      { id: "hotspot", label: "Hotspot", help: "Configuracoes do hotspot selecionado.", content: this.createHotspotSection() },
+      { id: "label", label: "Label", help: "Configuracoes da label vinculada ao hotspot.", content: this.createHotspotLabelSection() },
+      { id: "json", label: "JSON", help: "Importacao e exportacao do JSON do tour.", content: this.createJsonSection() }
+    ];
+
+    this.tabBar = this.createTabBar(sections);
+    this.tabContent = document.createElement("div");
+    this.tabContent.className = "editor-panel__tab-panels";
+
+    for (const section of sections) {
+      const panel = document.createElement("div");
+      panel.className = "editor-panel__tab-panel";
+      panel.dataset.tabId = section.id;
+      panel.setAttribute("role", "tabpanel");
+      panel.setAttribute("aria-label", section.label);
+      panel.append(section.content);
+      this.tabPanels.set(section.id, panel);
+      this.tabContent.append(panel);
+    }
 
     this.panel.append(
       this.createHeader(),
-      this.createTourSection(),
-      this.createSceneSection(),
-      this.createHotspotSection(),
-      this.createHotspotLabelSection(),
-      this.createJsonSection()
+      this.tabBar,
+      this.tabContent
     );
-    this.root.replaceChildren(this.panel);
+    this.root.replaceChildren(this.panel, this.controls.panelToggle);
+    this.selectTab(this.activeTabId);
+    this.setPanelMinimized(this.panelMinimized);
     this.unsubscribe = this.draftStore.subscribe((state) => this.sync(state));
   }
 
   createHeader() {
     const header = document.createElement("header");
     header.className = "editor-panel__header";
+
+    const titleGroup = document.createElement("div");
+    titleGroup.className = "editor-panel__title-group";
 
     const title = document.createElement("h2");
     title.textContent = "Editor do tour";
@@ -37,8 +68,55 @@ export class EditorPanel {
     this.controls.status = document.createElement("span");
     this.controls.status.className = "editor-status";
 
-    header.append(title, this.controls.status);
+    const headerActions = document.createElement("div");
+    headerActions.className = "editor-panel__header-actions";
+
+    this.controls.minimizeButton = document.createElement("button");
+    this.controls.minimizeButton.type = "button";
+    this.controls.minimizeButton.className = "editor-panel__minimize";
+    this.controls.minimizeButton.textContent = "🛠";
+    this.controls.minimizeButton.title = "Minimizar o Editor do tour para um botao flutuante.";
+    this.controls.minimizeButton.setAttribute("aria-label", "Minimizar o Editor do tour");
+    this.controls.minimizeButton.addEventListener("click", () => this.setPanelMinimized(true), { signal: this.abortController.signal });
+
+    titleGroup.append(title, this.controls.status);
+    headerActions.append(this.controls.minimizeButton);
+    header.append(titleGroup, headerActions);
     return header;
+  }
+
+  createPanelToggleButton() {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "editor-panel-toggle";
+    button.textContent = "🛠";
+    button.title = "Abrir o Editor do tour.";
+    button.setAttribute("aria-label", "Abrir o Editor do tour");
+    button.hidden = true;
+    button.addEventListener("click", () => this.setPanelMinimized(false), { signal: this.abortController.signal });
+    return button;
+  }
+
+  createTabBar(sections) {
+    const tabBar = document.createElement("div");
+    tabBar.className = "editor-panel__tabbar";
+    tabBar.setAttribute("role", "tablist");
+    tabBar.setAttribute("aria-label", "Abas do editor");
+
+    for (const section of sections) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "editor-panel__tab";
+      button.textContent = section.label;
+      button.title = section.help || section.label;
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-label", section.help ? `${section.label}. ${section.help}` : section.label);
+      button.addEventListener("click", () => this.selectTab(section.id), { signal: this.abortController.signal });
+      this.tabButtons.set(section.id, button);
+      tabBar.append(button);
+    }
+
+    return tabBar;
   }
 
   createTourSection() {
@@ -84,7 +162,9 @@ export class EditorPanel {
     this.controls.sceneSelect = this.createSelect(FIELD_META.sceneSelect);
     this.controls.sceneId = this.createInput(FIELD_META.sceneId);
     this.controls.sceneTitle = this.createInput(FIELD_META.sceneTitle);
-    this.controls.sceneMediaSrc = this.createInput(FIELD_META.sceneMediaSrc);
+    this.controls.sceneMediaSrc = this.createAssetField(FIELD_META.sceneMediaSrc, {
+      onOpenFolder: () => this.openAssetFolder(this.controls.sceneMediaSrc.input.value)
+    });
     this.controls.sceneProjection = this.createInput(FIELD_META.sceneProjection);
     this.controls.sceneStereoLayout = this.createSelect(FIELD_META.sceneStereoLayout, [
       ["top-bottom", "Stereo top-bottom"],
@@ -101,7 +181,9 @@ export class EditorPanel {
     ]);
     this.controls.sceneGlobalYaw = this.createCheckbox(FIELD_META.sceneGlobalYaw);
     this.controls.sceneFlipHorizontally = this.createCheckbox(FIELD_META.sceneFlipHorizontally);
-    this.controls.sceneMinimap = this.createInput(FIELD_META.sceneMinimap);
+    this.controls.sceneMinimap = this.createAssetField(FIELD_META.sceneMinimap, {
+      onOpenFolder: () => this.openAssetFolder(this.controls.sceneMinimap.input.value)
+    });
     this.controls.sceneYaw = this.createNumberInput(FIELD_META.sceneYaw);
     this.controls.scenePitch = this.createNumberInput(FIELD_META.scenePitch);
     this.controls.sceneRoll = this.createNumberInput(FIELD_META.sceneRoll);
@@ -148,7 +230,7 @@ export class EditorPanel {
       actions,
       this.controls.sceneId.label,
       this.controls.sceneTitle.label,
-      this.controls.sceneMediaSrc.label,
+      this.controls.sceneMediaSrc.container,
       this.createFieldGrid(
         this.controls.sceneProjection.label,
         this.controls.sceneStereoLayout.label,
@@ -157,7 +239,7 @@ export class EditorPanel {
       ),
       this.controls.sceneGlobalYaw.label,
       this.controls.sceneFlipHorizontally.label,
-      this.controls.sceneMinimap.label,
+      this.controls.sceneMinimap.container,
       this.createFieldGrid(
         this.controls.sceneYaw.label,
         this.controls.scenePitch.label,
@@ -178,6 +260,11 @@ export class EditorPanel {
       ["annotation", "Anotacao informativa"]
     ]);
     this.controls.hotspotTargetScene = this.createSelect(FIELD_META.hotspotTargetScene);
+    this.controls.hotspotMarkerIcon = this.createAssetField(FIELD_META.hotspotMarkerIcon, {
+      onOpenFolder: () => this.openAssetFolder(this.controls.hotspotMarkerIcon.input.value),
+      clearLabel: "Remover imagem",
+      onClear: () => this.clearHotspotMarkerIcon()
+    });
     this.controls.hotspotMarkerVisible = this.createCheckbox(FIELD_META.hotspotMarkerVisible);
     this.controls.hotspotX = this.createNumberInput(FIELD_META.hotspotX, 0.01);
     this.controls.hotspotY = this.createNumberInput(FIELD_META.hotspotY, 0.01);
@@ -218,6 +305,7 @@ export class EditorPanel {
     this.bindInput(this.controls.hotspotId.input, () => this.draftStore.updateHotspotField("id", this.controls.hotspotId.input.value), "change");
     this.bindInput(this.controls.hotspotType.input, () => this.draftStore.updateHotspotField("type", this.controls.hotspotType.input.value), "change");
     this.bindInput(this.controls.hotspotTargetScene.input, () => this.draftStore.updateHotspotField("target_scene", this.controls.hotspotTargetScene.input.value || null), "change");
+    this.bindInput(this.controls.hotspotMarkerIcon.input, () => this.draftStore.updateHotspotField("marker_icon.src", normalizeOptionalAssetPath(this.controls.hotspotMarkerIcon.input.value)));
     this.bindInput(this.controls.hotspotMarkerVisible.input, () => this.draftStore.updateHotspotField("marker_visible", this.controls.hotspotMarkerVisible.input.checked), "change");
     this.bindInput(this.controls.hotspotX.input, () => this.draftStore.updateHotspotField("position.x", readNumber(this.controls.hotspotX.input)));
     this.bindInput(this.controls.hotspotY.input, () => this.draftStore.updateHotspotField("position.y", readNumber(this.controls.hotspotY.input)));
@@ -236,9 +324,65 @@ export class EditorPanel {
       actions,
       this.controls.hotspotId.label,
       this.createFieldGrid(this.controls.hotspotType.label, this.controls.hotspotTargetScene.label),
+      this.controls.hotspotMarkerIcon.container,
       this.createFieldGrid(this.controls.hotspotMarkerVisible.label, this.controls.hotspotBillboard.label),
-      this.createFieldGrid(this.controls.hotspotX.label, this.controls.hotspotY.label, this.controls.hotspotZ.label),
-      this.createFieldGrid(this.controls.hotspotYaw.label, this.controls.hotspotPitch.label, this.controls.hotspotRoll.label, this.controls.hotspotScale.label),
+      this.createTransformGroup({
+        title: "Posicao do hotspot",
+        help: "Copie ou cole rapidamente as coordenadas X, Y e Z do hotspot selecionado.",
+        fields: [
+          this.controls.hotspotX.label,
+          this.controls.hotspotY.label,
+          this.controls.hotspotZ.label
+        ],
+        onCopy: () => this.copyTransformValues({
+          kind: "hotspot-position",
+          label: "posicao do hotspot",
+          values: {
+            x: readNumber(this.controls.hotspotX.input),
+            y: readNumber(this.controls.hotspotY.input),
+            z: readNumber(this.controls.hotspotZ.input, -8)
+          }
+        }),
+        onPaste: () => this.pasteTransformValues({
+          expectedKind: "hotspot-position",
+          label: "posicao do hotspot",
+          apply: (values) => {
+            this.draftStore.updateHotspotField("position.x", values.x);
+            this.draftStore.updateHotspotField("position.y", values.y);
+            this.draftStore.updateHotspotField("position.z", values.z);
+          }
+        })
+      }),
+      this.createTransformGroup({
+        title: "Rotacao e escala do hotspot",
+        help: "Copie ou cole yaw, pitch, roll e escala do hotspot selecionado.",
+        fields: [
+          this.controls.hotspotYaw.label,
+          this.controls.hotspotPitch.label,
+          this.controls.hotspotRoll.label,
+          this.controls.hotspotScale.label
+        ],
+        onCopy: () => this.copyTransformValues({
+          kind: "hotspot-rotation-scale",
+          label: "rotacao e escala do hotspot",
+          values: {
+            yaw: readNumber(this.controls.hotspotYaw.input),
+            pitch: readNumber(this.controls.hotspotPitch.input),
+            roll: readNumber(this.controls.hotspotRoll.input),
+            scale: readNumber(this.controls.hotspotScale.input, 1)
+          }
+        }),
+        onPaste: () => this.pasteTransformValues({
+          expectedKind: "hotspot-rotation-scale",
+          label: "rotacao e escala do hotspot",
+          apply: (values) => {
+            this.draftStore.updateHotspotField("rotation.yaw", values.yaw);
+            this.draftStore.updateHotspotField("rotation.pitch", values.pitch);
+            this.draftStore.updateHotspotField("rotation.roll", values.roll);
+            this.draftStore.updateHotspotField("scale", values.scale);
+          }
+        })
+      }),
       this.controls.hotspotReferenceDepth.label,
       this.createFieldGrid(this.controls.hotspotApplySceneYaw.label, this.controls.hotspotDefineSceneYaw.label)
     );
@@ -278,8 +422,63 @@ export class EditorPanel {
       this.controls.labelScope,
       this.controls.labelText.label,
       this.createFieldGrid(this.controls.labelVisible.label, this.controls.labelBillboard.label),
-      this.createFieldGrid(this.controls.labelOffsetX.label, this.controls.labelOffsetY.label, this.controls.labelOffsetZ.label),
-      this.createFieldGrid(this.controls.labelYaw.label, this.controls.labelPitch.label, this.controls.labelRoll.label, this.controls.labelScale.label),
+      this.createTransformGroup({
+        title: "Offset da label",
+        help: "Copie ou cole rapidamente o deslocamento X, Y e Z da label vinculada.",
+        fields: [
+          this.controls.labelOffsetX.label,
+          this.controls.labelOffsetY.label,
+          this.controls.labelOffsetZ.label
+        ],
+        onCopy: () => this.copyTransformValues({
+          kind: "label-offset",
+          label: "offset da label",
+          values: {
+            x: readNumber(this.controls.labelOffsetX.input),
+            y: readNumber(this.controls.labelOffsetY.input, 0.9),
+            z: readNumber(this.controls.labelOffsetZ.input)
+          }
+        }),
+        onPaste: () => this.pasteTransformValues({
+          expectedKind: "label-offset",
+          label: "offset da label",
+          apply: (values) => {
+            this.draftStore.updateHotspotLabelField("position_offset.x", values.x);
+            this.draftStore.updateHotspotLabelField("position_offset.y", values.y);
+            this.draftStore.updateHotspotLabelField("position_offset.z", values.z);
+          }
+        })
+      }),
+      this.createTransformGroup({
+        title: "Rotacao e escala da label",
+        help: "Copie ou cole yaw, pitch, roll e escala da label vinculada.",
+        fields: [
+          this.controls.labelYaw.label,
+          this.controls.labelPitch.label,
+          this.controls.labelRoll.label,
+          this.controls.labelScale.label
+        ],
+        onCopy: () => this.copyTransformValues({
+          kind: "label-rotation-scale",
+          label: "rotacao e escala da label",
+          values: {
+            yaw: readNumber(this.controls.labelYaw.input),
+            pitch: readNumber(this.controls.labelPitch.input),
+            roll: readNumber(this.controls.labelRoll.input),
+            scale: readNumber(this.controls.labelScale.input, 1)
+          }
+        }),
+        onPaste: () => this.pasteTransformValues({
+          expectedKind: "label-rotation-scale",
+          label: "rotacao e escala da label",
+          apply: (values) => {
+            this.draftStore.updateHotspotLabelField("rotation_offset.yaw", values.yaw);
+            this.draftStore.updateHotspotLabelField("rotation_offset.pitch", values.pitch);
+            this.draftStore.updateHotspotLabelField("rotation_offset.roll", values.roll);
+            this.draftStore.updateHotspotLabelField("scale", values.scale);
+          }
+        })
+      }),
       this.controls.labelReferenceDepth.label
     );
     return section;
@@ -386,6 +585,7 @@ export class EditorPanel {
     this.setOptions(this.controls.hotspotTargetScene.input, [["", "Sem destino"], ...draft.scenes.map((candidate) => [candidate.id, candidate.title || candidate.id])], hotspot?.target_scene ?? "");
     this.setOptions(this.controls.hotspotType.input, [["scene_link", "Navegacao entre cenas"], ["annotation", "Anotacao informativa"]], hotspot?.type ?? "scene_link");
     this.setValue(this.controls.hotspotId.input, hotspot?.id ?? "");
+    this.setValue(this.controls.hotspotMarkerIcon.input, hotspot?.marker_icon?.src ?? "");
     this.setValue(this.controls.hotspotX.input, hotspot?.position?.x ?? "");
     this.setValue(this.controls.hotspotY.input, hotspot?.position?.y ?? "");
     this.setValue(this.controls.hotspotZ.input, hotspot?.position?.z ?? "");
@@ -403,6 +603,7 @@ export class EditorPanel {
       this.controls.hotspotId,
       this.controls.hotspotType,
       this.controls.hotspotTargetScene,
+      this.controls.hotspotMarkerIcon,
       this.controls.hotspotMarkerVisible,
       this.controls.hotspotX,
       this.controls.hotspotY,
@@ -418,7 +619,7 @@ export class EditorPanel {
     ];
 
     for (const control of controls) {
-      control.input.disabled = !hotspot;
+      this.setControlDisabled(control, !hotspot);
     }
 
     this.controls.hotspotTargetScene.input.disabled = !hotspot || hotspot.type !== "scene_link";
@@ -458,7 +659,7 @@ export class EditorPanel {
       this.controls.labelReferenceDepth,
       this.controls.labelBillboard
     ]) {
-      control.input.disabled = !hotspot;
+      this.setControlDisabled(control, !hotspot);
     }
   }
 
@@ -505,6 +706,38 @@ export class EditorPanel {
     return this.wrapControl(labelText, input);
   }
 
+  createAssetField(meta, { onOpenFolder = null, onClear = null, clearLabel = "Limpar campo" } = {}) {
+    const control = this.createInput(meta);
+    const container = document.createElement("div");
+    container.className = "editor-asset-field";
+    container.append(control.label);
+
+    const actions = document.createElement("div");
+    actions.className = "editor-asset-actions";
+
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.textContent = "Abrir pasta";
+    openButton.title = "Abre em nova aba a pasta que contem o arquivo atualmente informado neste campo.";
+    openButton.setAttribute("aria-label", "Abrir a pasta do asset selecionado");
+    openButton.addEventListener("click", () => onOpenFolder?.(), { signal: this.abortController.signal });
+    actions.append(openButton);
+
+    let clearButton = null;
+    if (typeof onClear === "function") {
+      clearButton = document.createElement("button");
+      clearButton.type = "button";
+      clearButton.textContent = clearLabel;
+      clearButton.title = `${clearLabel}.`;
+      clearButton.setAttribute("aria-label", clearLabel);
+      clearButton.addEventListener("click", () => onClear(), { signal: this.abortController.signal });
+      actions.append(clearButton);
+    }
+
+    container.append(actions);
+    return { ...control, container, openButton, clearButton };
+  }
+
   wrapControl(meta, input) {
     const normalizedMeta = normalizeControlMeta(meta);
     const label = document.createElement("label");
@@ -532,6 +765,41 @@ export class EditorPanel {
     return grid;
   }
 
+  createTransformGroup({ title, help = "", fields = [], onCopy, onPaste }) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "editor-transform-group";
+
+    const header = document.createElement("div");
+    header.className = "editor-transform-group__header";
+
+    const titleElement = document.createElement("p");
+    titleElement.className = "editor-transform-group__title";
+    titleElement.textContent = title;
+    titleElement.title = help || title;
+
+    const actions = document.createElement("div");
+    actions.className = "editor-transform-group__actions";
+
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.textContent = "Copiar";
+    copyButton.title = `Copiar ${title.toLowerCase()}.`;
+    copyButton.setAttribute("aria-label", `Copiar ${title.toLowerCase()}`);
+    copyButton.addEventListener("click", () => onCopy?.(), { signal: this.abortController.signal });
+
+    const pasteButton = document.createElement("button");
+    pasteButton.type = "button";
+    pasteButton.textContent = "Colar";
+    pasteButton.title = `Colar ${title.toLowerCase()} copiada anteriormente.`;
+    pasteButton.setAttribute("aria-label", `Colar ${title.toLowerCase()}`);
+    pasteButton.addEventListener("click", () => onPaste?.(), { signal: this.abortController.signal });
+
+    actions.append(copyButton, pasteButton);
+    header.append(titleElement, actions);
+    wrapper.append(header, this.createFieldGrid(...fields));
+    return wrapper;
+  }
+
   createActions(actions) {
     const group = document.createElement("div");
     group.className = "editor-actions";
@@ -551,6 +819,35 @@ export class EditorPanel {
       group.append(button);
     }
     return group;
+  }
+
+  selectTab(tabId) {
+    const nextTabId = this.tabButtons.has(tabId) ? tabId : (this.tabButtons.keys().next().value ?? null);
+    if (!nextTabId) {
+      return;
+    }
+
+    this.activeTabId = nextTabId;
+
+    for (const [id, button] of this.tabButtons.entries()) {
+      const isActive = id === nextTabId;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-selected", isActive ? "true" : "false");
+      button.tabIndex = isActive ? 0 : -1;
+    }
+
+    for (const [id, panel] of this.tabPanels.entries()) {
+      panel.hidden = id !== nextTabId;
+    }
+  }
+
+  setPanelMinimized(minimized) {
+    this.panelMinimized = minimized === true;
+    this.panel.hidden = this.panelMinimized;
+    this.controls.panelToggle.hidden = !this.panelMinimized;
+    this.root.classList.toggle("is-minimized", this.panelMinimized);
+    this.controls.minimizeButton?.setAttribute("aria-expanded", this.panelMinimized ? "false" : "true");
+    this.controls.panelToggle?.setAttribute("aria-expanded", this.panelMinimized ? "false" : "true");
   }
 
   bindInput(input, handler, eventName = "input") {
@@ -580,8 +877,78 @@ export class EditorPanel {
   setAllDisabled(isDisabled) {
     for (const control of Object.values(this.controls)) {
       if (control?.input) {
-        control.input.disabled = isDisabled;
+        this.setControlDisabled(control, isDisabled);
       }
+    }
+  }
+
+  setControlDisabled(control, isDisabled) {
+    if (!control) {
+      return;
+    }
+
+    if (control.input) {
+      control.input.disabled = isDisabled;
+    }
+    if (control.openButton) {
+      control.openButton.disabled = isDisabled;
+    }
+    if (control.clearButton) {
+      control.clearButton.disabled = isDisabled;
+    }
+  }
+
+  clearHotspotMarkerIcon() {
+    this.setValue(this.controls.hotspotMarkerIcon.input, "");
+    this.draftStore.updateHotspotField("marker_icon.src", null);
+  }
+
+  copyTransformValues({ kind, label, values }) {
+    this.transformClipboard = {
+      kind,
+      label,
+      values: { ...values }
+    };
+    this.context.setStatus(`${capitalize(label)} copiada.`, { hideAfterMs: 1400 });
+  }
+
+  pasteTransformValues({ expectedKind, label, apply }) {
+    if (!this.transformClipboard || this.transformClipboard.kind !== expectedKind) {
+      this.context.setStatus(`Nenhum valor de ${label} foi copiado ainda.`, { hideAfterMs: 1800 });
+      return;
+    }
+
+    apply?.(this.transformClipboard.values);
+    this.context.setStatus(`${capitalize(label)} colada.`, { hideAfterMs: 1400 });
+  }
+
+  async openAssetFolder(assetPath) {
+    const normalizedAssetPath = normalizeOptionalAssetPath(assetPath);
+    if (!normalizedAssetPath) {
+      this.context.setStatus("Informe um arquivo valido antes de abrir a pasta.", { hideAfterMs: 1800 });
+      return;
+    }
+
+    try {
+      const response = await fetch("./__open_folder__", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          assetPath: normalizedAssetPath
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok !== true) {
+        throw new Error(payload?.error || "Nao foi possivel abrir a pasta do asset.");
+      }
+
+      this.context.setStatus("Pasta aberta no Explorer.", { hideAfterMs: 1400 });
+      return;
+    } catch (error) {
+      this.context.setStatus(error?.message || "Nao foi possivel abrir a pasta do asset.", { hideAfterMs: 2200 });
     }
   }
 
@@ -634,6 +1001,19 @@ function getHotspotDisplayName(hotspot) {
 function readNumber(input, fallback = 0) {
   const value = Number(input.value);
   return Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeOptionalAssetPath(value) {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
+function capitalize(value) {
+  const text = String(value ?? "").trim();
+  if (!text) {
+    return "";
+  }
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 function normalizeControlMeta(meta) {
@@ -776,6 +1156,10 @@ const FIELD_META = {
   hotspotTargetScene: {
     label: "Cena de destino",
     help: "Cena aberta quando um hotspot de navegacao for ativado."
+  },
+  hotspotMarkerIcon: {
+    label: "Imagem do hotspot",
+    help: "Arquivo opcional usado como icone do marcador visual do hotspot."
   },
   hotspotMarkerVisible: {
     label: "Marcador visivel",

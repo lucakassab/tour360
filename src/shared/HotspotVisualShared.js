@@ -55,6 +55,14 @@ export function getHotspotScale(hotspot, depth) {
   return getDepthScale(hotspot?.scale, hotspot?.reference_depth, depth);
 }
 
+export function isHotspotMarkerBillboard(hotspot) {
+  return hotspot?.billboard !== false;
+}
+
+export function getHotspotMarkerRotation(hotspot) {
+  return normalizeRotation(hotspot?.rotation);
+}
+
 export function getHotspotMarkerRoll(hotspot) {
   if (hotspot?.billboard === false) {
     return Number(hotspot?.rotation?.roll ?? 0);
@@ -67,6 +75,17 @@ export function getHotspotLabelScale(hotspot, depth) {
     ? hotspot?.reference_depth
     : (hotspot?.label?.reference_depth ?? hotspot?.reference_depth);
   return getDepthScale(hotspot?.label?.scale, referenceDepth, depth);
+}
+
+export function isHotspotLabelBillboard(hotspot) {
+  return hotspot?.label?.billboard !== false;
+}
+
+export function getHotspotLabelRotation(hotspot) {
+  return addRotation(
+    normalizeRotation(hotspot?.rotation),
+    normalizeRotation(hotspot?.label?.rotation_offset)
+  );
 }
 
 export function getHotspotLabelRoll(hotspot) {
@@ -118,6 +137,22 @@ function normalizeVector(vector, fallback) {
     x: Number(vector?.x ?? fallback.x),
     y: Number(vector?.y ?? fallback.y),
     z: Number(vector?.z ?? fallback.z)
+  };
+}
+
+function normalizeRotation(rotation) {
+  return {
+    yaw: Number(rotation?.yaw ?? 0),
+    pitch: Number(rotation?.pitch ?? 0),
+    roll: Number(rotation?.roll ?? 0)
+  };
+}
+
+function addRotation(baseRotation, offsetRotation) {
+  return {
+    yaw: Number(baseRotation?.yaw ?? 0) + Number(offsetRotation?.yaw ?? 0),
+    pitch: Number(baseRotation?.pitch ?? 0) + Number(offsetRotation?.pitch ?? 0),
+    roll: Number(baseRotation?.roll ?? 0) + Number(offsetRotation?.roll ?? 0)
   };
 }
 

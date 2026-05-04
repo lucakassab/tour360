@@ -40,6 +40,7 @@ export class AppKernel {
       assetCache: this.assetCache,
       hotspotLoader: this.hotspotLoader
     });
+    this.serviceWorkerRuntimeState = "idle";
     this.editorModule = null;
     this.deferredInstallPrompt = null;
     this.webxrSupportPromise = null;
@@ -356,7 +357,10 @@ export class AppKernel {
       if (!this.isRuntimeTransitionActive(transitionToken)) {
         return;
       }
-      const renderOptions = resolveSceneOrientationOptions(scene, navigationHotspot);
+      const renderOptions = {
+        ...resolveSceneOrientationOptions(scene, navigationHotspot),
+        transitionMode: navigationHotspot ? "hotspot-snapshot" : null
+      };
       this.xrDebug.log("navigation-scene-loaded", {
         sceneId: scene.id,
         src: scene?.media?.src ?? null,
@@ -488,7 +492,10 @@ export class AppKernel {
     try {
       this.setStatus(`Loading scene ${sceneId}...`);
       const targetScene = state.currentTour.scenes?.find((scene) => scene.id === sceneId) ?? null;
-      const renderOptions = resolveSceneOrientationOptions(targetScene, navigationHotspot);
+      const renderOptions = {
+        ...resolveSceneOrientationOptions(targetScene, navigationHotspot),
+        transitionMode: navigationHotspot ? "hotspot-snapshot" : null
+      };
       const shouldUseVrDeferredMediaLoad = this.shouldUseVrDeferredMediaLoad(state, targetScene);
       if (shouldUseVrDeferredMediaLoad) {
         activeRenderer?.setLoadingState?.({
@@ -859,13 +866,18 @@ export class AppKernel {
   }
 
   async maybeRegisterServiceWorker(cfg) {
-    if (cfg?.features?.service_worker === false || !("serviceWorker" in navigator)) {
+    const swAvailability = getServiceWorkerAvailability();
+    this.serviceWorkerRuntimeState = swAvailability.state;
+
+    if (cfg?.features?.service_worker === false || !swAvailability.shouldAttemptRegistration) {
       return;
     }
 
     try {
       await navigator.serviceWorker.register("./sw.js");
+      this.serviceWorkerRuntimeState = "registered";
     } catch (error) {
+      this.serviceWorkerRuntimeState = "error";
       console.warn("[WPA360] service worker registration failed", error);
     }
   }
@@ -1058,11 +1070,7 @@ export class AppKernel {
     });
 
     this.updateCapabilityBadge(this.elements.serviceWorkerBadge, cfg?.ui?.chrome?.show_service_worker_badge !== false, {
-      label: "serviceWorker" in navigator ? "SW suportado" : "Sem SW",
-      state: "serviceWorker" in navigator ? "positive" : "muted",
-      title: "serviceWorker" in navigator
-        ? "O navegador suporta service worker para cache e funcionamento offline."
-        : "O navegador atual nao suporta service worker."
+      ...describeServiceWorkerBadge(this.serviceWorkerRuntimeState)
     });
 
     this.updateCapabilityBadge(this.elements.inputBadge, cfg?.ui?.chrome?.show_input_badge !== false, {
@@ -1777,6 +1785,115 @@ function resolveSceneOrientationOptions(scene, hotspot = null) {
 function safeNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function getServiceWorkerAvailability() {
+  if (!("serviceWorker" in navigator)) {
+    return {
+      shouldAttemptRegistration: false,
+      state: "unsupported"
+    };
+  }
+
+  if (window.isSecureContext !== true) {
+    return {
+      shouldAttemptRegistration: false,
+      state: "insecure-context"
+    };
+  }
+
+  const locationUrl = new URL(window.location.href);
+  if (locationUrl.protocol === "https:" && isPrivateNetworkHost(locationUrl.hostname)) {
+    return {
+      shouldAttemptRegistration: false,
+      state: "skipped-local-https"
+    };
+  }
+
+  return {
+    shouldAttemptRegistration: true,
+    state: "supported"
+  };
+}
+
+function describeServiceWorkerBadge(runtimeState) {
+  switch (runtimeState) {
+    case "registered":
+      return {
+        label: "SW ativo",
+        state: "positive",
+        title: "O service worker foi registrado com sucesso para cache e funcionamento offline."
+      };
+    case "supported":
+      return {
+        label: "SW suportado",
+        state: "positive",
+        title: "O navegador suporta service worker para cache e funcionamento offline."
+      };
+    case "skipped-local-https":
+      return {
+        label: "SW local pulado",
+        state: "neutral",
+        title: "O registro do service worker foi desativado neste host local com HTTPS por IP para evitar falhas de certificado durante o desenvolvimento."
+      };
+    case "insecure-context":
+      return {
+        label: "SW indisponivel",
+        state: "muted",
+        title: "O contexto atual nao e seguro o suficiente para registrar service worker."
+      };
+    case "error":
+      return {
+        label: "SW com erro",
+        state: "muted",
+        title: "O navegador suporta service worker, mas o registro falhou nesta sessao."
+      };
+    default:
+      return {
+        label: "Sem SW",
+        state: "muted",
+        title: "O navegador atual nao suporta service worker."
+      };
+  }
+}
+
+function isPrivateNetworkHost(hostname) {
+  const normalized = String(hostname ?? "").trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  if (normalized === "localhost" || normalized === "::1" || normalized === "[::1]") {
+    return true;
+  }
+
+  if (/^127(?:\.\d{1,3}){3}$/.test(normalized)) {
+    return true;
+  }
+
+  const match = normalized.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return false;
+  }
+
+  const octets = match.slice(1).map((value) => Number.parseInt(value, 10));
+  if (octets.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
+    return false;
+  }
+
+  if (octets[0] === 10) {
+    return true;
+  }
+
+  if (octets[0] === 192 && octets[1] === 168) {
+    return true;
+  }
+
+  if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) {
+    return true;
+  }
+
+  return false;
 }
 
 function sanitizeFileToken(value) {

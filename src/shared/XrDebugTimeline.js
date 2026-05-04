@@ -14,6 +14,7 @@ const HIGH_SIGNAL_EVENTS = new Set([
   "navigation-render-start",
   "navigation-render-complete",
   "scene-transition-begin",
+  "scene-transition-placeholder-flush-skipped",
   "loading-start",
   "image-load-start",
   "image-load-complete",

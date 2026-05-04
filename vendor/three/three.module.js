@@ -13768,6 +13768,7 @@ class WebXRManager extends EventDispatcher {
 		let xrFrame = null;
 
 		const supportsGlBinding = typeof XRWebGLBinding !== 'undefined';
+		let glBindingAvailable = supportsGlBinding;
 
 		const depthSensing = new WebXRDepthSensing();
 		const cameraAccessTextures = {};
@@ -14067,9 +14068,19 @@ class WebXRManager extends EventDispatcher {
 		 */
 		this.getBinding = function () {
 
-			if ( glBinding === null && supportsGlBinding ) {
+			if ( glBinding === null && glBindingAvailable ) {
 
-				glBinding = new XRWebGLBinding( session, gl );
+				try {
+
+					glBinding = new XRWebGLBinding( session, gl );
+
+				} catch ( error ) {
+
+					glBindingAvailable = false;
+					console.warn( 'THREE.WebXRManager: XRWebGLBinding unavailable, falling back to XRWebGLLayer.', error );
+					return null;
+
+				}
 
 			}
 
@@ -14137,7 +14148,14 @@ class WebXRManager extends EventDispatcher {
 
 				// Check that the browser implements the necessary APIs to use an
 				// XRProjectionLayer rather than an XRWebGLLayer
-				const supportsLayers = supportsGlBinding && 'createProjectionLayer' in XRWebGLBinding.prototype;
+				let supportsLayers = glBindingAvailable && 'createProjectionLayer' in XRWebGLBinding.prototype;
+
+				if ( supportsLayers ) {
+
+					glBinding = this.getBinding();
+					supportsLayers = glBinding !== null;
+
+				}
 
 				if ( ! supportsLayers ) {
 
@@ -14189,8 +14207,6 @@ class WebXRManager extends EventDispatcher {
 						depthFormat: glDepthFormat,
 						scaleFactor: framebufferScaleFactor
 					};
-
-					glBinding = this.getBinding();
 
 					glProjLayer = glBinding.createProjectionLayer( projectionlayerInit );
 
@@ -14722,15 +14738,19 @@ class WebXRManager extends EventDispatcher {
 					enabledFeatures.includes( 'depth-sensing' ) &&
 					session.depthUsage == 'gpu-optimized';
 
-				if ( gpuDepthSensingEnabled && supportsGlBinding ) {
+				if ( gpuDepthSensingEnabled && glBindingAvailable ) {
 
 					glBinding = scope.getBinding();
 
-					const depthData = glBinding.getDepthInformation( views[ 0 ] );
+					if ( glBinding !== null ) {
 
-					if ( depthData && depthData.isValid && depthData.texture ) {
+						const depthData = glBinding.getDepthInformation( views[ 0 ] );
 
-						depthSensing.init( depthData, session.renderState );
+						if ( depthData && depthData.isValid && depthData.texture ) {
+
+							depthSensing.init( depthData, session.renderState );
+
+						}
 
 					}
 
@@ -14739,29 +14759,33 @@ class WebXRManager extends EventDispatcher {
 				const cameraAccessEnabled = enabledFeatures &&
 				    enabledFeatures.includes( 'camera-access' );
 
-				if ( cameraAccessEnabled && supportsGlBinding ) {
+				if ( cameraAccessEnabled && glBindingAvailable ) {
 
 					renderer.state.unbindTexture();
 
 					glBinding = scope.getBinding();
 
-					for ( let i = 0; i < views.length; i ++ ) {
+					if ( glBinding !== null ) {
 
-						const camera = views[ i ].camera;
+						for ( let i = 0; i < views.length; i ++ ) {
 
-						if ( camera ) {
+							const camera = views[ i ].camera;
 
-							let cameraTex = cameraAccessTextures[ camera ];
+							if ( camera ) {
 
-							if ( ! cameraTex ) {
+								let cameraTex = cameraAccessTextures[ camera ];
 
-								cameraTex = new ExternalTexture();
-								cameraAccessTextures[ camera ] = cameraTex;
+								if ( ! cameraTex ) {
+
+									cameraTex = new ExternalTexture();
+									cameraAccessTextures[ camera ] = cameraTex;
+
+								}
+
+								const glTexture = glBinding.getCameraImage( camera );
+								cameraTex.sourceTexture = glTexture;
 
 							}
-
-							const glTexture = glBinding.getCameraImage( camera );
-							cameraTex.sourceTexture = glTexture;
 
 						}
 

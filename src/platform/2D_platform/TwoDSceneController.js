@@ -37,6 +37,7 @@ export class TwoDSceneController {
       return;
     }
     const renderToken = ++this.renderToken;
+    let renderCompleted = false;
 
     this.renderer.setInteractionLocked(true);
     this.hotspotRenderer.setInteractionLocked(true);
@@ -60,8 +61,16 @@ export class TwoDSceneController {
       if (!this.isRenderActive(renderToken)) {
         return sceneTransition;
       }
+      await this.renderer.completeSceneTransitionVisual();
+      if (!this.isRenderActive(renderToken)) {
+        return sceneTransition;
+      }
+      renderCompleted = true;
       return sceneTransition;
     } finally {
+      if (!renderCompleted) {
+        this.renderer.cancelSceneTransitionVisual();
+      }
       if (this.isRenderActive(renderToken)) {
         this.hotspotRenderer.setInteractionLocked(false);
         this.renderer.setInteractionLocked(false);

@@ -1,1040 +1,1040 @@
 {
-  "id": "coluna_1",
-  "title": "Coluna 1",
-  "initial_scene": "coluna-1-studio-banheiro",
-  "media_type": "equirectangular-image",
-  "settings": {
-    "rotation": {
-      "yaw": 0,
-      "pitch": 0,
-      "roll": 0
-    },
-    "scale": 1,
-    "billboard": true
-  },
-  "scenes": [
-    {
-      "id": "coluna-1-studio-banheiro",
-      "title": "Coluna 1 - Studio Banheiro.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": false,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Studio Banheiro.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-studio-quarto",
-          "type": "scene_link",
-          "target_scene": "coluna-1-studio-quarto",
-          "position": {
-            "x": -3.846,
-            "y": -6.908,
-            "z": -1.222
-          },
-          "rotation": {
-            "yaw": 24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Studio Quarto.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": "coluna_1",
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "coluna-1-studio-cozinha",
-      "title": "Coluna 1 - Studio Cozinha.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": false,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Studio Cozinha.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-studio-quarto",
-          "type": "scene_link",
-          "target_scene": "coluna-1-studio-quarto",
-          "position": {
-            "x": 0.483,
-            "y": -4.301,
-            "z": -6.728
-          },
-          "rotation": {
-            "yaw": 24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": " Coluna 1 - Studio Quarto.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": null,
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "coluna-1-studio-cozinha-hotspot",
-          "type": "scene_link",
-          "target_tour": "coluna_1",
-          "target_scene": "coluna-1-studio-banheiro",
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "position": {
-            "x": 0.634,
-            "y": -2.957,
-            "z": -7.406
-          },
-          "rotation": {
-            "yaw": 0,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "reference_depth": 8,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Studio Banheiro.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "go-to-coluna-1-studio-varanda",
-          "type": "scene_link",
-          "target_tour": "coluna_1",
-          "target_scene": "coluna-1-studio-varanda",
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "position": {
-            "x": -1.677,
-            "y": -2.109,
-            "z": -7.533
-          },
-          "rotation": {
-            "yaw": 0,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "reference_depth": 8,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Studio Varanda.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "coluna-1-studio-quarto",
-      "title": "Coluna 1 - Studio Quarto.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": false,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Studio Quarto.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-studio-varanda",
-          "type": "scene_link",
-          "target_scene": "coluna-1-studio-varanda",
-          "position": {
-            "x": -1.634,
-            "y": -3.723,
-            "z": -6.89
-          },
-          "rotation": {
-            "yaw": 24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Studio Varanda.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": "coluna_1",
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "go-to-coluna-1-studio-cozinha",
-          "type": "scene_link",
-          "target_scene": "coluna-1-studio-cozinha",
-          "position": {
-            "x": 1.978,
-            "y": -4.565,
-            "z": 6.265
-          },
-          "rotation": {
-            "yaw": -24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": " Coluna 1 - Studio Cozinha.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": null,
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "coluna-1-studio-quarto-hotspot",
-          "type": "scene_link",
-          "target_tour": "coluna_1",
-          "target_scene": "coluna-1-studio-banheiro",
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "position": {
-            "x": 4.817,
-            "y": -5.529,
-            "z": -3.197
-          },
-          "rotation": {
-            "yaw": 0,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "reference_depth": 8,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Studio Banheiro.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "coluna-1-studio-varanda",
-      "title": "Coluna 1 - Studio Varanda.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": true,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Studio Varanda.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-studio-quarto",
-          "type": "scene_link",
-          "target_scene": "coluna-1-studio-quarto",
-          "position": {
-            "x": 1.621,
-            "y": -4.138,
-            "z": 6.652
-          },
-          "rotation": {
-            "yaw": -24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Studio Quarto.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": "coluna_1",
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "coluna-1-studio-varanda-hotspot",
-          "type": "scene_link",
-          "target_tour": "coluna_1",
-          "target_scene": "coluna-1-studio-banheiro",
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "position": {
-            "x": 3.485,
-            "y": -3.745,
-            "z": 6.151
-          },
-          "rotation": {
-            "yaw": 0,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "reference_depth": 8,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Studio Banheiro.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "go-to-coluna-1-studio-cozinha",
-          "type": "scene_link",
-          "target_tour": "coluna_1",
-          "target_scene": "coluna-1-studio-cozinha",
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "position": {
-            "x": 0.918,
-            "y": -1.964,
-            "z": 7.701
-          },
-          "rotation": {
-            "yaw": 0,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "reference_depth": 8,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Studio Cozinha.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "coluna-1-suite-banheiro",
-      "title": "Coluna 1 - Suite Banheiro.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": false,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Suite Banheiro.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-suite-sala",
-          "type": "scene_link",
-          "target_scene": "coluna-1-suite-sala",
-          "position": {
-            "x": 4.869,
-            "y": -6.038,
-            "z": -1.957
-          },
-          "rotation": {
-            "yaw": 24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Suite Sala.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": "coluna_1",
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "coluna-1-suite-cozinha",
-      "title": "Coluna 1 - Suite Cozinha.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": false,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Suite Cozinha.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-suite-quarto",
-          "type": "scene_link",
-          "target_scene": "coluna-1-suite-quarto",
-          "position": {
-            "x": 5,
-            "y": 0.25,
-            "z": -8
-          },
-          "rotation": {
-            "yaw": 24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": " Coluna 1 - Suite Quarto.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": null,
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "go-to-coluna-1-suite-sala",
-          "type": "scene_link",
-          "target_scene": "coluna-1-suite-sala",
-          "position": {
-            "x": -1.705,
-            "y": -4.234,
-            "z": 6.57
-          },
-          "rotation": {
-            "yaw": -24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Suite Sala.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": "coluna_1",
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "coluna-1-suite-quarto",
-      "title": "Coluna 1 - Suite Quarto.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": false,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Suite Quarto.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-suite-sala-2",
-          "type": "scene_link",
-          "target_scene": "coluna-1-suite-sala",
-          "position": {
-            "x": 2.783,
-            "y": -4.876,
-            "z": 5.699
-          },
-          "rotation": {
-            "yaw": -24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Suite Sala.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": "coluna_1",
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "coluna-1-suite-sala",
-      "title": "Coluna 1 - Suite Sala.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": false,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Suite Sala.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-suite-varanda",
-          "type": "scene_link",
-          "target_scene": "coluna-1-suite-varanda",
-          "position": {
-            "x": 0.753,
-            "y": -3.178,
-            "z": -7.303
-          },
-          "rotation": {
-            "yaw": 24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": " Coluna 1 - Suite Varanda.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": null,
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "go-to-coluna-1-suite-quarto",
-          "type": "scene_link",
-          "target_scene": "coluna-1-suite-quarto",
-          "position": {
-            "x": -6.042,
-            "y": -5.141,
-            "z": -1.029
-          },
-          "rotation": {
-            "yaw": -24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": " Coluna 1 - Suite Quarto.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": null,
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "go-to-coluna-1-suite-cozinha",
-          "type": "scene_link",
-          "target_tour": "coluna_1",
-          "target_scene": "coluna-1-suite-cozinha",
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "position": {
-            "x": 4.5,
-            "y": -4.182,
-            "z": 5.125
-          },
-          "rotation": {
-            "yaw": 0,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "reference_depth": 8,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Suite Cozinha.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "marker_icon": {
-            "src": null
-          }
-        },
-        {
-          "id": "go-to-coluna-1-suite-banheiro",
-          "type": "scene_link",
-          "target_tour": "coluna_1",
-          "target_scene": "coluna-1-suite-banheiro",
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "position": {
-            "x": -6.598,
-            "y": -4.469,
-            "z": 0.698
-          },
-          "rotation": {
-            "yaw": 0,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "reference_depth": 8,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Coluna 1 - Suite Banheiro.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "coluna-1-suite-varanda",
-      "title": "Coluna 1 - Suite Varanda.jpg",
-      "media_type": "equirectangular-image",
-      "scale": 1,
-      "billboard": true,
-      "minimap_image": "./data/tours/coluna_1/mapa_padrao.png",
-      "scene_global_yaw": false,
-      "flip_horizontally": false,
-      "media": {
-        "type": "image",
-        "projection": "equirectangular",
-        "stereo_layout": "top-bottom",
-        "eye_order": "left-right",
-        "mono_eye": "left",
-        "src": "./data/tours/coluna_1/Coluna 1 - Suite Varanda.jpg"
-      },
-      "rotation": {
-        "yaw": 0,
-        "pitch": 0,
-        "roll": 0
-      },
-      "hotspots": [
-        {
-          "id": "go-to-coluna-1-suite-sala",
-          "type": "scene_link",
-          "target_scene": "coluna-1-suite-sala",
-          "position": {
-            "x": -2.688,
-            "y": -2.698,
-            "z": 7.035
-          },
-          "rotation": {
-            "yaw": -24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": " Coluna 1 - Suite Sala.jpg",
-            "visible": false,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": null,
-          "reference_depth": 8,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "marker_icon": {
-            "src": null
-          }
-        }
-      ]
-    }
-  ]
+    "id":  "coluna_1",
+    "title":  "Coluna 1",
+    "initial_scene":  "coluna-1-studio-banheiro",
+    "media_type":  "equirectangular-image",
+    "settings":  {
+                     "rotation":  {
+                                      "yaw":  0,
+                                      "pitch":  0,
+                                      "roll":  0
+                                  },
+                     "scale":  1,
+                     "billboard":  true
+                 },
+    "scenes":  [
+                   {
+                       "id":  "coluna-1-studio-banheiro",
+                       "title":  "Coluna 1 - Studio Banheiro.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Studio Banheiro.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-studio-quarto",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-studio-quarto",
+                                            "position":  {
+                                                             "x":  -3.846,
+                                                             "y":  -6.908,
+                                                             "z":  -1.222
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Studio Quarto.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  "coluna_1",
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   },
+                   {
+                       "id":  "coluna-1-studio-cozinha",
+                       "title":  "Coluna 1 - Studio Cozinha.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Studio Cozinha.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-studio-quarto",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-studio-quarto",
+                                            "position":  {
+                                                             "x":  0.483,
+                                                             "y":  -4.301,
+                                                             "z":  -6.728
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  " Coluna 1 - Studio Quarto.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  null,
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "coluna-1-studio-cozinha-hotspot",
+                                            "type":  "scene_link",
+                                            "target_tour":  "coluna_1",
+                                            "target_scene":  "coluna-1-studio-banheiro",
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "position":  {
+                                                             "x":  0.634,
+                                                             "y":  -2.957,
+                                                             "z":  -7.406
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  0,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "reference_depth":  8,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Studio Banheiro.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "go-to-coluna-1-studio-varanda",
+                                            "type":  "scene_link",
+                                            "target_tour":  "coluna_1",
+                                            "target_scene":  "coluna-1-studio-varanda",
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "position":  {
+                                                             "x":  -1.677,
+                                                             "y":  -2.109,
+                                                             "z":  -7.533
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  0,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "reference_depth":  8,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Studio Varanda.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   },
+                   {
+                       "id":  "coluna-1-studio-quarto",
+                       "title":  "Coluna 1 - Studio Quarto.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Studio Quarto.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-studio-varanda",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-studio-varanda",
+                                            "position":  {
+                                                             "x":  -1.634,
+                                                             "y":  -3.723,
+                                                             "z":  -6.89
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Studio Varanda.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  "coluna_1",
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "go-to-coluna-1-studio-cozinha",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-studio-cozinha",
+                                            "position":  {
+                                                             "x":  1.978,
+                                                             "y":  -4.565,
+                                                             "z":  6.265
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  -24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  " Coluna 1 - Studio Cozinha.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  null,
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "coluna-1-studio-quarto-hotspot",
+                                            "type":  "scene_link",
+                                            "target_tour":  "coluna_1",
+                                            "target_scene":  "coluna-1-studio-banheiro",
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "position":  {
+                                                             "x":  4.817,
+                                                             "y":  -5.529,
+                                                             "z":  -3.197
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  0,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "reference_depth":  8,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Studio Banheiro.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   },
+                   {
+                       "id":  "coluna-1-studio-varanda",
+                       "title":  "Coluna 1 - Studio Varanda.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Studio Varanda.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-studio-quarto",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-studio-quarto",
+                                            "position":  {
+                                                             "x":  1.621,
+                                                             "y":  -4.138,
+                                                             "z":  6.652
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  -24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Studio Quarto.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  "coluna_1",
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "coluna-1-studio-varanda-hotspot",
+                                            "type":  "scene_link",
+                                            "target_tour":  "coluna_1",
+                                            "target_scene":  "coluna-1-studio-banheiro",
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "position":  {
+                                                             "x":  3.485,
+                                                             "y":  -3.745,
+                                                             "z":  6.151
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  0,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "reference_depth":  8,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Studio Banheiro.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "go-to-coluna-1-studio-cozinha",
+                                            "type":  "scene_link",
+                                            "target_tour":  "coluna_1",
+                                            "target_scene":  "coluna-1-studio-cozinha",
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "position":  {
+                                                             "x":  0.918,
+                                                             "y":  -1.964,
+                                                             "z":  7.701
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  0,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "reference_depth":  8,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Studio Cozinha.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   },
+                   {
+                       "id":  "coluna-1-suite-banheiro",
+                       "title":  "Coluna 1 - Suite Banheiro.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Suite Banheiro.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-suite-sala",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-suite-sala",
+                                            "position":  {
+                                                             "x":  4.869,
+                                                             "y":  -6.038,
+                                                             "z":  -1.957
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Suite Sala.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  "coluna_1",
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   },
+                   {
+                       "id":  "coluna-1-suite-cozinha",
+                       "title":  "Coluna 1 - Suite Cozinha.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Suite Cozinha.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-suite-quarto",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-suite-quarto",
+                                            "position":  {
+                                                             "x":  5,
+                                                             "y":  0.25,
+                                                             "z":  -8
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  " Coluna 1 - Suite Quarto.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  null,
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "go-to-coluna-1-suite-sala",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-suite-sala",
+                                            "position":  {
+                                                             "x":  -1.705,
+                                                             "y":  -4.234,
+                                                             "z":  6.57
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  -24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Suite Sala.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  "coluna_1",
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   },
+                   {
+                       "id":  "coluna-1-suite-quarto",
+                       "title":  "Coluna 1 - Suite Quarto.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Suite Quarto.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-suite-sala-2",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-suite-sala",
+                                            "position":  {
+                                                             "x":  2.783,
+                                                             "y":  -4.876,
+                                                             "z":  5.699
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  -24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Suite Sala.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  "coluna_1",
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   },
+                   {
+                       "id":  "coluna-1-suite-sala",
+                       "title":  "Coluna 1 - Suite Sala.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Suite Sala.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-suite-varanda",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-suite-varanda",
+                                            "position":  {
+                                                             "x":  0.753,
+                                                             "y":  -3.178,
+                                                             "z":  -7.303
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  " Coluna 1 - Suite Varanda.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  null,
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "go-to-coluna-1-suite-quarto",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-suite-quarto",
+                                            "position":  {
+                                                             "x":  -6.042,
+                                                             "y":  -5.141,
+                                                             "z":  -1.029
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  -24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  " Coluna 1 - Suite Quarto.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  null,
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "go-to-coluna-1-suite-cozinha",
+                                            "type":  "scene_link",
+                                            "target_tour":  "coluna_1",
+                                            "target_scene":  "coluna-1-suite-cozinha",
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "position":  {
+                                                             "x":  4.5,
+                                                             "y":  -4.182,
+                                                             "z":  5.125
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  0,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "reference_depth":  8,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Suite Cozinha.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        },
+                                        {
+                                            "id":  "go-to-coluna-1-suite-banheiro",
+                                            "type":  "scene_link",
+                                            "target_tour":  "coluna_1",
+                                            "target_scene":  "coluna-1-suite-banheiro",
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "position":  {
+                                                             "x":  -6.598,
+                                                             "y":  -4.469,
+                                                             "z":  0.698
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  0,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "reference_depth":  8,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  "Coluna 1 - Suite Banheiro.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   },
+                   {
+                       "id":  "coluna-1-suite-varanda",
+                       "title":  "Coluna 1 - Suite Varanda.jpg",
+                       "media_type":  "equirectangular-image",
+                       "scale":  1,
+                       "billboard":  true,
+                       "minimap_image":  "./data/tours/coluna_1/mapa_padrao.png",
+                       "scene_global_yaw":  false,
+                       "flip_horizontally":  false,
+                       "media":  {
+                                     "type":  "image",
+                                     "projection":  "equirectangular",
+                                     "stereo_layout":  "top-bottom",
+                                     "eye_order":  "left-right",
+                                     "mono_eye":  "left",
+                                     "src":  "./data/tours/coluna_1/Coluna 1 - Suite Varanda.jpg"
+                                 },
+                       "rotation":  {
+                                        "yaw":  0,
+                                        "pitch":  0,
+                                        "roll":  0
+                                    },
+                       "hotspots":  [
+                                        {
+                                            "id":  "go-to-coluna-1-suite-sala",
+                                            "type":  "scene_link",
+                                            "target_scene":  "coluna-1-suite-sala",
+                                            "position":  {
+                                                             "x":  -2.688,
+                                                             "y":  -2.698,
+                                                             "z":  7.035
+                                                         },
+                                            "rotation":  {
+                                                             "yaw":  -24,
+                                                             "pitch":  0,
+                                                             "roll":  0
+                                                         },
+                                            "scale":  1,
+                                            "billboard":  true,
+                                            "marker_visible":  true,
+                                            "label":  {
+                                                          "text":  " Coluna 1 - Suite Sala.jpg",
+                                                          "visible":  false,
+                                                          "position_offset":  {
+                                                                                  "x":  0,
+                                                                                  "y":  0.9,
+                                                                                  "z":  0
+                                                                              },
+                                                          "rotation_offset":  {
+                                                                                  "yaw":  0,
+                                                                                  "pitch":  0,
+                                                                                  "roll":  0
+                                                                              },
+                                                          "scale":  1,
+                                                          "reference_depth":  8,
+                                                          "billboard":  true
+                                                      },
+                                            "target_tour":  null,
+                                            "reference_depth":  8,
+                                            "apply_hotspot_scene_yaw":  false,
+                                            "hotspot_define_scene_yaw":  0,
+                                            "marker_icon":  {
+                                                                "src":  "./assets/icons/seta_cima3.png"
+                                                            }
+                                        }
+                                    ]
+                   }
+               ]
 }

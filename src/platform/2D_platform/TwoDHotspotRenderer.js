@@ -1,12 +1,16 @@
 import {
+  getHotspotLabelRotation,
   getHotspotLabelRoll,
   getHotspotLabelScale,
   getHotspotMarkerIconSrc,
+  getHotspotMarkerRotation,
   getHotspotLabelText,
   getHotspotLabelWorldPosition,
+  isHotspotLabelBillboard,
   getHotspotMarkerRoll,
   getHotspotScale,
   getHotspotSelectLabel,
+  isHotspotMarkerBillboard,
   isHotspotLabelVisible,
   isHotspotMarkerVisible,
   isNavigableHotspot
@@ -36,10 +40,12 @@ export class TwoDHotspotRenderer {
 
     for (const hotspot of scene.hotspots ?? []) {
       if (isHotspotMarkerVisible(hotspot)) {
-        const item = this.syncItem(hotspot, {
+      const item = this.syncItem(hotspot, {
           kind: "marker",
           position: hotspot.position,
-          roll: getHotspotMarkerRoll(hotspot)
+          roll: getHotspotMarkerRoll(hotspot),
+          billboard: isHotspotMarkerBillboard(hotspot),
+          rotation: getHotspotMarkerRotation(hotspot)
         });
         nextItems.push(item);
         seenKeys.add(item.key);
@@ -49,7 +55,9 @@ export class TwoDHotspotRenderer {
         const item = this.syncItem(hotspot, {
           kind: "label",
           position: getHotspotLabelWorldPosition(hotspot),
-          roll: getHotspotLabelRoll(hotspot)
+          roll: getHotspotLabelRoll(hotspot),
+          billboard: isHotspotLabelBillboard(hotspot),
+          rotation: getHotspotLabelRotation(hotspot)
         });
         nextItems.push(item);
         seenKeys.add(item.key);
@@ -67,22 +75,24 @@ export class TwoDHotspotRenderer {
     this.updateProjection();
   }
 
-  syncItem(hotspot, { kind, position, roll }) {
+  syncItem(hotspot, { kind, position, roll, billboard, rotation }) {
     const key = createItemKey(hotspot.id, kind);
     let item = this.itemsByKey.get(key);
     if (!item) {
-      item = this.createItem(hotspot, { key, kind, position, roll });
+      item = this.createItem(hotspot, { key, kind, position, roll, billboard, rotation });
       this.itemsByKey.set(key, item);
     }
 
     item.hotspot = hotspot;
     item.position = position;
     item.roll = roll;
+    item.billboard = billboard !== false;
+    item.rotation = rotation ?? defaultRotation();
     this.updateItemElement(item);
     return item;
   }
 
-  createItem(hotspot, { key, kind, position, roll }) {
+  createItem(hotspot, { key, kind, position, roll, billboard, rotation }) {
     const element = document.createElement(isNavigableHotspot(hotspot) ? "button" : "div");
     const item = {
       key,
@@ -91,6 +101,9 @@ export class TwoDHotspotRenderer {
       kind,
       position,
       roll,
+      billboard: billboard !== false,
+      rotation: rotation ?? defaultRotation(),
+      lastProjectedOrientation: null,
       onPointerDown: stopPointerPropagation,
       onClick: (event) => this.handleHotspotClick(event, item)
     };
@@ -179,18 +192,79 @@ export class TwoDHotspotRenderer {
   }
 
   updateProjection() {
-    for (const { hotspot, element, kind, position, roll } of this.items) {
+    for (const item of this.items) {
+      const { hotspot, element, kind, position, roll, billboard, rotation } = item;
       const projected = this.project(position);
       const scale = kind === "marker"
         ? getHotspotScale(hotspot, projected.depth)
         : getHotspotLabelScale(hotspot, projected.depth);
+      const nextProjectedOrientation = billboard
+        ? null
+        : this.projectOrientationBasis(position, rotation, projected);
+      const projectedOrientation = nextProjectedOrientation ?? item.lastProjectedOrientation;
+
+      if (nextProjectedOrientation) {
+        item.lastProjectedOrientation = nextProjectedOrientation;
+      }
 
       element.style.left = `${projected.x}px`;
       element.style.top = `${projected.y}px`;
       element.style.zIndex = String(Math.max(1, Math.round(1000 - projected.depth)));
-      element.style.transform = `translate(-50%, -50%) rotate(${roll}deg) scale(${scale})`;
+      element.style.transform = buildElementTransform({
+        billboard,
+        roll,
+        scale,
+        projectedOrientation
+      });
       element.classList.toggle("is-hidden", !projected.visible);
     }
+  }
+
+  projectOrientationBasis(position, rotation, projectedCenter = null) {
+    const basisLength = 0.75;
+    const xAxis = rotateVector({ x: basisLength, y: 0, z: 0 }, rotation);
+    const yAxis = rotateVector({ x: 0, y: basisLength, z: 0 }, rotation);
+    const centerProjection = projectedCenter ?? this.project(position);
+    const projectedXAxis = this.project({
+      x: position.x + xAxis.x,
+      y: position.y + xAxis.y,
+      z: position.z + xAxis.z
+    });
+    const projectedYAxis = this.project({
+      x: position.x + yAxis.x,
+      y: position.y + yAxis.y,
+      z: position.z + yAxis.z
+    });
+
+    if (!centerProjection.visible || !isProjectionUsable(projectedXAxis) || !isProjectionUsable(projectedYAxis)) {
+      return null;
+    }
+
+    const xAxisVector = {
+      x: projectedXAxis.x - centerProjection.x,
+      y: projectedXAxis.y - centerProjection.y
+    };
+    const yAxisVector = {
+      x: projectedYAxis.x - centerProjection.x,
+      y: projectedYAxis.y - centerProjection.y
+    };
+    const xAxisLength = Math.hypot(xAxisVector.x, xAxisVector.y);
+    const yAxisLength = Math.hypot(yAxisVector.x, yAxisVector.y);
+    if (xAxisLength < 0.0001 || yAxisLength < 0.0001) {
+      return null;
+    }
+    const normalizationFactor = Math.max(0.0001, (xAxisLength + yAxisLength) / 2);
+
+    return {
+      xAxis: {
+        x: xAxisVector.x / normalizationFactor,
+        y: xAxisVector.y / normalizationFactor
+      },
+      yAxis: {
+        x: yAxisVector.x / normalizationFactor,
+        y: yAxisVector.y / normalizationFactor
+      }
+    };
   }
 
   disposeItem(item) {
@@ -211,6 +285,62 @@ export class TwoDHotspotRenderer {
 
 function createItemKey(hotspotId, kind) {
   return `${hotspotId}:${kind}`;
+}
+
+function buildElementTransform({ billboard, roll, scale, projectedOrientation }) {
+  if (!billboard && projectedOrientation) {
+    const safeScale = Math.max(0.001, Number(scale ?? 1) || 1);
+    const a = projectedOrientation.xAxis.x * safeScale;
+    const b = projectedOrientation.xAxis.y * safeScale;
+    const c = projectedOrientation.yAxis.x * safeScale;
+    const d = projectedOrientation.yAxis.y * safeScale;
+    return `translate(-50%, -50%) matrix(${a}, ${b}, ${c}, ${d}, 0, 0)`;
+  }
+
+  return `translate(-50%, -50%) rotate(${roll}deg) scale(${scale})`;
+}
+
+function isProjectionUsable(projected) {
+  return Boolean(
+    projected
+    && projected.inFrontOfCamera !== false
+    && Number.isFinite(projected.x)
+    && Number.isFinite(projected.y)
+    && Number.isFinite(projected.depth)
+  );
+}
+
+function rotateVector(vector, rotation) {
+  const yaw = toRadians(rotation?.yaw ?? 0);
+  const pitch = toRadians(rotation?.pitch ?? 0);
+  const roll = toRadians(rotation?.roll ?? 0);
+
+  let x = Number(vector?.x ?? 0);
+  let y = Number(vector?.y ?? 0);
+  let z = Number(vector?.z ?? 0);
+
+  const yawX = x * Math.cos(yaw) - z * Math.sin(yaw);
+  const yawZ = x * Math.sin(yaw) + z * Math.cos(yaw);
+  x = yawX;
+  z = yawZ;
+
+  const pitchY = y * Math.cos(pitch) - z * Math.sin(pitch);
+  const pitchZ = y * Math.sin(pitch) + z * Math.cos(pitch);
+  y = pitchY;
+  z = pitchZ;
+
+  const rollX = x * Math.cos(roll) - y * Math.sin(roll);
+  const rollY = x * Math.sin(roll) + y * Math.cos(roll);
+
+  return { x: rollX, y: rollY, z };
+}
+
+function toRadians(value) {
+  return Number(value) * Math.PI / 180;
+}
+
+function defaultRotation() {
+  return { yaw: 0, pitch: 0, roll: 0 };
 }
 
 function syncItemContent(element, hotspot, kind) {

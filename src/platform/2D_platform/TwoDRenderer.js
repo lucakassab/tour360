@@ -16,6 +16,8 @@ export class TwoDRenderer {
     this.lastSceneId = null;
     this.lastSceneSrc = "";
     this.interactionLocked = false;
+    this.sceneTransitionOverlayActive = false;
+    this.sceneTransitionFadeToken = 0;
 
     this.stage = document.createElement("div");
     this.stage.className = "twod-stage";
@@ -41,10 +43,17 @@ export class TwoDRenderer {
     this.hotspotLayer = document.createElement("div");
     this.hotspotLayer.className = "hotspot-layer";
 
+    this.sceneTransitionOverlay = document.createElement("img");
+    this.sceneTransitionOverlay.className = "twod-scene-transition-overlay";
+    this.sceneTransitionOverlay.alt = "";
+    this.sceneTransitionOverlay.draggable = false;
+    this.sceneTransitionOverlay.hidden = true;
+    this.sceneTransitionOverlay.setAttribute("aria-hidden", "true");
+
     this.caption = document.createElement("section");
     this.caption.className = "scene-caption";
 
-    this.stage.append(this.panorama, this.hotspotLayer, this.caption);
+    this.stage.append(this.panorama, this.sceneTransitionOverlay, this.hotspotLayer, this.caption);
     this.root.append(this.stage);
   }
 
@@ -64,6 +73,7 @@ export class TwoDRenderer {
     const nextSceneYaw = hasExplicitEntryYaw
       ? Number(options.entryYaw)
       : (scene?.scene_global_yaw !== false ? Number(scene?.rotation?.yaw ?? 0) : 0);
+    const shouldUseSnapshotTransition = this.shouldUseSnapshotTransition(options, nextSceneSrc);
 
     if (!shouldPreserveView) {
       this.view.fov = Number(platformCfg.default_fov ?? this.view.fov);
@@ -76,9 +86,15 @@ export class TwoDRenderer {
       }
     }
 
+    await this.prepareSceneTransitionVisual({
+      enabled: shouldUseSnapshotTransition,
+      nextSceneSrc
+    });
+
     const sceneTransition = await this.panoramaRenderer.setScene(scene, {
       eye: scene.media?.mono_eye ?? "left",
-      entryYawOverride: hasExplicitEntryYaw ? nextSceneYaw : null
+      entryYawOverride: hasExplicitEntryYaw ? nextSceneYaw : null,
+      preserveCurrentTextureUntilNextReady: shouldUseSnapshotTransition
     });
     this.appliedSceneYaw = nextSceneYaw;
 
@@ -194,6 +210,53 @@ export class TwoDRenderer {
     return this.panoramaRenderer.getCurrentSceneTransition();
   }
 
+  async completeSceneTransitionVisual() {
+    if (!this.sceneTransitionOverlayActive) {
+      this.clearSceneTransitionVisual();
+      return;
+    }
+
+    const fadeToken = ++this.sceneTransitionFadeToken;
+    const overlay = this.sceneTransitionOverlay;
+
+    await new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        overlay.removeEventListener("transitionend", handleTransitionEnd);
+        clearTimeout(timeoutId);
+        resolve();
+      };
+      const handleTransitionEnd = (event) => {
+        if (event.target === overlay && event.propertyName === "opacity") {
+          finish();
+        }
+      };
+      const timeoutId = window.setTimeout(finish, 320);
+
+      overlay.addEventListener("transitionend", handleTransitionEnd);
+      window.requestAnimationFrame(() => {
+        if (fadeToken !== this.sceneTransitionFadeToken || !this.sceneTransitionOverlayActive) {
+          finish();
+          return;
+        }
+        overlay.classList.add("is-fading-out");
+      });
+    });
+
+    if (fadeToken === this.sceneTransitionFadeToken) {
+      this.clearSceneTransitionVisual();
+    }
+  }
+
+  cancelSceneTransitionVisual() {
+    this.sceneTransitionFadeToken += 1;
+    this.clearSceneTransitionVisual();
+  }
+
   applyView() {
     this.panoramaRenderer.render({
       yaw: this.view.yaw,
@@ -205,8 +268,79 @@ export class TwoDRenderer {
   destroy() {
     this.listeners.clear();
     this.unsubscribeFrame?.();
+    this.cancelSceneTransitionVisual();
     this.panoramaRenderer.destroy();
     this.stage.remove();
+  }
+
+  shouldUseSnapshotTransition(options, nextSceneSrc) {
+    return options?.transitionMode === "hotspot-snapshot"
+      && Boolean(this.lastSceneSrc)
+      && Boolean(nextSceneSrc)
+      && nextSceneSrc !== this.lastSceneSrc;
+  }
+
+  async prepareSceneTransitionVisual({ enabled, nextSceneSrc }) {
+    this.sceneTransitionFadeToken += 1;
+    const fadeToken = this.sceneTransitionFadeToken;
+
+    if (!enabled) {
+      this.clearSceneTransitionVisual();
+      return false;
+    }
+
+    const snapshotUrl = this.createSceneTransitionSnapshot();
+
+    if (!snapshotUrl || nextSceneSrc === this.lastSceneSrc) {
+      this.clearSceneTransitionVisual();
+      return false;
+    }
+
+    const overlay = this.sceneTransitionOverlay;
+    overlay.src = snapshotUrl;
+    overlay.classList.remove("is-fading-out");
+    overlay.hidden = false;
+
+    try {
+      await overlay.decode?.();
+    } catch {}
+
+    if (fadeToken !== this.sceneTransitionFadeToken) {
+      return false;
+    }
+
+    await waitForPaintCommit(2);
+    if (fadeToken !== this.sceneTransitionFadeToken) {
+      return false;
+    }
+
+    this.sceneTransitionOverlay.hidden = false;
+    this.sceneTransitionOverlayActive = true;
+    return true;
+  }
+
+  clearSceneTransitionVisual() {
+    this.sceneTransitionOverlayActive = false;
+    this.sceneTransitionOverlay.hidden = true;
+    this.sceneTransitionOverlay.classList.remove("is-fading-out");
+    this.sceneTransitionOverlay.removeAttribute("src");
+  }
+
+  createSceneTransitionSnapshot() {
+    const attempts = [
+      { maxWidth: 2048, type: "image/png", quality: 1 },
+      { maxWidth: 1600, type: "image/png", quality: 1 },
+      { maxWidth: 1280, type: "image/jpeg", quality: 0.94 }
+    ];
+
+    for (const attempt of attempts) {
+      const snapshotUrl = this.panoramaRenderer.captureSnapshot(attempt);
+      if (snapshotUrl) {
+        return snapshotUrl;
+      }
+    }
+
+    return null;
   }
 }
 
@@ -216,4 +350,15 @@ function clamp(value, min, max) {
 
 function wrapDegrees(value) {
   return ((value % 360) + 360) % 360;
+}
+
+function waitForPaintCommit(frameCount = 1) {
+  const safeFrameCount = Math.max(1, Number(frameCount) || 1);
+  let pending = Promise.resolve();
+  for (let index = 0; index < safeFrameCount; index += 1) {
+    pending = pending.then(() => new Promise((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    }));
+  }
+  return pending;
 }

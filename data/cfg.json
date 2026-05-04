@@ -43,7 +43,7 @@
       "spatial_lock": true,
       "eye_yaw_offset": 3.2,
       "gaze_selection_degrees": 9,
-      "hotspot_visibility_mode": "hold-trigger"
+      "hotspot_visibility_mode": "always"
     }
   },
   "asset_cache": {

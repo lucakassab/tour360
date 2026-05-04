@@ -301,6 +301,12 @@ export class EditorDraftStore {
         return;
       }
 
+      if (field.startsWith("marker_icon.")) {
+        hotspot.marker_icon ??= createMarkerIcon();
+        setPath(hotspot, field, value);
+        return;
+      }
+
       if (field.startsWith("rotation.")) {
         hotspot.rotation ??= defaultRotation();
         setPath(hotspot, field, value);
@@ -740,6 +746,7 @@ function normalizeHotspot(hotspot, index) {
     reference_depth: safeNumber(source.reference_depth, 8),
     billboard: source.billboard !== false,
     marker_visible: source.marker_visible !== false,
+    marker_icon: normalizeMarkerIcon(source.marker_icon),
     label: normalizeHotspotLabel(source.label, {
       fallbackText: type === "scene_link" ? "Ir para cena" : "Anotacao",
       defaultVisible: true,
@@ -819,8 +826,23 @@ function createHotspot(id, type, targetScene, targetTour = null, { position = nu
     reference_depth: normalizedReferenceDepth,
     billboard: true,
     marker_visible: true,
+    marker_icon: createMarkerIcon(),
     label: createHotspotLabel(normalizedType, labelText, normalizedReferenceDepth)
   };
+}
+
+function createMarkerIcon(src = null) {
+  return {
+    src: typeof src === "string" && src.trim() ? src.trim() : null
+  };
+}
+
+function normalizeMarkerIcon(markerIcon) {
+  if (typeof markerIcon === "string") {
+    return createMarkerIcon(markerIcon);
+  }
+
+  return createMarkerIcon(markerIcon?.src ?? null);
 }
 
 function createHotspotLabel(type, fallbackText = null, fallbackReferenceDepth = 8) {

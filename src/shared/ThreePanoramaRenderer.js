@@ -120,7 +120,7 @@ export class ThreePanoramaRenderer {
     this.requestRender("init");
   }
 
-  async setScene(scene, { eye = "left", entryYawOverride = null } = {}) {
+  async setScene(scene, { eye = "left", entryYawOverride = null, preserveCurrentTextureUntilNextReady = false } = {}) {
     this.activeScene = scene ?? null;
     this.stereoLayout = normalizeStereoLayout(scene?.media?.stereo_layout);
     this.eyeOrder = normalizeEyeOrder(scene?.media?.eye_order);
@@ -181,17 +181,30 @@ export class ThreePanoramaRenderer {
       return transition;
     }
 
-    if (this.shouldUseAggressiveSceneSwap(scene, src)) {
-      this.releaseCurrentTextureForSwap(src);
-      await this.flushVisualUpdate({ frames: 1, reason: "scene-transition-placeholder" });
-    }
-
     this.notifySceneStatus({
       state: "loading-start",
       transitionId: transition.transitionId,
       sceneId: scene?.id ?? null,
       src
     });
+
+    if (this.shouldUseAggressiveSceneSwap(scene, src) && preserveCurrentTextureUntilNextReady !== true) {
+      this.releaseCurrentTextureForSwap(src);
+      if (this.isPresenting()) {
+        this.xrDebug?.log("scene-transition-placeholder-flush-skipped", {
+          transitionId: transition.transitionId,
+          sceneId: transition.sceneId,
+          src: transition.src,
+          details: {
+            presenting: true,
+            reason: "immersive-xr"
+          }
+        });
+      } else {
+        await this.flushVisualUpdate({ frames: 1, reason: "scene-transition-placeholder" });
+      }
+    }
+
     const token = Symbol(transition.transitionId);
     this.pendingTextureToken = token;
     const loadedAsset = await this.assetCache.loadImage(src, {
@@ -363,6 +376,82 @@ export class ThreePanoramaRenderer {
       currentTextureSrc: this.currentTextureSrc || null,
       rendererMemory: this.getRendererMemorySnapshot()
     };
+  }
+
+  captureSnapshot({ maxWidth = 960, type = "image/png", quality = 1 } = {}) {
+    const sourceCanvas = this.renderer?.domElement;
+    if (!sourceCanvas) {
+      return null;
+    }
+
+    const sourceWidth = Number(sourceCanvas.width ?? sourceCanvas.clientWidth ?? 0);
+    const sourceHeight = Number(sourceCanvas.height ?? sourceCanvas.clientHeight ?? 0);
+    if (sourceWidth <= 0 || sourceHeight <= 0) {
+      return null;
+    }
+
+    const targetWidth = Math.max(1, Math.min(sourceWidth, Math.round(Number(maxWidth) || 960)));
+    const targetHeight = Math.max(1, Math.round((sourceHeight / sourceWidth) * targetWidth));
+    const snapshotCanvas = document.createElement("canvas");
+    snapshotCanvas.width = targetWidth;
+    snapshotCanvas.height = targetHeight;
+
+    const context = snapshotCanvas.getContext("2d", { alpha: false });
+    if (!context) {
+      return null;
+    }
+
+    try {
+      this.resizeIfNeeded();
+      this.applyManualCameraView();
+      this.applyContentTransform();
+      this.scene.updateMatrixWorld(true);
+
+      const renderTarget = new THREE.WebGLRenderTarget(targetWidth, targetHeight, {
+        depthBuffer: false,
+        stencilBuffer: false,
+        colorSpace: this.renderer.outputColorSpace ?? THREE.SRGBColorSpace
+      });
+      const pixelBuffer = new Uint8Array(targetWidth * targetHeight * 4);
+      const previousTarget = this.renderer.getRenderTarget();
+      const previousScissorTest = this.renderer.getScissorTest();
+      const previousViewport = new THREE.Vector4();
+      const previousScissor = new THREE.Vector4();
+
+      this.renderer.getViewport(previousViewport);
+      this.renderer.getScissor(previousScissor);
+      try {
+        this.renderer.setRenderTarget(renderTarget);
+        this.renderer.setScissorTest(false);
+        this.renderer.setViewport(0, 0, targetWidth, targetHeight);
+        this.renderer.clear();
+        this.renderer.render(this.scene, this.camera);
+        this.renderer.readRenderTargetPixels(renderTarget, 0, 0, targetWidth, targetHeight, pixelBuffer);
+      } finally {
+        this.renderer.setRenderTarget(previousTarget);
+        this.renderer.setViewport(previousViewport.x, previousViewport.y, previousViewport.z, previousViewport.w);
+        this.renderer.setScissor(previousScissor.x, previousScissor.y, previousScissor.z, previousScissor.w);
+        this.renderer.setScissorTest(previousScissorTest);
+        renderTarget.dispose();
+      }
+
+      const imageData = context.createImageData(targetWidth, targetHeight);
+      const rowSize = targetWidth * 4;
+      for (let y = 0; y < targetHeight; y += 1) {
+        const sourceOffset = (targetHeight - y - 1) * rowSize;
+        const targetOffset = y * rowSize;
+        imageData.data.set(pixelBuffer.subarray(sourceOffset, sourceOffset + rowSize), targetOffset);
+      }
+      context.putImageData(imageData, 0, 0);
+      return snapshotCanvas.toDataURL(type, quality);
+    } catch {
+      try {
+        context.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+        return snapshotCanvas.toDataURL(type, quality);
+      } catch {
+        return null;
+      }
+    }
   }
 
   async preloadSceneTextures(scenes = []) {
@@ -603,6 +692,7 @@ export class ThreePanoramaRenderer {
 
     return {
       visible,
+      inFrontOfCamera,
       x: (projected.x + 1) * 0.5 * rect.width,
       y: (1 - projected.y) * 0.5 * rect.height,
       depth: worldPosition.distanceTo(cameraPosition)
