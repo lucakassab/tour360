@@ -7,6 +7,7 @@ export class EditorDraftStore {
     this.context = context;
     this.listeners = new Set();
     this.undoStack = [];
+    this.hotspotClipboard = null;
     this.maxUndoEntries = 80;
     this.savedDraftSignature = null;
     this.state = {
@@ -31,6 +32,7 @@ export class EditorDraftStore {
     this.unsubscribeRuntime?.();
     this.listeners.clear();
     this.undoStack = [];
+    this.hotspotClipboard = null;
   }
 
   subscribe(listener) {
@@ -492,7 +494,8 @@ export class EditorDraftStore {
     let createdHotspotId = null;
 
     this.updateDraft((draft) => {
-      const scene = getScene(draft, this.state.selectedSceneId);
+      const targetSceneId = options.sceneId ?? this.state.selectedSceneId;
+      const scene = getScene(draft, targetSceneId);
       if (!scene) {
         return;
       }
@@ -507,10 +510,12 @@ export class EditorDraftStore {
         referenceDepth: options.referenceDepth,
         labelText: options.labelText ?? (type === "scene_link" ? targetSceneTitle : null)
       });
-      scene.hotspots.push(hotspot);
-      this.state.selectedHotspotId = hotspot.id;
-      this.state.lastCreatedHotspotId = hotspot.id;
-      this.state.lastCreatedAtMs = Date.now();
+        scene.hotspots.push(hotspot);
+        this.state.activeSceneId = scene.id;
+        this.state.selectedSceneId = scene.id;
+        this.state.selectedHotspotId = hotspot.id;
+        this.state.lastCreatedHotspotId = hotspot.id;
+        this.state.lastCreatedAtMs = Date.now();
       createdHotspotId = hotspot.id;
 
       this.context.debugLog?.("editor:hotspot-create", {
@@ -527,6 +532,101 @@ export class EditorDraftStore {
     });
 
     return createdHotspotId;
+  }
+
+  copySelectedHotspot() {
+    const scene = getScene(this.state.draft, this.state.selectedSceneId);
+    const hotspot = getHotspot(scene, this.state.selectedHotspotId);
+    if (!scene || !hotspot) {
+      return null;
+    }
+
+    this.hotspotClipboard = {
+      tourId: this.state.draft?.id ?? null,
+      sceneId: scene.id,
+      hotspot: deepClone(hotspot)
+    };
+
+    return {
+      tourId: this.hotspotClipboard.tourId,
+      sceneId: scene.id,
+      hotspotId: hotspot.id,
+      type: hotspot.type,
+      referenceDepth: safeNumber(hotspot.reference_depth, distanceFromOrigin(hotspot.position))
+    };
+  }
+
+  getHotspotClipboardSnapshot() {
+    if (!this.hotspotClipboard?.hotspot) {
+      return null;
+    }
+
+    return {
+      tourId: this.hotspotClipboard.tourId,
+      sceneId: this.hotspotClipboard.sceneId,
+      hotspotId: this.hotspotClipboard.hotspot.id,
+      type: this.hotspotClipboard.hotspot.type,
+      referenceDepth: safeNumber(
+        this.hotspotClipboard.hotspot.reference_depth,
+        distanceFromOrigin(this.hotspotClipboard.hotspot.position)
+      )
+    };
+  }
+
+  pasteHotspotCopy({ sceneId = null, position = null, referenceDepth = undefined } = {}) {
+    const clipboard = this.hotspotClipboard;
+    if (!clipboard?.hotspot) {
+      return { ok: false, reason: "empty" };
+    }
+
+    if ((clipboard.tourId ?? null) !== (this.state.draft?.id ?? null)) {
+      return { ok: false, reason: "tour-mismatch" };
+    }
+
+    let pastedHotspot = null;
+
+    this.updateDraft((draft) => {
+      const targetSceneId = sceneId ?? this.state.selectedSceneId;
+      const scene = getScene(draft, targetSceneId);
+      if (!scene) {
+        return;
+      }
+
+      scene.hotspots ??= [];
+      const copy = deepClone(clipboard.hotspot);
+      const preferredId = `${copy.id || `${scene.id}-hotspot`}-copy`;
+      copy.id = uniqueId(scene.hotspots.map((hotspot) => hotspot.id), preferredId);
+      if (position) {
+        copy.position = normalizeVector(position, copy.position ?? defaultHotspotPosition());
+      }
+      if (referenceDepth !== undefined) {
+        copy.reference_depth = safeNumber(
+          referenceDepth,
+          distanceFromOrigin(position ?? copy.position)
+        );
+      }
+      scene.hotspots.push(copy);
+
+      this.state.activeSceneId = scene.id;
+      this.state.selectedSceneId = scene.id;
+      this.state.selectedHotspotId = copy.id;
+      this.state.lastCreatedHotspotId = copy.id;
+      this.state.lastCreatedAtMs = Date.now();
+      pastedHotspot = {
+        id: copy.id,
+        sceneId: scene.id,
+        type: copy.type
+      };
+    });
+
+    if (!pastedHotspot) {
+      return { ok: false, reason: "no-scene" };
+    }
+
+    return {
+      ok: true,
+      ...pastedHotspot
+    };
   }
 
   deleteHotspot() {
@@ -745,7 +845,9 @@ function normalizeHotspot(hotspot, index) {
     scale: safeNumber(source.scale, 1),
     reference_depth: safeNumber(source.reference_depth, 8),
     billboard: source.billboard !== false,
+    billboard_rotation_offset: source.billboard_rotation_offset === true,
     marker_visible: source.marker_visible !== false,
+    marker_background_visible: source.marker_background_visible !== false,
     marker_icon: normalizeMarkerIcon(source.marker_icon),
     label: normalizeHotspotLabel(source.label, {
       fallbackText: type === "scene_link" ? "Ir para cena" : "Anotacao",
@@ -825,7 +927,9 @@ function createHotspot(id, type, targetScene, targetTour = null, { position = nu
     scale: 1,
     reference_depth: normalizedReferenceDepth,
     billboard: true,
+    billboard_rotation_offset: false,
     marker_visible: true,
+    marker_background_visible: true,
     marker_icon: createMarkerIcon(),
     label: createHotspotLabel(normalizedType, labelText, normalizedReferenceDepth)
   };

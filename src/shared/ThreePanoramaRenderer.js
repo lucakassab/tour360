@@ -47,6 +47,8 @@ export class ThreePanoramaRenderer {
     };
     this.tempVectors = {
       worldPosition: new THREE.Vector3(),
+      worldXAxis: new THREE.Vector3(),
+      worldYAxis: new THREE.Vector3(),
       cameraPosition: new THREE.Vector3(),
       sceneCameraPosition: new THREE.Vector3(),
       cameraDirection: new THREE.Vector3(),
@@ -56,6 +58,10 @@ export class ThreePanoramaRenderer {
       headPosition: new THREE.Vector3(),
       scenePosition: new THREE.Vector3()
     };
+    this.tempQuaternions = {
+      billboardOrientation: new THREE.Quaternion(),
+      billboardOffset: new THREE.Quaternion()
+    };
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color("#102a31");
@@ -63,6 +69,10 @@ export class ThreePanoramaRenderer {
     this.contentRoot = new THREE.Group();
     this.contentRoot.rotation.order = "YXZ";
     this.scene.add(this.contentRoot);
+
+    this.orientationProbe = new THREE.Object3D();
+    this.orientationProbe.visible = false;
+    this.contentRoot.add(this.orientationProbe);
 
     this.trackedInputRoot = new THREE.Group();
     this.trackedInputRoot.name = "wpa360-tracked-input-root";
@@ -378,7 +388,7 @@ export class ThreePanoramaRenderer {
     };
   }
 
-  captureSnapshot({ maxWidth = 960, type = "image/png", quality = 1 } = {}) {
+  captureSnapshot({ maxWidth = 960 } = {}) {
     const sourceCanvas = this.renderer?.domElement;
     if (!sourceCanvas) {
       return null;
@@ -443,11 +453,11 @@ export class ThreePanoramaRenderer {
         imageData.data.set(pixelBuffer.subarray(sourceOffset, sourceOffset + rowSize), targetOffset);
       }
       context.putImageData(imageData, 0, 0);
-      return snapshotCanvas.toDataURL(type, quality);
+      return snapshotCanvas;
     } catch {
       try {
         context.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
-        return snapshotCanvas.toDataURL(type, quality);
+        return snapshotCanvas;
       } catch {
         return null;
       }
@@ -696,6 +706,97 @@ export class ThreePanoramaRenderer {
       x: (projected.x + 1) * 0.5 * rect.width,
       y: (1 - projected.y) * 0.5 * rect.height,
       depth: worldPosition.distanceTo(cameraPosition)
+    };
+  }
+
+  projectBillboardOrientationToScreen(position, rotationOffset = {}, viewport = this.root, eye = "center") {
+    const rect = viewport.getBoundingClientRect();
+    const camera = this.getCameraForEye(eye);
+
+    if (!camera || rect.width <= 0 || rect.height <= 0) {
+      return null;
+    }
+
+    this.scene.updateMatrixWorld(true);
+    camera.updateMatrixWorld?.(true);
+    camera.updateProjectionMatrix?.();
+
+    const centerProjection = this.projectWorldToScreen(position, viewport, eye);
+    if (!centerProjection.visible) {
+      return null;
+    }
+
+    const cameraPosition = this.tempVectors.cameraPosition;
+    const cameraDirection = this.tempVectors.cameraDirection;
+    const worldPosition = this.sceneToWorld(position, this.tempVectors.worldPosition);
+    camera.getWorldPosition(cameraPosition);
+    camera.getWorldDirection(cameraDirection);
+
+    const probe = this.orientationProbe;
+    probe.position.set(
+      Number(position?.x ?? 0),
+      Number(position?.y ?? 0),
+      Number(position?.z ?? -8)
+    );
+    probe.quaternion.identity();
+    probe.lookAt(cameraPosition);
+    probe.quaternion.multiply(
+      quaternionFromRotation(rotationOffset, this.tempQuaternions.billboardOffset)
+    );
+    probe.updateMatrixWorld(true);
+
+    const worldQuaternion = probe.getWorldQuaternion(this.tempQuaternions.billboardOrientation);
+    const projectedXAxis = projectResolvedWorldToScreen(
+      this.tempVectors.worldXAxis
+        .set(0.75, 0, 0)
+        .applyQuaternion(worldQuaternion)
+        .add(worldPosition),
+      rect,
+      camera,
+      cameraPosition,
+      cameraDirection,
+      this.tempVectors.toWorldPosition
+    );
+    const projectedYAxis = projectResolvedWorldToScreen(
+      this.tempVectors.worldYAxis
+        .set(0, 0.75, 0)
+        .applyQuaternion(worldQuaternion)
+        .add(worldPosition),
+      rect,
+      camera,
+      cameraPosition,
+      cameraDirection,
+      this.tempVectors.toWorldPosition
+    );
+
+    if (!isProjectionUsable(projectedXAxis) || !isProjectionUsable(projectedYAxis)) {
+      return null;
+    }
+
+    const xAxisVector = {
+      x: projectedXAxis.x - centerProjection.x,
+      y: projectedXAxis.y - centerProjection.y
+    };
+    const yAxisVector = {
+      x: projectedYAxis.x - centerProjection.x,
+      y: projectedYAxis.y - centerProjection.y
+    };
+    const xAxisLength = Math.hypot(xAxisVector.x, xAxisVector.y);
+    const yAxisLength = Math.hypot(yAxisVector.x, yAxisVector.y);
+    if (xAxisLength < 0.0001 || yAxisLength < 0.0001) {
+      return null;
+    }
+
+    const normalizationFactor = Math.max(0.0001, (xAxisLength + yAxisLength) / 2);
+    return {
+      xAxis: {
+        x: xAxisVector.x / normalizationFactor,
+        y: xAxisVector.y / normalizationFactor
+      },
+      yAxis: {
+        x: yAxisVector.x / normalizationFactor,
+        y: yAxisVector.y / normalizationFactor
+      }
     };
   }
 
@@ -1539,8 +1640,57 @@ function isStereoScene(scene) {
 function hiddenProjection(rect) {
   return {
     visible: false,
+    inFrontOfCamera: false,
     x: rect.width / 2,
     y: rect.height / 2,
     depth: Number.POSITIVE_INFINITY
   };
+}
+
+function quaternionFromRotation(rotation, target = null) {
+  const yaw = THREE.MathUtils.degToRad(Number(rotation?.yaw ?? 0));
+  const pitch = THREE.MathUtils.degToRad(Number(rotation?.pitch ?? 0));
+  const roll = THREE.MathUtils.degToRad(Number(rotation?.roll ?? 0));
+
+  const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw);
+  const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch);
+  const qRoll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll);
+  const quaternion = target ?? new THREE.Quaternion();
+  quaternion.copy(qRoll).multiply(qPitch).multiply(qYaw);
+  return quaternion;
+}
+
+function projectResolvedWorldToScreen(worldPosition, rect, camera, cameraPosition, cameraDirection, toWorldPosition) {
+  toWorldPosition.copy(worldPosition).sub(cameraPosition);
+
+  const projected = worldPosition.clone().project(camera);
+  const inFrontOfCamera = cameraDirection.dot(toWorldPosition) > 0;
+  const visible = inFrontOfCamera
+    && Number.isFinite(projected.x)
+    && Number.isFinite(projected.y)
+    && Number.isFinite(projected.z)
+    && projected.z >= -1
+    && projected.z <= 1
+    && projected.x >= -1
+    && projected.x <= 1
+    && projected.y >= -1
+    && projected.y <= 1;
+
+  return {
+    visible,
+    inFrontOfCamera,
+    x: (projected.x + 1) * 0.5 * rect.width,
+    y: (1 - projected.y) * 0.5 * rect.height,
+    depth: worldPosition.distanceTo(cameraPosition)
+  };
+}
+
+function isProjectionUsable(projected) {
+  return Boolean(
+    projected
+    && projected.inFrontOfCamera !== false
+    && Number.isFinite(projected.x)
+    && Number.isFinite(projected.y)
+    && Number.isFinite(projected.depth)
+  );
 }

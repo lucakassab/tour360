@@ -41,21 +41,21 @@
           "type": "scene_link",
           "target_scene": "puc-pergolado-inferior",
           "position": {
-            "x": -0.207,
-            "y": -1.2,
-            "z": -7.907
+            "x": -0.39,
+            "y": -1.34,
+            "z": 7.889
           },
           "rotation": {
-            "yaw": -24,
+            "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": 90
           },
-          "scale": 1,
+          "scale": 2.1,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Pergolado Inferior.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -66,7 +66,7 @@
               "pitch": 0,
               "roll": 0
             },
-            "scale": 1,
+            "scale": 0.6,
             "reference_depth": 8,
             "billboard": true
           },
@@ -75,8 +75,10 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "go-to-puc-hall-de-elevador",
@@ -86,22 +88,22 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": 2.728,
-            "y": -3.019,
-            "z": -6.888
+            "x": 2.142,
+            "y": -0.218,
+            "z": 7.705
           },
           "rotation": {
             "yaw": 0,
-            "pitch": 0,
-            "roll": 0
+            "pitch": 40,
+            "roll": -90
           },
-          "scale": 1,
+          "scale": 2.3,
           "reference_depth": 8,
           "billboard": true,
           "marker_visible": true,
           "label": {
-            "text": "PUC - Hall de Elevador.jpg",
-            "visible": true,
+            "text": "Hall Elevador",
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -112,13 +114,15 @@
               "pitch": 0,
               "roll": 0
             },
-            "scale": 1,
+            "scale": 0.7,
             "reference_depth": 8,
             "billboard": true
           },
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "puc-academia-banheiro-hotspot",
@@ -128,22 +132,22 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": -7.503,
-            "y": -2.769,
-            "z": -0.216
+            "x": -6.839,
+            "y": -4.049,
+            "z": 0.913
           },
           "rotation": {
             "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": -149
           },
-          "scale": 1,
+          "scale": 2.3,
           "reference_depth": 8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Academia.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -159,7 +163,53 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "go-to-puc-mesa-academia",
+          "type": "scene_link",
+          "target_tour": "puc",
+          "target_scene": "puc-mesa-academia",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": -2.500928266708137,
+            "y": -3.6037959664793875,
+            "z": -6.690142930966958
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": -98
+          },
+          "scale": 3,
+          "reference_depth": 8,
+          "billboard": true,
+          "billboard_rotation_offset": true,
+          "marker_visible": true,
+          "marker_background_visible": false,
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "label": {
+            "text": "PUC - Mesa Academia.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
           }
         }
       ]
@@ -192,21 +242,21 @@
           "type": "scene_link",
           "target_scene": "puc-mesa-academia",
           "position": {
-            "x": -7.708,
-            "y": -1.151,
-            "z": 1.806
+            "x": -7.702,
+            "y": -2.118,
+            "z": -0.436
           },
           "rotation": {
-            "yaw": 24,
+            "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": -172
           },
-          "scale": 1,
+          "scale": 2.3,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Mesa Academia.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -226,29 +276,31 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
         },
         {
           "id": "go-to-puc-academia-banheiro",
           "type": "scene_link",
           "target_scene": "puc-academia-banheiro",
           "position": {
-            "x": 7.743,
-            "y": -1.84,
-            "z": -0.812
+            "x": 7.327,
+            "y": -3.086,
+            "z": -0.887
           },
           "rotation": {
-            "yaw": -24,
+            "yaw": 0,
             "pitch": 0,
             "roll": 0
           },
-          "scale": 1,
+          "scale": 2,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "Voltar para PUC - Academia Banheiro.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -268,7 +320,53 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "go-to-puc-hall-de-elevador",
+          "type": "scene_link",
+          "target_tour": "puc",
+          "target_scene": "puc-hall-de-elevador",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": 7.203,
+            "y": -1.798,
+            "z": 2.982
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2,
+          "reference_depth": 8,
+          "billboard": true,
+          "billboard_rotation_offset": false,
+          "marker_visible": true,
+          "marker_background_visible": false,
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "label": {
+            "text": "PUC - Hall de Elevador.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
           }
         }
       ]
@@ -297,67 +395,25 @@
       },
       "hotspots": [
         {
-          "id": "go-to-puc-gourmet",
-          "type": "scene_link",
-          "target_scene": "puc-gourmet",
-          "position": {
-            "x": 5,
-            "y": 0.25,
-            "z": -8
-          },
-          "rotation": {
-            "yaw": 24,
-            "pitch": 0,
-            "roll": 0
-          },
-          "scale": 1,
-          "billboard": true,
-          "marker_visible": true,
-          "label": {
-            "text": "Ir para PUC - Gourmet.jpg",
-            "visible": true,
-            "position_offset": {
-              "x": 0,
-              "y": 0.9,
-              "z": 0
-            },
-            "rotation_offset": {
-              "yaw": 0,
-              "pitch": 0,
-              "roll": 0
-            },
-            "scale": 1,
-            "reference_depth": 8,
-            "billboard": true
-          },
-          "target_tour": null,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "reference_depth": 8,
-          "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
-        },
-        {
           "id": "go-to-puc-vista-meio-salao",
           "type": "scene_link",
           "target_scene": "puc-vista-meio-salao",
           "position": {
-            "x": -7.283,
-            "y": -2.014,
-            "z": -2.627
+            "x": -6.336,
+            "y": -2.22,
+            "z": 4.35
           },
           "rotation": {
-            "yaw": -24,
+            "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": 77
           },
-          "scale": 1,
+          "scale": 2.8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Vista Meio Salao.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -377,7 +433,97 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
+        },
+        {
+          "id": "go-to-puc-pergolado-inferior",
+          "type": "scene_link",
+          "target_scene": "puc-pergolado-inferior",
+          "position": {
+            "x": -7.452,
+            "y": -0.357,
+            "z": 2.888
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 84
+          },
+          "scale": 2.8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "PUC - Pergolado Inferior.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "target_tour": "puc",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "reference_depth": 8,
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
+        },
+        {
+          "id": "puc-gourmet-cozinha-hotspot",
+          "type": "scene_link",
+          "target_tour": "puc",
+          "target_scene": "puc-academia-banheiro",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": -0.346,
+            "y": -2.12,
+            "z": 7.706
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": -90
+          },
+          "scale": 3.2,
+          "reference_depth": 8,
+          "billboard": true,
+          "billboard_rotation_offset": true,
+          "marker_visible": true,
+          "marker_background_visible": false,
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "label": {
+            "text": "PUC - Academia Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
           }
         }
       ]
@@ -410,21 +556,21 @@
           "type": "scene_link",
           "target_scene": "puc-hall-de-elevador",
           "position": {
-            "x": 5,
-            "y": 0.25,
-            "z": -8
+            "x": 4.676,
+            "y": 0.521,
+            "z": 6.47
           },
           "rotation": {
-            "yaw": 24,
+            "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": 6
           },
-          "scale": 1,
+          "scale": 1.5,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "Ir para PUC - Hall de Elevador.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -444,29 +590,31 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "go-to-puc-gourmet-cozinha",
           "type": "scene_link",
           "target_scene": "puc-gourmet-cozinha",
           "position": {
-            "x": -1.417,
-            "y": -4.586,
-            "z": -6.4
+            "x": 7.912,
+            "y": 0.127,
+            "z": -1.179
           },
           "rotation": {
-            "yaw": -24,
+            "yaw": 0,
             "pitch": 0,
             "roll": 0
           },
-          "scale": 1,
+          "scale": 2,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "Voltar para PUC - Gourmet Cozinha.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -486,8 +634,10 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         }
       ]
     },
@@ -519,17 +669,17 @@
           "type": "scene_link",
           "target_scene": "puc-academia-banheiro",
           "position": {
-            "x": -6.448,
-            "y": -4.041,
-            "z": -2.468
+            "x": -6.361,
+            "y": -4.849,
+            "z": -0.138
           },
           "rotation": {
-            "yaw": 90,
-            "pitch": 180,
-            "roll": 90
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 180
           },
-          "scale": 2,
-          "billboard": false,
+          "scale": 3,
+          "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Academia Banheiro.jpg",
@@ -546,35 +696,41 @@
             },
             "scale": 1,
             "reference_depth": 8,
-            "billboard": false
+            "billboard": true
           },
           "target_tour": "puc",
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/Curva_Direita.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
-          "id": "go-to-puc-gourmet",
+          "id": "go-to-puc-sauna",
           "type": "scene_link",
-          "target_scene": "puc-gourmet",
+          "target_tour": "puc",
+          "target_scene": "puc-sauna",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": -6.537,
-            "y": -4.057,
-            "z": 2.191
+            "x": 4.946,
+            "y": -2.407,
+            "z": 5.809
           },
           "rotation": {
-            "yaw": -90,
-            "pitch": 190,
-            "roll": 90
+            "yaw": 0,
+            "pitch": 0,
+            "roll": -63
           },
-          "scale": 2,
-          "billboard": false,
+          "scale": 2.4,
+          "reference_depth": 8,
+          "billboard": true,
           "marker_visible": true,
           "label": {
-            "text": "Voltar para PUC - Gourmet.jpg",
+            "text": "PUC - Sauna.jpg",
             "visible": false,
             "position_offset": {
               "x": 0,
@@ -590,38 +746,41 @@
             "reference_depth": 8,
             "billboard": true
           },
-          "target_tour": null,
-          "apply_hotspot_scene_yaw": false,
-          "hotspot_define_scene_yaw": 0,
-          "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/Curva_Direita.png"
-          }
+            "src": "./assets/icons/hotspot_pin_door.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
         },
         {
-          "id": "go-to-puc-sauna",
+          "id": "go-to-puc-academia",
           "type": "scene_link",
           "target_tour": "puc",
-          "target_scene": "puc-sauna",
+          "target_scene": "puc-academia",
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": 3.258,
-            "y": -6.441,
-            "z": 3.45
+            "x": -6.913,
+            "y": -2.29,
+            "z": -3.312
           },
           "rotation": {
-            "yaw": 180,
-            "pitch": -90,
-            "roll": 0
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 220
           },
-          "scale": 2,
+          "scale": 2.3,
           "reference_depth": 8,
-          "billboard": false,
+          "billboard": true,
+          "billboard_rotation_offset": true,
           "marker_visible": true,
+          "marker_background_visible": false,
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
           "label": {
-            "text": "PUC - Sauna.jpg",
-            "visible": true,
+            "text": "PUC - Academia.jpg",
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -635,9 +794,6 @@
             "scale": 1,
             "reference_depth": 8,
             "billboard": true
-          },
-          "marker_icon": {
-            "src": "./assets/icons/hotspot_pin_exit2.png"
           }
         }
       ]
@@ -675,16 +831,16 @@
             "z": -7.301
           },
           "rotation": {
-            "yaw": 24,
+            "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": -17
           },
-          "scale": 1,
+          "scale": 1.5,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "Ir para PUC - Pergolado Inferior.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -704,29 +860,31 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "go-to-puc-piscina",
           "type": "scene_link",
           "target_scene": "puc-piscina",
           "position": {
-            "x": -7.76,
-            "y": -0.387,
-            "z": -1.906
+            "x": -7.608,
+            "y": -0.734,
+            "z": 2.362
           },
           "rotation": {
-            "yaw": -24,
+            "yaw": 14,
             "pitch": 0,
-            "roll": 0
+            "roll": 117
           },
-          "scale": 1,
+          "scale": 2.3,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Piscina.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -746,8 +904,10 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "go-to-puc-academia",
@@ -757,22 +917,22 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": 7.814,
-            "y": -1.643,
-            "z": -0.488
+            "x": 7.741,
+            "y": -1.996,
+            "z": -0.305
           },
           "rotation": {
             "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": -12
           },
-          "scale": 1,
+          "scale": 2.3,
           "reference_depth": 8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Academia.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -788,7 +948,141 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "go-to-puc-academia-banheiro",
+          "type": "scene_link",
+          "target_tour": "puc",
+          "target_scene": "puc-academia-banheiro",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": 7.28,
+            "y": -1.981,
+            "z": -2.66
+          },
+          "rotation": {
+            "yaw": -43,
+            "pitch": 20,
+            "roll": 143
+          },
+          "scale": 2.3,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "PUC - Academia Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
+        },
+        {
+          "id": "go-to-puc-pergolado-inferior-2",
+          "type": "scene_link",
+          "target_tour": "puc",
+          "target_scene": "puc-pergolado-inferior",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": 1.015,
+            "y": -2.028,
+            "z": 7.672
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 182
+          },
+          "scale": 2.3,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "PUC - Pergolado Inferior.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
+        },
+        {
+          "id": "go-to-puc-vista-meio-salao",
+          "type": "scene_link",
+          "target_tour": "puc",
+          "target_scene": "puc-vista-meio-salao",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": 4.949,
+            "y": 0.019,
+            "z": 6.285
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": -90
+          },
+          "scale": 2.3,
+          "reference_depth": 8,
+          "billboard": true,
+          "billboard_rotation_offset": true,
+          "marker_visible": true,
+          "marker_background_visible": false,
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "label": {
+            "text": "PUC - Vista Meio Salao.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
           }
         }
       ]
@@ -821,21 +1115,21 @@
           "type": "scene_link",
           "target_scene": "puc-gourmet-cozinha",
           "position": {
-            "x": 7.704,
-            "y": -1.132,
-            "z": 1.836
+            "x": 7.835,
+            "y": -1.542,
+            "z": -0.488
           },
           "rotation": {
-            "yaw": 24,
+            "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": 180
           },
-          "scale": 1,
+          "scale": 1.8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Gourmet Cozinha.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -855,8 +1149,10 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "puc-pergolado-inferior-hotspot",
@@ -866,22 +1162,22 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": 7.864,
-            "y": -1.19,
-            "z": -0.86
+            "x": 7.735,
+            "y": 0.293,
+            "z": 2.019
           },
           "rotation": {
             "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": -90
           },
-          "scale": 1,
+          "scale": 2,
           "reference_depth": 8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Academia Banheiro.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -897,8 +1193,10 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "go-to-puc-vista-meio-salao",
@@ -908,22 +1206,22 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": 5.219,
-            "y": -2.581,
-            "z": 5.486
+            "x": 7.254,
+            "y": -3.051,
+            "z": -1.439
           },
           "rotation": {
             "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": -93
           },
-          "scale": 1,
+          "scale": 2.8,
           "reference_depth": 8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Vista Meio Salao.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -939,8 +1237,10 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "go-to-puc-mesa-academia",
@@ -950,22 +1250,22 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": -3.375,
-            "y": -2.034,
-            "z": 6.962
+            "x": -2.274,
+            "y": -2.735,
+            "z": -7.166
           },
           "rotation": {
             "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": 158
           },
-          "scale": 1,
+          "scale": 3.2,
           "reference_depth": 8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Mesa Academia.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -981,8 +1281,10 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         }
       ]
     },
@@ -1014,21 +1316,21 @@
           "type": "scene_link",
           "target_scene": "puc-mesa-academia",
           "position": {
-            "x": 7.884,
-            "y": -1.321,
-            "z": -0.306
+            "x": 7.514,
+            "y": -1.883,
+            "z": 1.999
           },
           "rotation": {
-            "yaw": 24,
+            "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": -132
           },
-          "scale": 1,
+          "scale": 2.4,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Mesa Academia.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -1048,8 +1350,10 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         }
       ]
     },
@@ -1086,16 +1390,16 @@
             "z": -5.902
           },
           "rotation": {
-            "yaw": -24,
+            "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": -100
           },
-          "scale": 1,
+          "scale": 1.5,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Hall de Elevador.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -1115,8 +1419,10 @@
           "hotspot_define_scene_yaw": 0,
           "reference_depth": 8,
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         }
       ]
     },
@@ -1151,22 +1457,22 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": 7.667,
-            "y": -1.589,
-            "z": 1.639
+            "x": 7.165,
+            "y": -2.734,
+            "z": 2.279
           },
           "rotation": {
             "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": 187
           },
-          "scale": 1,
+          "scale": 2.2,
           "reference_depth": 8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Gourmet Cozinha.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -1182,8 +1488,10 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
-          }
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
         },
         {
           "id": "go-to-puc-pergolado-inferior",
@@ -1193,22 +1501,22 @@
           "apply_hotspot_scene_yaw": false,
           "hotspot_define_scene_yaw": 0,
           "position": {
-            "x": -4.468,
-            "y": -2.062,
-            "z": -6.307
+            "x": -6.83,
+            "y": -2.409,
+            "z": 3.398
           },
           "rotation": {
             "yaw": 0,
             "pitch": 0,
-            "roll": 0
+            "roll": 128
           },
-          "scale": 1,
+          "scale": 2.3,
           "reference_depth": 8,
           "billboard": true,
           "marker_visible": true,
           "label": {
             "text": "PUC - Pergolado Inferior.jpg",
-            "visible": true,
+            "visible": false,
             "position_offset": {
               "x": 0,
               "y": 0.9,
@@ -1224,7 +1532,97 @@
             "billboard": true
           },
           "marker_icon": {
-            "src": "./assets/icons/seta_cima3.png"
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": true
+        },
+        {
+          "id": "puc-vista-meio-salao-hotspot",
+          "type": "scene_link",
+          "target_tour": "puc",
+          "target_scene": "puc-academia-banheiro",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": 4.292,
+            "y": -3.258,
+            "z": 5.913
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": -103
+          },
+          "scale": 2.5,
+          "reference_depth": 8,
+          "billboard": true,
+          "billboard_rotation_offset": true,
+          "marker_visible": true,
+          "marker_background_visible": false,
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "label": {
+            "text": "PUC - Academia Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          }
+        },
+        {
+          "id": "go-to-puc-mesa-academia",
+          "type": "scene_link",
+          "target_tour": "puc",
+          "target_scene": "puc-mesa-academia",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": -6.921,
+            "y": -0.9,
+            "z": -3.911
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 90
+          },
+          "scale": 2.2,
+          "reference_depth": 8,
+          "billboard": true,
+          "billboard_rotation_offset": true,
+          "marker_visible": true,
+          "marker_background_visible": false,
+          "marker_icon": {
+            "src": "./assets/icons/seta_cima_1.png"
+          },
+          "label": {
+            "text": "PUC - Mesa Academia.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
           }
         }
       ]

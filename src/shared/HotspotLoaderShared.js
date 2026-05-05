@@ -23,7 +23,9 @@ export class HotspotLoaderShared {
       scale: toNumber(source.scale, 1),
       reference_depth: toNumber(source.reference_depth, 8),
       billboard: source.billboard !== false,
+      billboard_rotation_offset: source.billboard_rotation_offset === true,
       marker_visible: source.marker_visible !== false,
+      marker_background_visible: source.marker_background_visible !== false,
       marker_icon: this.normalizeMarkerIcon(source.marker_icon ?? source.marker_icon_src ?? null),
       label: this.normalizeLabelConfig(source.label, {
         fallbackText,

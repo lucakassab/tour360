@@ -1,587 +1,607 @@
 {
-    "id":  "coluna_4",
-    "title":  "Coluna 4",
-    "initial_scene":  "coluna-4-direita-studio-banheiro",
-    "media_type":  "equirectangular-image",
-    "settings":  {
-                     "rotation":  {
-                                      "yaw":  0,
-                                      "pitch":  0,
-                                      "roll":  0
-                                  },
-                     "scale":  1,
-                     "billboard":  true
-                 },
-    "scenes":  [
-                   {
-                       "id":  "coluna-4-direita-studio-banheiro",
-                       "title":  "Coluna 4 Direita - Studio Banheiro.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_4/mapa_padrao.png",
-                       "scene_global_yaw":  false,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_4/Coluna 4 Direita - Studio Banheiro.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "coluna-4-direita-studio-banheiro-hotspot",
-                                            "type":  "scene_link",
-                                            "target_tour":  "coluna_4",
-                                            "target_scene":  "coluna-4-direita-studio-quarto",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "position":  {
-                                                             "x":  4.708,
-                                                             "y":  -6.132,
-                                                             "z":  2.059
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  0,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "reference_depth":  8,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Direita - Studio Quarto.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   },
-                   {
-                       "id":  "coluna-4-direita-studio-quarto",
-                       "title":  "Coluna 4 Direita - Studio Quarto.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_4/mapa_padrao.png",
-                       "scene_global_yaw":  false,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_4/Coluna 4 Direita - Studio Quarto.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "go-to-coluna-4-direita-varanda",
-                                            "type":  "scene_link",
-                                            "target_scene":  "coluna-4-direita-varanda",
-                                            "position":  {
-                                                             "x":  1.68,
-                                                             "y":  -4.782,
-                                                             "z":  6.189
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  24,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Direita - Varanda.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "target_tour":  "coluna_4",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "reference_depth":  8,
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        },
-                                        {
-                                            "id":  "coluna-4-direita-studio-quarto-hotspot",
-                                            "type":  "scene_link",
-                                            "target_tour":  "coluna_4",
-                                            "target_scene":  "coluna-4-direita-studio-banheiro",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "position":  {
-                                                             "x":  -2.144,
-                                                             "y":  -5.724,
-                                                             "z":  -5.162
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  0,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "reference_depth":  8,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Direita - Studio Banheiro.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   },
-                   {
-                       "id":  "coluna-4-direita-varanda",
-                       "title":  "Coluna 4 Direita - Varanda.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_4/mapa_padrao.png",
-                       "scene_global_yaw":  false,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_4/Coluna 4 Direita - Varanda.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "go-to-coluna-4-direita-studio-quarto",
-                                            "type":  "scene_link",
-                                            "target_tour":  "coluna_4",
-                                            "target_scene":  "coluna-4-direita-studio-quarto",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "position":  {
-                                                             "x":  -2.704,
-                                                             "y":  -4.268,
-                                                             "z":  -6.203
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  0,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "reference_depth":  8,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Direita - Studio Quarto.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        },
-                                        {
-                                            "id":  "coluna-4-direita-varanda-hotspot-2",
-                                            "type":  "scene_link",
-                                            "target_tour":  "coluna_4",
-                                            "target_scene":  "coluna-4-direita-studio-banheiro",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "position":  {
-                                                             "x":  -4.049,
-                                                             "y":  -2.559,
-                                                             "z":  -6.407
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  0,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "reference_depth":  8,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Direita - Studio Banheiro.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   },
-                   {
-                       "id":  "coluna-4-esquerda-varanda",
-                       "title":  "Coluna 4 Esquerda - Varanda.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_4/mapa_padrao.png",
-                       "scene_global_yaw":  false,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_4/Coluna 4 Esquerda - Varanda.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "go-to-coluna-4-esquerda-studio-quarto",
-                                            "type":  "scene_link",
-                                            "target_tour":  "coluna_4",
-                                            "target_scene":  "coluna-4-esquerda-studio-quarto",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "position":  {
-                                                             "x":  -7.13,
-                                                             "y":  -3.622,
-                                                             "z":  0.219
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  0,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "reference_depth":  8,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Esquerda - Studio Quarto.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        },
-                                        {
-                                            "id":  "go-to-coluna-4-esquerda-studio-banheiro",
-                                            "type":  "scene_link",
-                                            "target_tour":  "coluna_4",
-                                            "target_scene":  "coluna-4-esquerda-studio-banheiro",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "position":  {
-                                                             "x":  -7.256,
-                                                             "y":  -2.674,
-                                                             "z":  -2.05
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  0,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "reference_depth":  8,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Esquerda - Studio Banheiro.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   },
-                   {
-                       "id":  "coluna-4-esquerda-studio-banheiro",
-                       "title":  "Coluna 4 Esquerda - Studio Banheiro.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_4/mapa_padrao.png",
-                       "scene_global_yaw":  true,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_4/Coluna 4 Esquerda - Studio Banheiro.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "go-to-coluna-4-esquerda-studio-quarto",
-                                            "type":  "scene_link",
-                                            "target_scene":  "coluna-4-esquerda-studio-quarto",
-                                            "position":  {
-                                                             "x":  -3.226,
-                                                             "y":  -7.01,
-                                                             "z":  2.11
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  24,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Esquerda - Studio Quarto.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "target_tour":  "coluna_4",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "reference_depth":  8,
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   },
-                   {
-                       "id":  "coluna-4-esquerda-studio-quarto",
-                       "title":  "Coluna 4 Esquerda - Studio Quarto.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_4/mapa_padrao.png",
-                       "scene_global_yaw":  false,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_4/Coluna 4 Esquerda - Studio Quarto.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "go-to-coluna-4-esquerda-studio-banheiro",
-                                            "type":  "scene_link",
-                                            "target_scene":  "coluna-4-esquerda-studio-banheiro",
-                                            "position":  {
-                                                             "x":  -4.544,
-                                                             "y":  -5.817,
-                                                             "z":  -3.084
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  -24,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Esquerda - Studio Banheiro.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "target_tour":  "coluna_4",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "reference_depth":  8,
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        },
-                                        {
-                                            "id":  "go-to-coluna-4-esquerda-varanda",
-                                            "type":  "scene_link",
-                                            "target_tour":  "coluna_4",
-                                            "target_scene":  "coluna-4-esquerda-varanda",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "position":  {
-                                                             "x":  5.832,
-                                                             "y":  -4.7,
-                                                             "z":  2.81
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  0,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "reference_depth":  8,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 4 Esquerda - Varanda.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   }
-               ]
+  "id": "coluna_4",
+  "title": "Coluna 4",
+  "initial_scene": "coluna-4-direita-studio-banheiro",
+  "media_type": "equirectangular-image",
+  "settings": {
+    "rotation": {
+      "yaw": 0,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 1,
+    "billboard": true
+  },
+  "scenes": [
+    {
+      "id": "coluna-4-direita-studio-banheiro",
+      "title": "Coluna 4 Direita - Studio Banheiro.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_4/mapa_padrao.png",
+      "scene_global_yaw": false,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_4/Coluna 4 Direita - Studio Banheiro.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "coluna-4-direita-studio-banheiro-hotspot",
+          "type": "scene_link",
+          "target_tour": "coluna_4",
+          "target_scene": "coluna-4-direita-studio-quarto",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": 7.111,
+            "y": -1.481,
+            "z": 3.353
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2.2,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Direita - Studio Quarto.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_door.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    },
+    {
+      "id": "coluna-4-direita-studio-quarto",
+      "title": "Coluna 4 Direita - Studio Quarto.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_4/mapa_padrao.png",
+      "scene_global_yaw": false,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_4/Coluna 4 Direita - Studio Quarto.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "go-to-coluna-4-direita-varanda",
+          "type": "scene_link",
+          "target_scene": "coluna-4-direita-varanda",
+          "position": {
+            "x": 4.634,
+            "y": -3.503,
+            "z": 5.501
+          },
+          "rotation": {
+            "yaw": 24,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Direita - Varanda.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "target_tour": "coluna_4",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "reference_depth": 8,
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "coluna-4-direita-studio-quarto-hotspot",
+          "type": "scene_link",
+          "target_tour": "coluna_4",
+          "target_scene": "coluna-4-direita-studio-banheiro",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": -2.65,
+            "y": -1.949,
+            "z": -7.292
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2.8,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Direita - Studio Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_banheiro.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    },
+    {
+      "id": "coluna-4-direita-varanda",
+      "title": "Coluna 4 Direita - Varanda.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_4/mapa_padrao.png",
+      "scene_global_yaw": false,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_4/Coluna 4 Direita - Varanda.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "go-to-coluna-4-direita-studio-quarto",
+          "type": "scene_link",
+          "target_tour": "coluna_4",
+          "target_scene": "coluna-4-direita-studio-quarto",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": -2.127,
+            "y": -4.369,
+            "z": -6.355
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 1.5,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Direita - Studio Quarto.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "coluna-4-direita-varanda-hotspot-2",
+          "type": "scene_link",
+          "target_tour": "coluna_4",
+          "target_scene": "coluna-4-direita-studio-banheiro",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": -4.234,
+            "y": -0.943,
+            "z": -6.722
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 1.9,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Direita - Studio Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_banheiro.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    },
+    {
+      "id": "coluna-4-esquerda-varanda",
+      "title": "Coluna 4 Esquerda - Varanda.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_4/mapa_padrao.png",
+      "scene_global_yaw": false,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_4/Coluna 4 Esquerda - Varanda.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "go-to-coluna-4-esquerda-studio-quarto",
+          "type": "scene_link",
+          "target_tour": "coluna_4",
+          "target_scene": "coluna-4-esquerda-studio-quarto",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": -6.733,
+            "y": -4.212,
+            "z": 0.966
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 1.5,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Esquerda - Studio Quarto.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "go-to-coluna-4-esquerda-studio-banheiro",
+          "type": "scene_link",
+          "target_tour": "coluna_4",
+          "target_scene": "coluna-4-esquerda-studio-banheiro",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": -7.639,
+            "y": -0.859,
+            "z": -2.217
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2.2,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Esquerda - Studio Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_banheiro.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    },
+    {
+      "id": "coluna-4-esquerda-studio-banheiro",
+      "title": "Coluna 4 Esquerda - Studio Banheiro.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_4/mapa_padrao.png",
+      "scene_global_yaw": true,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_4/Coluna 4 Esquerda - Studio Banheiro.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "go-to-coluna-4-esquerda-studio-quarto",
+          "type": "scene_link",
+          "target_scene": "coluna-4-esquerda-studio-quarto",
+          "position": {
+            "x": -5.944,
+            "y": -2.327,
+            "z": 4.822
+          },
+          "rotation": {
+            "yaw": 24,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2.5,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Esquerda - Studio Quarto.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "target_tour": "coluna_4",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "reference_depth": 8,
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_door.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    },
+    {
+      "id": "coluna-4-esquerda-studio-quarto",
+      "title": "Coluna 4 Esquerda - Studio Quarto.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_4/mapa_padrao.png",
+      "scene_global_yaw": false,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_4/Coluna 4 Esquerda - Studio Quarto.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "go-to-coluna-4-esquerda-studio-banheiro",
+          "type": "scene_link",
+          "target_scene": "coluna-4-esquerda-studio-banheiro",
+          "position": {
+            "x": -6.573,
+            "y": -1.536,
+            "z": -4.294
+          },
+          "rotation": {
+            "yaw": -24,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2.7,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Esquerda - Studio Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "target_tour": "coluna_4",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "reference_depth": 8,
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_banheiro.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "go-to-coluna-4-esquerda-varanda",
+          "type": "scene_link",
+          "target_tour": "coluna_4",
+          "target_scene": "coluna-4-esquerda-varanda",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": 4.448,
+            "y": -3.737,
+            "z": 5.5
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 1.5,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 4 Esquerda - Varanda.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    }
+  ]
 }

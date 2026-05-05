@@ -21,7 +21,8 @@ export class TwoDSceneController {
     this.hotspotRenderer = new TwoDHotspotRenderer({
       root: this.renderer.hotspotLayer,
       context: this.context,
-      project: (position) => this.renderer.projectWorldToScreen(position)
+      project: (position) => this.renderer.projectWorldToScreen(position),
+      projectBillboardOrientation: (position, rotation) => this.renderer.projectBillboardOrientation(position, rotation)
     });
     this.inputController = new TwoDInputController({
       target: this.renderer.stage,

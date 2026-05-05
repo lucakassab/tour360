@@ -2,6 +2,7 @@ import {
   getHotspotLabelRotation,
   getHotspotLabelRoll,
   getHotspotLabelScale,
+  isHotspotMarkerBackgroundVisible,
   getHotspotMarkerIconSrc,
   getHotspotMarkerRotation,
   getHotspotLabelText,
@@ -11,16 +12,18 @@ import {
   getHotspotScale,
   getHotspotSelectLabel,
   isHotspotMarkerBillboard,
+  isHotspotMarkerBillboardRotationOffsetEnabled,
   isHotspotLabelVisible,
   isHotspotMarkerVisible,
   isNavigableHotspot
 } from "../../shared/HotspotVisualShared.js";
 
 export class TwoDHotspotRenderer {
-  constructor({ root, context, project }) {
+  constructor({ root, context, project, projectBillboardOrientation = null }) {
     this.root = root;
     this.context = context;
     this.project = project;
+    this.projectBillboardOrientation = projectBillboardOrientation;
     this.items = [];
     this.itemsByKey = new Map();
     this.interactionLocked = false;
@@ -40,12 +43,13 @@ export class TwoDHotspotRenderer {
 
     for (const hotspot of scene.hotspots ?? []) {
       if (isHotspotMarkerVisible(hotspot)) {
-      const item = this.syncItem(hotspot, {
+        const item = this.syncItem(hotspot, {
           kind: "marker",
           position: hotspot.position,
           roll: getHotspotMarkerRoll(hotspot),
           billboard: isHotspotMarkerBillboard(hotspot),
-          rotation: getHotspotMarkerRotation(hotspot)
+          rotation: getHotspotMarkerRotation(hotspot),
+          billboardRotationOffset: isHotspotMarkerBillboardRotationOffsetEnabled(hotspot)
         });
         nextItems.push(item);
         seenKeys.add(item.key);
@@ -57,7 +61,8 @@ export class TwoDHotspotRenderer {
           position: getHotspotLabelWorldPosition(hotspot),
           roll: getHotspotLabelRoll(hotspot),
           billboard: isHotspotLabelBillboard(hotspot),
-          rotation: getHotspotLabelRotation(hotspot)
+          rotation: getHotspotLabelRotation(hotspot),
+          billboardRotationOffset: false
         });
         nextItems.push(item);
         seenKeys.add(item.key);
@@ -75,11 +80,11 @@ export class TwoDHotspotRenderer {
     this.updateProjection();
   }
 
-  syncItem(hotspot, { kind, position, roll, billboard, rotation }) {
+  syncItem(hotspot, { kind, position, roll, billboard, rotation, billboardRotationOffset = false }) {
     const key = createItemKey(hotspot.id, kind);
     let item = this.itemsByKey.get(key);
     if (!item) {
-      item = this.createItem(hotspot, { key, kind, position, roll, billboard, rotation });
+      item = this.createItem(hotspot, { key, kind, position, roll, billboard, rotation, billboardRotationOffset });
       this.itemsByKey.set(key, item);
     }
 
@@ -88,11 +93,12 @@ export class TwoDHotspotRenderer {
     item.roll = roll;
     item.billboard = billboard !== false;
     item.rotation = rotation ?? defaultRotation();
+    item.billboardRotationOffset = billboardRotationOffset === true;
     this.updateItemElement(item);
     return item;
   }
 
-  createItem(hotspot, { key, kind, position, roll, billboard, rotation }) {
+  createItem(hotspot, { key, kind, position, roll, billboard, rotation, billboardRotationOffset = false }) {
     const element = document.createElement(isNavigableHotspot(hotspot) ? "button" : "div");
     const item = {
       key,
@@ -103,6 +109,7 @@ export class TwoDHotspotRenderer {
       roll,
       billboard: billboard !== false,
       rotation: rotation ?? defaultRotation(),
+      billboardRotationOffset: billboardRotationOffset === true,
       lastProjectedOrientation: null,
       onPointerDown: stopPointerPropagation,
       onClick: (event) => this.handleHotspotClick(event, item)
@@ -131,6 +138,9 @@ export class TwoDHotspotRenderer {
 
     const activeElement = item.element;
     activeElement.className = `hotspot hotspot-${kind} ${navigable ? "is-linked" : ""}`;
+    if (kind === "marker") {
+      activeElement.classList.toggle("is-background-hidden", !isHotspotMarkerBackgroundVisible(hotspot));
+    }
     activeElement.dataset.hotspotId = hotspot.id;
     activeElement.dataset.editorItemType = "hotspot";
     activeElement.dataset.hotspotRole = kind;
@@ -193,25 +203,33 @@ export class TwoDHotspotRenderer {
 
   updateProjection() {
     for (const item of this.items) {
-      const { hotspot, element, kind, position, roll, billboard, rotation } = item;
+      const { hotspot, element, kind, position, roll, billboard, rotation, billboardRotationOffset } = item;
       const projected = this.project(position);
       const scale = kind === "marker"
         ? getHotspotScale(hotspot, projected.depth)
         : getHotspotLabelScale(hotspot, projected.depth);
-      const nextProjectedOrientation = billboard
-        ? null
-        : this.projectOrientationBasis(position, rotation, projected);
-      const projectedOrientation = nextProjectedOrientation ?? item.lastProjectedOrientation;
+      const shouldUseProjectedOrientation = billboard !== true || billboardRotationOffset === true;
+      const nextProjectedOrientation = shouldUseProjectedOrientation
+        ? (
+          billboard
+            ? this.projectBillboardOrientation?.(position, rotation, projected) ?? null
+            : this.projectOrientationBasis(position, rotation, projected)
+        )
+        : null;
+      const projectedOrientation = shouldUseProjectedOrientation
+        ? (nextProjectedOrientation ?? item.lastProjectedOrientation)
+        : null;
 
       if (nextProjectedOrientation) {
         item.lastProjectedOrientation = nextProjectedOrientation;
+      } else if (!shouldUseProjectedOrientation) {
+        item.lastProjectedOrientation = null;
       }
 
       element.style.left = `${projected.x}px`;
       element.style.top = `${projected.y}px`;
       element.style.zIndex = String(Math.max(1, Math.round(1000 - projected.depth)));
       element.style.transform = buildElementTransform({
-        billboard,
         roll,
         scale,
         projectedOrientation
@@ -287,8 +305,8 @@ function createItemKey(hotspotId, kind) {
   return `${hotspotId}:${kind}`;
 }
 
-function buildElementTransform({ billboard, roll, scale, projectedOrientation }) {
-  if (!billboard && projectedOrientation) {
+function buildElementTransform({ roll, scale, projectedOrientation }) {
+  if (projectedOrientation) {
     const safeScale = Math.max(0.001, Number(scale ?? 1) || 1);
     const a = projectedOrientation.xAxis.x * safeScale;
     const b = projectedOrientation.xAxis.y * safeScale;

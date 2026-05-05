@@ -6,6 +6,7 @@ import {
   getHotspotLabelWorldPosition,
   getHotspotMarkerRoll,
   getHotspotScale,
+  isHotspotMarkerBackgroundVisible,
   getHotspotSelectLabel,
   isHotspotLabelVisible,
   isHotspotMarkerVisible,
@@ -126,6 +127,9 @@ export class VRHotspotRenderer {
 
     const element = item.element;
     element.className = `hotspot hotspot-${kind} ${navigable ? "is-linked" : ""}`;
+    if (kind === "marker") {
+      element.classList.toggle("is-background-hidden", !isHotspotMarkerBackgroundVisible(hotspot));
+    }
     element.dataset.hotspotId = hotspot.id;
     element.dataset.editorItemType = "hotspot";
     element.dataset.hotspotRole = kind;

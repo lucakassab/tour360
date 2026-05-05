@@ -6,6 +6,10 @@ export function isHotspotMarkerVisible(hotspot) {
   return hotspot?.marker_visible !== false;
 }
 
+export function isHotspotMarkerBackgroundVisible(hotspot) {
+  return hotspot?.marker_background_visible !== false;
+}
+
 export function getHotspotMarkerIconSrc(hotspot) {
   const markerIcon = hotspot?.marker_icon;
 
@@ -59,12 +63,16 @@ export function isHotspotMarkerBillboard(hotspot) {
   return hotspot?.billboard !== false;
 }
 
+export function isHotspotMarkerBillboardRotationOffsetEnabled(hotspot) {
+  return isHotspotMarkerBillboard(hotspot) && hotspot?.billboard_rotation_offset === true;
+}
+
 export function getHotspotMarkerRotation(hotspot) {
   return normalizeRotation(hotspot?.rotation);
 }
 
 export function getHotspotMarkerRoll(hotspot) {
-  if (hotspot?.billboard === false) {
+  if (hotspot?.billboard === false || isHotspotMarkerBillboardRotationOffsetEnabled(hotspot)) {
     return Number(hotspot?.rotation?.roll ?? 0);
   }
   return 0;

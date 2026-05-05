@@ -36,6 +36,7 @@ export class AppKernel {
     this.backgroundPreloadGeneration = 0;
     this.editorTourCatalogCache = new Map();
     this.backgroundWarmJobs = new WeakMap();
+    this.activeTourDownloadJob = null;
     this.sceneLoader = new SceneLoaderShared({
       assetCache: this.assetCache,
       hotspotLoader: this.hotspotLoader
@@ -109,6 +110,7 @@ export class AppKernel {
 
     const initialTourId = this.getInitialTourId(master, cfg);
     await this.loadTour(initialTourId);
+    this.updateActiveTourDownloadButton();
     await this.maybeLoadEditor(cfg);
 
     const initialPlatform = await this.platformSelector.detectInitialPlatform(cfg);
@@ -120,12 +122,14 @@ export class AppKernel {
       this.updatePlatformButtons(state.platformId);
       this.syncSceneSelect(state.currentTour, state.currentSceneId);
       this.updatePlatformBadge(state.platformId);
+      this.updateActiveTourDownloadButton();
     });
 
     await this.maybeRegisterServiceWorker(cfg);
     await this.refreshCapabilityBadges();
     this.updateInstallButton();
     this.updateXrDebugButton();
+    this.updateActiveTourDownloadButton();
 
     this.setStatus("Ready", { hideAfterMs: 1600 });
   }
@@ -162,6 +166,10 @@ export class AppKernel {
       this.downloadXrDebugLog().catch((error) => this.handleError(error));
     });
 
+    this.elements.downloadActiveTourButton?.addEventListener("click", () => {
+      this.downloadActiveTour().catch((error) => this.handleError(error));
+    });
+
     window.addEventListener("beforeinstallprompt", this.handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", this.handleAppInstalled);
     this.standaloneMediaQuery = window.matchMedia?.("(display-mode: standalone)") ?? null;
@@ -176,6 +184,10 @@ export class AppKernel {
     this.setElementHint(this.elements.sceneSelect, {
       title: "Escolha a cena ativa do tour atual.",
       ariaLabel: "Selecionar cena ativa"
+    });
+    this.setElementHint(this.elements.downloadActiveTourButton, {
+      title: "Baixe todas as imagens do tour ativo para o cache do navegador e acelere a navegacao.",
+      ariaLabel: "Baixar tour ativo"
     });
     this.setElementHint(this.elements.installButton, {
       title: "Instale o tour como aplicativo para abrir com mais rapidez e suporte offline.",
@@ -895,6 +907,7 @@ export class AppKernel {
     this.primeBadgeItem(this.elements.inputBadge, chrome.show_input_badge !== false);
     this.primeBadgeItem(this.elements.standaloneBadge, chrome.show_standalone_badge !== false);
     this.updateInstallButton();
+    this.updateActiveTourDownloadButton();
     this.updateBadgeStripVisibility();
   }
 
@@ -1005,6 +1018,77 @@ export class AppKernel {
     button.setAttribute("aria-label", enabled ? "Baixar log XR" : "Download de log XR indisponivel");
   }
 
+  updateActiveTourDownloadButton() {
+    const button = this.elements.downloadActiveTourButton;
+    const feedbackRoot = this.elements.downloadActiveTourFeedbackRoot;
+    const feedbackLabel = this.elements.downloadActiveTourFeedbackLabel;
+    const feedbackCount = this.elements.downloadActiveTourFeedbackCount;
+    const feedbackBar = this.elements.downloadActiveTourFeedbackBar;
+    if (!button) {
+      return;
+    }
+
+    const state = this.store.getSnapshot();
+    const currentTour = state.currentTour ?? null;
+    const isRuntimeBusy = Boolean(this.activeRuntimeTransition);
+    const downloadJob = this.activeTourDownloadJob;
+    const isDownloading = Boolean(downloadJob);
+    const completedCount = Number(downloadJob?.completedCount ?? 0);
+    const totalCount = Number(downloadJob?.totalCount ?? 0);
+    const completionRatio = totalCount > 0
+      ? Math.max(0, Math.min(1, completedCount / totalCount))
+      : 0;
+
+    button.hidden = false;
+    button.disabled = !currentTour || isRuntimeBusy || isDownloading;
+    button.textContent = isDownloading && totalCount > 0
+      ? "Downloading..."
+      : "Download Active Tour";
+
+    if (!currentTour) {
+      if (feedbackRoot) {
+        feedbackRoot.hidden = true;
+      }
+      button.title = "Carregue um tour para poder baixar as imagens dele para o cache do navegador.";
+      button.setAttribute("aria-label", "Download do tour ativo indisponivel");
+      return;
+    }
+
+    if (isDownloading) {
+      const jobTourTitle = downloadJob?.tourTitle ?? currentTour.title ?? currentTour.id;
+      if (feedbackRoot) {
+        feedbackRoot.hidden = false;
+      }
+      if (feedbackLabel) {
+        feedbackLabel.textContent = `Baixando ${jobTourTitle}`;
+      }
+      if (feedbackCount) {
+        feedbackCount.textContent = `${completedCount}/${totalCount}`;
+      }
+      if (feedbackBar) {
+        feedbackBar.style.width = `${(completionRatio * 100).toFixed(2)}%`;
+      }
+      button.title = `Baixando para o cache do navegador as imagens do tour ${jobTourTitle}.`;
+      button.setAttribute("aria-label", `Baixando tour ${jobTourTitle}`);
+      return;
+    }
+
+    if (feedbackRoot) {
+      feedbackRoot.hidden = true;
+    }
+    if (feedbackLabel) {
+      feedbackLabel.textContent = "Preparando download...";
+    }
+    if (feedbackCount) {
+      feedbackCount.textContent = "0/0";
+    }
+    if (feedbackBar) {
+      feedbackBar.style.width = "0%";
+    }
+    button.title = `Baixar para o cache do navegador as imagens do tour ${currentTour.title ?? currentTour.id}, para reduzir a espera entre cenas.`;
+    button.setAttribute("aria-label", `Baixar tour ${currentTour.title ?? currentTour.id}`);
+  }
+
   async downloadXrDebugLog() {
     if (!this.xrDebug?.isEnabled?.()) {
       this.setStatus("Ative ?debug_xr=1 para baixar o log XR.", { hideAfterMs: 1800 });
@@ -1025,6 +1109,83 @@ export class AppKernel {
     anchor.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
     this.setStatus("Log XR baixado.", { hideAfterMs: 1800 });
+  }
+
+  async downloadActiveTour() {
+    if (this.activeTourDownloadJob?.promise) {
+      return this.activeTourDownloadJob.promise;
+    }
+
+    const state = this.store.getSnapshot();
+    const tour = state.currentTour ?? null;
+    if (!tour?.scenes?.length) {
+      this.setStatus("Nao ha um tour ativo para baixar.", { hideAfterMs: 1800 });
+      return;
+    }
+
+    const urls = this.collectActiveTourDownloadSources(tour);
+    if (urls.length === 0) {
+      this.setStatus("O tour ativo nao possui imagens para baixar.", { hideAfterMs: 1800 });
+      return;
+    }
+
+    const concurrency = this.getHybridWarmConcurrency(state.cfg);
+    const job = {
+      tourId: tour.id ?? null,
+      tourTitle: tour.title ?? tour.id ?? "tour",
+      totalCount: urls.length,
+      completedCount: 0,
+      promise: null
+    };
+
+    const updateProgress = (message) => {
+      this.updateActiveTourDownloadButton();
+      if (message) {
+        this.setStatus(message);
+      }
+    };
+
+    this.activeTourDownloadJob = job;
+    updateProgress(`Baixando tour ${job.tourTitle}... 0/${job.totalCount}`);
+    this.debugLog("active-tour-download:start", {
+      tourId: job.tourId,
+      urlCount: job.totalCount,
+      concurrency
+    });
+    await nextAnimationFrame();
+
+    job.promise = runPromisePool(urls, concurrency, async (url) => {
+      try {
+        return await this.assetCache.warmUrl(url, { optional: false });
+      } finally {
+        job.completedCount += 1;
+        updateProgress(`Baixando tour ${job.tourTitle}... ${job.completedCount}/${job.totalCount}`);
+      }
+    });
+
+    try {
+      const results = await job.promise;
+      const warmedCount = results.filter((result) => result?.status === "fulfilled" && result?.value).length;
+      const failedCount = results.filter((result) => result?.status === "rejected").length;
+      this.debugLog("active-tour-download:complete", {
+        tourId: job.tourId,
+        warmedCount,
+        failedCount,
+        urlCount: job.totalCount
+      });
+      this.setStatus(
+        failedCount > 0
+          ? `Tour ${job.tourTitle} baixado parcialmente: ${warmedCount}/${job.totalCount} imagens em cache.`
+          : `Tour ${job.tourTitle} baixado: ${warmedCount} imagens em cache.`,
+        { hideAfterMs: 2600 }
+      );
+      return results;
+    } finally {
+      if (this.activeTourDownloadJob === job) {
+        this.activeTourDownloadJob = null;
+      }
+      this.updateActiveTourDownloadButton();
+    }
   }
 
   canInstallPwa() {
@@ -1599,6 +1760,21 @@ export class AppKernel {
     return sources;
   }
 
+  collectActiveTourDownloadSources(tour) {
+    const scenes = tour?.scenes ?? [];
+    if (scenes.length === 0) {
+      return [];
+    }
+
+    const sources = [
+      ...this.collectSceneMediaSources(scenes),
+      ...this.collectMinimapSources(scenes),
+      ...this.collectHotspotMarkerIconSources(scenes)
+    ];
+
+    return Array.from(new Set(sources.filter(Boolean)));
+  }
+
   collectSceneMediaSources(source) {
     const scenes = Array.isArray(source)
       ? source
@@ -1607,6 +1783,37 @@ export class AppKernel {
       scenes
         .map((scene) => scene?.media?.src)
         .filter(Boolean)
+    ));
+  }
+
+  collectMinimapSources(source) {
+    const scenes = Array.isArray(source)
+      ? source
+      : (source?.scenes ?? []);
+    return Array.from(new Set(
+      scenes
+        .map((scene) => scene?.minimap_image)
+        .filter(Boolean)
+    ));
+  }
+
+  collectHotspotMarkerIconSources(source) {
+    const scenes = Array.isArray(source)
+      ? source
+      : (source?.scenes ?? []);
+    return Array.from(new Set(
+      scenes.flatMap((scene) => (
+        scene?.hotspots ?? []
+      ).map((hotspot) => {
+        const explicitMarkerIcon = hotspot?.marker_icon;
+        if (typeof explicitMarkerIcon === "string") {
+          return explicitMarkerIcon;
+        }
+        if (explicitMarkerIcon && typeof explicitMarkerIcon.src === "string") {
+          return explicitMarkerIcon.src;
+        }
+        return typeof hotspot?.marker_icon_src === "string" ? hotspot.marker_icon_src : null;
+      }).filter(Boolean))
     ));
   }
 
@@ -1731,6 +1938,8 @@ export class AppKernel {
     for (const button of this.elements.platformButtons ?? []) {
       button.disabled = isBusy;
     }
+
+    this.updateActiveTourDownloadButton();
   }
 
   releaseInactiveTourResources(previousTour, activeScene = null) {
@@ -1752,6 +1961,37 @@ export class AppKernel {
     renderer?.setPinnedTextureSources?.(preserveUrls);
     renderer?.evictTextures?.(preserveUrls);
   }
+}
+
+async function runPromisePool(items, concurrency, worker) {
+  const queue = Array.isArray(items) ? items : [];
+  if (queue.length === 0) {
+    return [];
+  }
+
+  const safeConcurrency = Math.max(1, Math.min(Number(concurrency) || 1, queue.length));
+  const results = new Array(queue.length);
+  let cursor = 0;
+
+  await Promise.all(Array.from({ length: safeConcurrency }, async () => {
+    while (cursor < queue.length) {
+      const currentIndex = cursor;
+      cursor += 1;
+      const currentItem = queue[currentIndex];
+      try {
+        const value = await worker(currentItem, currentIndex);
+        results[currentIndex] = { status: "fulfilled", value };
+      } catch (error) {
+        results[currentIndex] = { status: "rejected", reason: error };
+      }
+    }
+  }));
+
+  return results;
+}
+
+function nextAnimationFrame() {
+  return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
 function modulo(value, length) {

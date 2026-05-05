@@ -1,302 +1,312 @@
 {
-    "id":  "coluna_5",
-    "title":  "Coluna 5",
-    "initial_scene":  "coluna-5-apartamento",
-    "media_type":  "equirectangular-image",
-    "settings":  {
-                     "rotation":  {
-                                      "yaw":  0,
-                                      "pitch":  0,
-                                      "roll":  0
-                                  },
-                     "scale":  1,
-                     "billboard":  true
-                 },
-    "scenes":  [
-                   {
-                       "id":  "coluna-5-apartamento",
-                       "title":  "Coluna 5 - Apartamento.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_5/mapa_padrao.png",
-                       "scene_global_yaw":  false,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_5/Coluna 5 - Apartamento.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "go-to-coluna-5-banheiro",
-                                            "type":  "scene_link",
-                                            "target_scene":  "coluna-5-banheiro",
-                                            "position":  {
-                                                             "x":  4.05,
-                                                             "y":  -5.145,
-                                                             "z":  -4.596
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  24,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Ir para Coluna 5 - Banheiro.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "target_tour":  null,
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "reference_depth":  8,
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        },
-                                        {
-                                            "id":  "go-to-coluna-5-varanda",
-                                            "type":  "scene_link",
-                                            "target_scene":  "coluna-5-varanda",
-                                            "position":  {
-                                                             "x":  -3.014,
-                                                             "y":  -4.204,
-                                                             "z":  6.103
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  -24,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Voltar para Coluna 5 - Varanda.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "target_tour":  null,
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "reference_depth":  8,
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   },
-                   {
-                       "id":  "coluna-5-banheiro",
-                       "title":  "Coluna 5 - Banheiro.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_5/mapa_padrao.png",
-                       "scene_global_yaw":  false,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_5/Coluna 5 - Banheiro.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "go-to-coluna-5-apartamento-2",
-                                            "type":  "scene_link",
-                                            "target_scene":  "coluna-5-apartamento",
-                                            "position":  {
-                                                             "x":  -3.139,
-                                                             "y":  -6.974,
-                                                             "z":  2.345
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  24,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 5 - Apartamento.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "target_tour":  "coluna_5",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "reference_depth":  8,
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   },
-                   {
-                       "id":  "coluna-5-varanda",
-                       "title":  "Coluna 5 - Varanda.jpg",
-                       "media_type":  "equirectangular-image",
-                       "scale":  1,
-                       "billboard":  true,
-                       "minimap_image":  "./data/tours/coluna_5/mapa_padrao.png",
-                       "scene_global_yaw":  false,
-                       "flip_horizontally":  false,
-                       "media":  {
-                                     "type":  "image",
-                                     "projection":  "equirectangular",
-                                     "stereo_layout":  "top-bottom",
-                                     "eye_order":  "left-right",
-                                     "mono_eye":  "left",
-                                     "src":  "./data/tours/coluna_5/Coluna 5 - Varanda.jpg"
-                                 },
-                       "rotation":  {
-                                        "yaw":  0,
-                                        "pitch":  0,
-                                        "roll":  0
-                                    },
-                       "hotspots":  [
-                                        {
-                                            "id":  "go-to-coluna-5-banheiro",
-                                            "type":  "scene_link",
-                                            "target_scene":  "coluna-5-banheiro",
-                                            "position":  {
-                                                             "x":  3.244,
-                                                             "y":  -2.364,
-                                                             "z":  -6.92
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  -24,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 5 - Banheiro.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "target_tour":  "coluna_5",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "reference_depth":  8,
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        },
-                                        {
-                                            "id":  "coluna-5-varanda-hotspot",
-                                            "type":  "scene_link",
-                                            "target_tour":  "coluna_5",
-                                            "target_scene":  "coluna-5-apartamento",
-                                            "apply_hotspot_scene_yaw":  false,
-                                            "hotspot_define_scene_yaw":  0,
-                                            "position":  {
-                                                             "x":  0.066,
-                                                             "y":  -4.072,
-                                                             "z":  -6.886
-                                                         },
-                                            "rotation":  {
-                                                             "yaw":  0,
-                                                             "pitch":  0,
-                                                             "roll":  0
-                                                         },
-                                            "scale":  1,
-                                            "reference_depth":  8,
-                                            "billboard":  true,
-                                            "marker_visible":  true,
-                                            "label":  {
-                                                          "text":  "Coluna 5 - Apartamento.jpg",
-                                                          "visible":  true,
-                                                          "position_offset":  {
-                                                                                  "x":  0,
-                                                                                  "y":  0.9,
-                                                                                  "z":  0
-                                                                              },
-                                                          "rotation_offset":  {
-                                                                                  "yaw":  0,
-                                                                                  "pitch":  0,
-                                                                                  "roll":  0
-                                                                              },
-                                                          "scale":  1,
-                                                          "reference_depth":  8,
-                                                          "billboard":  true
-                                                      },
-                                            "marker_icon":  {
-                                                                "src":  "./assets/icons/seta_cima3.png"
-                                                            }
-                                        }
-                                    ]
-                   }
-               ]
+  "id": "coluna_5",
+  "title": "Coluna 5",
+  "initial_scene": "coluna-5-apartamento",
+  "media_type": "equirectangular-image",
+  "settings": {
+    "rotation": {
+      "yaw": 0,
+      "pitch": 0,
+      "roll": 0
+    },
+    "scale": 1,
+    "billboard": true
+  },
+  "scenes": [
+    {
+      "id": "coluna-5-apartamento",
+      "title": "Coluna 5 - Apartamento.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_5/mapa_padrao.png",
+      "scene_global_yaw": false,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_5/Coluna 5 - Apartamento.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "go-to-coluna-5-banheiro",
+          "type": "scene_link",
+          "target_scene": "coluna-5-banheiro",
+          "position": {
+            "x": 4.889,
+            "y": -1.373,
+            "z": -6.181
+          },
+          "rotation": {
+            "yaw": 24,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2.3,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Ir para Coluna 5 - Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "target_tour": null,
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "reference_depth": 8,
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_banheiro.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "go-to-coluna-5-varanda",
+          "type": "scene_link",
+          "target_scene": "coluna-5-varanda",
+          "position": {
+            "x": -2.843,
+            "y": -4.152,
+            "z": 6.219
+          },
+          "rotation": {
+            "yaw": -24,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 1.5,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Voltar para Coluna 5 - Varanda.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "target_tour": null,
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "reference_depth": 8,
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    },
+    {
+      "id": "coluna-5-banheiro",
+      "title": "Coluna 5 - Banheiro.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_5/mapa_padrao.png",
+      "scene_global_yaw": false,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_5/Coluna 5 - Banheiro.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "go-to-coluna-5-apartamento-2",
+          "type": "scene_link",
+          "target_scene": "coluna-5-apartamento",
+          "position": {
+            "x": -6.184,
+            "y": -1.614,
+            "z": 4.812
+          },
+          "rotation": {
+            "yaw": 24,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2.2,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 5 - Apartamento.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "target_tour": "coluna_5",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "reference_depth": 8,
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_door.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    },
+    {
+      "id": "coluna-5-varanda",
+      "title": "Coluna 5 - Varanda.jpg",
+      "media_type": "equirectangular-image",
+      "scale": 1,
+      "billboard": true,
+      "minimap_image": "./data/tours/coluna_5/mapa_padrao.png",
+      "scene_global_yaw": false,
+      "flip_horizontally": false,
+      "media": {
+        "type": "image",
+        "projection": "equirectangular",
+        "stereo_layout": "top-bottom",
+        "eye_order": "left-right",
+        "mono_eye": "left",
+        "src": "./data/tours/coluna_5/Coluna 5 - Varanda.jpg"
+      },
+      "rotation": {
+        "yaw": 0,
+        "pitch": 0,
+        "roll": 0
+      },
+      "hotspots": [
+        {
+          "id": "go-to-coluna-5-banheiro",
+          "type": "scene_link",
+          "target_scene": "coluna-5-banheiro",
+          "position": {
+            "x": 3.322,
+            "y": -0.445,
+            "z": -7.264
+          },
+          "rotation": {
+            "yaw": -24,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 2,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 5 - Banheiro.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "target_tour": "coluna_5",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "reference_depth": 8,
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_pin_banheiro.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        },
+        {
+          "id": "coluna-5-varanda-hotspot",
+          "type": "scene_link",
+          "target_tour": "coluna_5",
+          "target_scene": "coluna-5-apartamento",
+          "apply_hotspot_scene_yaw": false,
+          "hotspot_define_scene_yaw": 0,
+          "position": {
+            "x": 0.605,
+            "y": -4.073,
+            "z": -6.859
+          },
+          "rotation": {
+            "yaw": 0,
+            "pitch": 0,
+            "roll": 0
+          },
+          "scale": 1.5,
+          "reference_depth": 8,
+          "billboard": true,
+          "marker_visible": true,
+          "label": {
+            "text": "Coluna 5 - Apartamento.jpg",
+            "visible": false,
+            "position_offset": {
+              "x": 0,
+              "y": 0.9,
+              "z": 0
+            },
+            "rotation_offset": {
+              "yaw": 0,
+              "pitch": 0,
+              "roll": 0
+            },
+            "scale": 1,
+            "reference_depth": 8,
+            "billboard": true
+          },
+          "marker_icon": {
+            "src": "./assets/icons/hotspot_point.png"
+          },
+          "marker_background_visible": false,
+          "billboard_rotation_offset": false
+        }
+      ]
+    }
+  ]
 }

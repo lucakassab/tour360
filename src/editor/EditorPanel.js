@@ -1,3 +1,5 @@
+import { getHotspotMarkerIconSrc } from "../shared/HotspotVisualShared.js";
+
 export class EditorPanel {
   constructor({ root, context, draftStore, placementController }) {
     this.root = root;
@@ -11,6 +13,9 @@ export class EditorPanel {
     this.panelMinimized = false;
     this.tabButtons = new Map();
     this.tabPanels = new Map();
+    this.iconLibraryEntries = [];
+    this.iconLibraryFolderPath = getStoredIconLibraryFolderPath();
+    this.iconLibraryLoading = false;
   }
 
   mount() {
@@ -52,6 +57,10 @@ export class EditorPanel {
     this.selectTab(this.activeTabId);
     this.setPanelMinimized(this.panelMinimized);
     this.unsubscribe = this.draftStore.subscribe((state) => this.sync(state));
+    this.setValue(this.controls.iconLibraryFolder.input, this.iconLibraryFolderPath);
+    this.refreshIconLibrary().catch((error) => {
+      this.context.setStatus(error?.message || "Nao foi possivel carregar a biblioteca de icones.", { hideAfterMs: 2200 });
+    });
   }
 
   createHeader() {
@@ -254,6 +263,7 @@ export class EditorPanel {
   createHotspotSection() {
     const section = this.createSection("Hotspots da cena", "Crie, selecione e ajuste os hotspots da cena atualmente em edicao.");
     this.controls.hotspotSelect = this.createSelect(FIELD_META.hotspotSelect);
+    this.controls.hotspotLibrary = this.createHotspotLibrary();
     this.controls.hotspotId = this.createInput(FIELD_META.hotspotId);
     this.controls.hotspotType = this.createSelect(FIELD_META.hotspotType, [
       ["scene_link", "Navegacao entre cenas"],
@@ -265,7 +275,14 @@ export class EditorPanel {
       clearLabel: "Remover imagem",
       onClear: () => this.clearHotspotMarkerIcon()
     });
+    this.controls.iconLibraryFolder = this.createAssetField(FIELD_META.iconLibraryFolder, {
+      onOpenFolder: () => this.openAssetFolder(this.controls.iconLibraryFolder.input.value),
+      clearLabel: "Usar padrao",
+      onClear: () => this.resetIconLibraryFolder()
+    });
+    this.controls.iconLibrary = this.createIconAssetLibrary();
     this.controls.hotspotMarkerVisible = this.createCheckbox(FIELD_META.hotspotMarkerVisible);
+    this.controls.hotspotMarkerBackgroundVisible = this.createCheckbox(FIELD_META.hotspotMarkerBackgroundVisible);
     this.controls.hotspotX = this.createNumberInput(FIELD_META.hotspotX, 0.01);
     this.controls.hotspotY = this.createNumberInput(FIELD_META.hotspotY, 0.01);
     this.controls.hotspotZ = this.createNumberInput(FIELD_META.hotspotZ, 0.01);
@@ -275,6 +292,7 @@ export class EditorPanel {
     this.controls.hotspotScale = this.createNumberInput(FIELD_META.hotspotScale, 0.1);
     this.controls.hotspotReferenceDepth = this.createNumberInput(FIELD_META.hotspotReferenceDepth, 0.1);
     this.controls.hotspotBillboard = this.createCheckbox(FIELD_META.hotspotBillboard);
+    this.controls.hotspotBillboardRotationOffset = this.createCheckbox(FIELD_META.hotspotBillboardRotationOffset);
     this.controls.hotspotApplySceneYaw = this.createCheckbox(FIELD_META.hotspotApplySceneYaw);
     this.controls.hotspotDefineSceneYaw = this.createNumberInput(FIELD_META.hotspotDefineSceneYaw, 0.1);
 
@@ -306,7 +324,13 @@ export class EditorPanel {
     this.bindInput(this.controls.hotspotType.input, () => this.draftStore.updateHotspotField("type", this.controls.hotspotType.input.value), "change");
     this.bindInput(this.controls.hotspotTargetScene.input, () => this.draftStore.updateHotspotField("target_scene", this.controls.hotspotTargetScene.input.value || null), "change");
     this.bindInput(this.controls.hotspotMarkerIcon.input, () => this.draftStore.updateHotspotField("marker_icon.src", normalizeOptionalAssetPath(this.controls.hotspotMarkerIcon.input.value)));
+    this.bindInput(this.controls.iconLibraryFolder.input, () => {
+      this.handleIconLibraryFolderInput().catch((error) => {
+        this.context.setStatus(error?.message || "Nao foi possivel atualizar a biblioteca de icones.", { hideAfterMs: 2200 });
+      });
+    }, "change");
     this.bindInput(this.controls.hotspotMarkerVisible.input, () => this.draftStore.updateHotspotField("marker_visible", this.controls.hotspotMarkerVisible.input.checked), "change");
+    this.bindInput(this.controls.hotspotMarkerBackgroundVisible.input, () => this.draftStore.updateHotspotField("marker_background_visible", this.controls.hotspotMarkerBackgroundVisible.input.checked), "change");
     this.bindInput(this.controls.hotspotX.input, () => this.draftStore.updateHotspotField("position.x", readNumber(this.controls.hotspotX.input)));
     this.bindInput(this.controls.hotspotY.input, () => this.draftStore.updateHotspotField("position.y", readNumber(this.controls.hotspotY.input)));
     this.bindInput(this.controls.hotspotZ.input, () => this.draftStore.updateHotspotField("position.z", readNumber(this.controls.hotspotZ.input, -8)));
@@ -316,16 +340,25 @@ export class EditorPanel {
     this.bindInput(this.controls.hotspotScale.input, () => this.draftStore.updateHotspotField("scale", readNumber(this.controls.hotspotScale.input, 1)));
     this.bindInput(this.controls.hotspotReferenceDepth.input, () => this.draftStore.updateHotspotField("reference_depth", readNumber(this.controls.hotspotReferenceDepth.input, 8)));
     this.bindInput(this.controls.hotspotBillboard.input, () => this.draftStore.updateHotspotField("billboard", this.controls.hotspotBillboard.input.checked), "change");
+    this.bindInput(this.controls.hotspotBillboardRotationOffset.input, () => this.draftStore.updateHotspotField("billboard_rotation_offset", this.controls.hotspotBillboardRotationOffset.input.checked), "change");
     this.bindInput(this.controls.hotspotApplySceneYaw.input, () => this.draftStore.updateHotspotField("apply_hotspot_scene_yaw", this.controls.hotspotApplySceneYaw.input.checked), "change");
     this.bindInput(this.controls.hotspotDefineSceneYaw.input, () => this.draftStore.updateHotspotField("hotspot_define_scene_yaw", readNumber(this.controls.hotspotDefineSceneYaw.input, 0)));
 
     section.append(
       this.controls.hotspotSelect.label,
+      this.controls.hotspotLibrary.container,
       actions,
       this.controls.hotspotId.label,
       this.createFieldGrid(this.controls.hotspotType.label, this.controls.hotspotTargetScene.label),
       this.controls.hotspotMarkerIcon.container,
-      this.createFieldGrid(this.controls.hotspotMarkerVisible.label, this.controls.hotspotBillboard.label),
+      this.controls.iconLibraryFolder.container,
+      this.controls.iconLibrary.container,
+      this.createFieldGrid(
+        this.controls.hotspotMarkerVisible.label,
+        this.controls.hotspotMarkerBackgroundVisible.label,
+        this.controls.hotspotBillboard.label,
+        this.controls.hotspotBillboardRotationOffset.label
+      ),
       this.createTransformGroup({
         title: "Posicao do hotspot",
         help: "Copie ou cole rapidamente as coordenadas X, Y e Z do hotspot selecionado.",
@@ -387,6 +420,81 @@ export class EditorPanel {
       this.createFieldGrid(this.controls.hotspotApplySceneYaw.label, this.controls.hotspotDefineSceneYaw.label)
     );
     return section;
+  }
+
+  createHotspotLibrary() {
+    const container = document.createElement("div");
+    container.className = "editor-hotspot-library";
+
+    const header = document.createElement("div");
+    header.className = "editor-hotspot-library__header";
+
+    const title = document.createElement("p");
+    title.className = "editor-hotspot-library__title";
+    title.textContent = "Biblioteca rapida de hotspots";
+    title.title = "Clique no preview de um hotspot para seleciona-lo rapidamente na cena atual.";
+
+    const help = document.createElement("span");
+    help.className = "editor-hotspot-library__help";
+    help.textContent = "Clique no preview";
+    help.title = "Lista compacta com o preview do icone de cada hotspot da cena atual.";
+
+    header.append(title, help);
+
+    const empty = document.createElement("p");
+    empty.className = "editor-hotspot-library__empty";
+    empty.textContent = "Nenhum hotspot na cena atual.";
+
+    const grid = document.createElement("div");
+    grid.className = "editor-hotspot-library__grid";
+
+    container.append(header, empty, grid);
+    return { container, header, title, help, empty, grid };
+  }
+
+  createIconAssetLibrary() {
+    const container = document.createElement("div");
+    container.className = "editor-icon-library";
+
+    const header = document.createElement("div");
+    header.className = "editor-icon-library__header";
+
+    const title = document.createElement("p");
+    title.className = "editor-icon-library__title";
+    title.textContent = "Biblioteca de icones";
+    title.title = "Escolha uma pasta de imagens e clique no preview para aplicar o icone ao hotspot selecionado.";
+
+    const actions = document.createElement("div");
+    actions.className = "editor-icon-library__actions";
+
+    const refreshButton = document.createElement("button");
+    refreshButton.type = "button";
+    refreshButton.textContent = "Atualizar";
+    refreshButton.title = "Reler a pasta configurada e atualizar os previews da biblioteca.";
+    refreshButton.setAttribute("aria-label", "Atualizar biblioteca de icones");
+    refreshButton.addEventListener("click", () => {
+      this.refreshIconLibrary().catch((error) => {
+        this.context.setStatus(error?.message || "Nao foi possivel atualizar a biblioteca de icones.", { hideAfterMs: 2200 });
+      });
+    }, { signal: this.abortController.signal });
+    actions.append(refreshButton);
+
+    const help = document.createElement("span");
+    help.className = "editor-icon-library__help";
+    help.textContent = "Clique para aplicar";
+    help.title = "Os previews abaixo aplicam a imagem diretamente no hotspot selecionado.";
+
+    header.append(title, actions);
+
+    const empty = document.createElement("p");
+    empty.className = "editor-icon-library__empty";
+    empty.textContent = "Nenhum icone carregado da pasta configurada.";
+
+    const grid = document.createElement("div");
+    grid.className = "editor-icon-library__grid";
+
+    container.append(header, help, empty, grid);
+    return { container, header, title, actions, refreshButton, help, empty, grid };
   }
 
   createHotspotLabelSection() {
@@ -518,6 +626,8 @@ export class EditorPanel {
     this.controls.status.classList.toggle("has-error", Boolean(state.error));
 
     if (!draft) {
+      this.syncHotspotLibrary([], null);
+      this.syncIconAssetLibrary([]);
       this.setAllDisabled(true);
       return;
     }
@@ -582,6 +692,7 @@ export class EditorPanel {
   syncHotspotControls(draft, scene, hotspot, selectedHotspotId) {
     const hotspots = scene?.hotspots ?? [];
     this.setOptions(this.controls.hotspotSelect.input, hotspots.map((candidate) => [candidate.id, getHotspotDisplayName(candidate)]), selectedHotspotId);
+    this.syncHotspotLibrary(hotspots, selectedHotspotId);
     this.setOptions(this.controls.hotspotTargetScene.input, [["", "Sem destino"], ...draft.scenes.map((candidate) => [candidate.id, candidate.title || candidate.id])], hotspot?.target_scene ?? "");
     this.setOptions(this.controls.hotspotType.input, [["scene_link", "Navegacao entre cenas"], ["annotation", "Anotacao informativa"]], hotspot?.type ?? "scene_link");
     this.setValue(this.controls.hotspotId.input, hotspot?.id ?? "");
@@ -595,7 +706,9 @@ export class EditorPanel {
     this.setValue(this.controls.hotspotScale.input, hotspot?.scale ?? "");
     this.setValue(this.controls.hotspotReferenceDepth.input, hotspot?.reference_depth ?? 8);
     this.controls.hotspotMarkerVisible.input.checked = hotspot?.marker_visible !== false;
+    this.controls.hotspotMarkerBackgroundVisible.input.checked = hotspot?.marker_background_visible !== false;
     this.controls.hotspotBillboard.input.checked = hotspot?.billboard !== false;
+    this.controls.hotspotBillboardRotationOffset.input.checked = hotspot?.billboard_rotation_offset === true;
     this.controls.hotspotApplySceneYaw.input.checked = hotspot?.apply_hotspot_scene_yaw === true;
     this.setValue(this.controls.hotspotDefineSceneYaw.input, hotspot?.hotspot_define_scene_yaw ?? 0);
 
@@ -605,6 +718,7 @@ export class EditorPanel {
       this.controls.hotspotTargetScene,
       this.controls.hotspotMarkerIcon,
       this.controls.hotspotMarkerVisible,
+      this.controls.hotspotMarkerBackgroundVisible,
       this.controls.hotspotX,
       this.controls.hotspotY,
       this.controls.hotspotZ,
@@ -614,6 +728,7 @@ export class EditorPanel {
       this.controls.hotspotScale,
       this.controls.hotspotReferenceDepth,
       this.controls.hotspotBillboard,
+      this.controls.hotspotBillboardRotationOffset,
       this.controls.hotspotApplySceneYaw,
       this.controls.hotspotDefineSceneYaw
     ];
@@ -625,6 +740,103 @@ export class EditorPanel {
     this.controls.hotspotTargetScene.input.disabled = !hotspot || hotspot.type !== "scene_link";
     this.controls.hotspotApplySceneYaw.input.disabled = !hotspot || hotspot.type !== "scene_link";
     this.controls.hotspotDefineSceneYaw.input.disabled = !hotspot || hotspot.type !== "scene_link" || hotspot?.apply_hotspot_scene_yaw !== true;
+    this.controls.iconLibrary.refreshButton.disabled = this.iconLibraryLoading;
+    for (const button of this.controls.iconLibrary.grid.querySelectorAll("button")) {
+      button.disabled = !hotspot;
+    }
+  }
+
+  syncHotspotLibrary(hotspots, selectedHotspotId) {
+    const library = this.controls.hotspotLibrary;
+    if (!library) {
+      return;
+    }
+
+    const items = Array.isArray(hotspots) ? hotspots : [];
+    library.empty.hidden = items.length > 0;
+    library.grid.replaceChildren(
+      ...items.map((hotspot) => this.createHotspotLibraryItem(hotspot, hotspot?.id === selectedHotspotId))
+    );
+  }
+
+  createHotspotLibraryItem(hotspot, isActive) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "editor-hotspot-library__item";
+    button.classList.toggle("is-active", isActive);
+    button.title = `${getHotspotDisplayName(hotspot)} (${hotspot?.id ?? "hotspot"})`;
+    button.setAttribute("aria-label", `Selecionar hotspot ${getHotspotDisplayName(hotspot)}`);
+    button.addEventListener("click", () => this.draftStore.setSelectedHotspot(hotspot?.id ?? ""), { signal: this.abortController.signal });
+
+    const preview = document.createElement("span");
+    preview.className = "editor-hotspot-library__preview";
+
+    const iconSrc = getHotspotMarkerIconSrc(hotspot);
+    if (iconSrc) {
+      const image = document.createElement("img");
+      image.className = "editor-hotspot-library__preview-image";
+      image.src = iconSrc;
+      image.alt = "";
+      image.loading = "lazy";
+      image.addEventListener("error", () => {
+        preview.replaceChildren(this.createHotspotLibraryFallbackGlyph());
+      }, { once: true });
+      preview.append(image);
+    } else {
+      preview.append(this.createHotspotLibraryFallbackGlyph());
+    }
+
+    const text = document.createElement("span");
+    text.className = "editor-hotspot-library__label";
+    text.textContent = getHotspotDisplayName(hotspot);
+
+    button.append(preview, text);
+    return button;
+  }
+
+  createHotspotLibraryFallbackGlyph() {
+    const glyph = document.createElement("span");
+    glyph.className = "editor-hotspot-library__preview-glyph";
+    return glyph;
+  }
+
+  syncIconAssetLibrary(entries) {
+    const library = this.controls.iconLibrary;
+    if (!library) {
+      return;
+    }
+
+    const items = Array.isArray(entries) ? entries : [];
+    const hasItems = items.length > 0;
+    library.empty.textContent = "Nenhum icone carregado da pasta configurada.";
+    library.empty.hidden = hasItems;
+    library.help.hidden = !hasItems;
+    library.grid.replaceChildren(
+      ...items.map((entry) => this.createIconAssetLibraryItem(entry))
+    );
+  }
+
+  createIconAssetLibraryItem(entry) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "editor-icon-library__item";
+    button.title = entry?.name || entry?.path || "Aplicar icone";
+    button.setAttribute("aria-label", `Aplicar icone ${entry?.name || entry?.path || "selecionado"}`);
+    button.disabled = !this.draftStore.getSnapshot()?.selectedHotspotId;
+    button.addEventListener("click", () => this.applyIconLibrarySelection(entry?.path ?? null), { signal: this.abortController.signal });
+
+    const image = document.createElement("img");
+    image.className = "editor-icon-library__image";
+    image.src = entry?.path ?? "";
+    image.alt = "";
+    image.loading = "lazy";
+
+    const text = document.createElement("span");
+    text.className = "editor-icon-library__label";
+    text.textContent = entry?.name || entry?.path || "Icone";
+
+    button.append(image, text);
+    return button;
   }
 
   syncHotspotLabelControls(hotspot) {
@@ -880,6 +1092,13 @@ export class EditorPanel {
         this.setControlDisabled(control, isDisabled);
       }
     }
+
+    if (this.controls.iconLibrary?.refreshButton) {
+      this.controls.iconLibrary.refreshButton.disabled = isDisabled || this.iconLibraryLoading;
+    }
+    for (const button of this.controls.iconLibrary?.grid?.querySelectorAll?.("button") ?? []) {
+      button.disabled = isDisabled;
+    }
   }
 
   setControlDisabled(control, isDisabled) {
@@ -901,6 +1120,95 @@ export class EditorPanel {
   clearHotspotMarkerIcon() {
     this.setValue(this.controls.hotspotMarkerIcon.input, "");
     this.draftStore.updateHotspotField("marker_icon.src", null);
+  }
+
+  async handleIconLibraryFolderInput() {
+    const folderPath = normalizeOptionalAssetPath(this.controls.iconLibraryFolder.input.value) || DEFAULT_ICON_LIBRARY_FOLDER;
+    this.iconLibraryFolderPath = folderPath;
+    storeIconLibraryFolderPath(folderPath);
+    await this.refreshIconLibrary();
+  }
+
+  resetIconLibraryFolder() {
+    this.iconLibraryFolderPath = DEFAULT_ICON_LIBRARY_FOLDER;
+    storeIconLibraryFolderPath(DEFAULT_ICON_LIBRARY_FOLDER);
+    this.setValue(this.controls.iconLibraryFolder.input, DEFAULT_ICON_LIBRARY_FOLDER);
+    this.refreshIconLibrary().catch((error) => {
+      this.context.setStatus(error?.message || "Nao foi possivel restaurar a biblioteca padrao.", { hideAfterMs: 2200 });
+    });
+  }
+
+  async refreshIconLibrary() {
+    const library = this.controls.iconLibrary;
+    const folderPath = normalizeOptionalAssetPath(this.controls.iconLibraryFolder.input.value)
+      || this.iconLibraryFolderPath
+      || DEFAULT_ICON_LIBRARY_FOLDER;
+
+    this.iconLibraryFolderPath = folderPath;
+    storeIconLibraryFolderPath(folderPath);
+    this.setValue(this.controls.iconLibraryFolder.input, folderPath);
+
+    if (!library) {
+      return;
+    }
+
+    this.iconLibraryLoading = true;
+    library.refreshButton.disabled = true;
+    library.help.hidden = false;
+    library.help.textContent = "Carregando icones...";
+    library.empty.hidden = true;
+
+    try {
+      const response = await fetch("./__list_assets__", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          folderPath
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok !== true) {
+        throw new Error(payload?.error || "Nao foi possivel listar a pasta da biblioteca.");
+      }
+
+      this.iconLibraryEntries = Array.isArray(payload?.items) ? payload.items : [];
+      this.syncIconAssetLibrary(this.iconLibraryEntries);
+      library.help.hidden = this.iconLibraryEntries.length === 0;
+      library.help.textContent = this.iconLibraryEntries.length > 0
+        ? `Pasta: ${folderPath}`
+        : "Nenhum icone encontrado";
+    } catch (error) {
+      this.iconLibraryEntries = [];
+      this.syncIconAssetLibrary([]);
+      library.help.hidden = false;
+      library.help.textContent = "Erro ao carregar biblioteca";
+      library.empty.hidden = false;
+      library.empty.textContent = error?.message || "Nao foi possivel carregar a biblioteca de icones.";
+      throw error;
+    } finally {
+      this.iconLibraryLoading = false;
+      library.refreshButton.disabled = false;
+    }
+  }
+
+  applyIconLibrarySelection(assetPath) {
+    const normalizedAssetPath = normalizeOptionalAssetPath(assetPath);
+    if (!normalizedAssetPath) {
+      this.context.setStatus("O asset selecionado e invalido.", { hideAfterMs: 1800 });
+      return;
+    }
+
+    if (!this.draftStore.getSnapshot()?.selectedHotspotId) {
+      this.context.setStatus("Selecione um hotspot antes de aplicar um icone.", { hideAfterMs: 1800 });
+      return;
+    }
+
+    this.setValue(this.controls.hotspotMarkerIcon.input, normalizedAssetPath);
+    this.draftStore.updateHotspotField("marker_icon.src", normalizedAssetPath);
+    this.context.setStatus("Icone aplicado ao hotspot selecionado.", { hideAfterMs: 1400 });
   }
 
   copyTransformValues({ kind, label, values }) {
@@ -1161,9 +1469,17 @@ const FIELD_META = {
     label: "Imagem do hotspot",
     help: "Arquivo opcional usado como icone do marcador visual do hotspot."
   },
+  iconLibraryFolder: {
+    label: "Pasta da biblioteca de icones",
+    help: "Pasta usada para listar os previews de icones que podem ser aplicados ao hotspot selecionado."
+  },
   hotspotMarkerVisible: {
     label: "Marcador visivel",
     help: "Mostra ou oculta o marker principal do hotspot."
+  },
+  hotspotMarkerBackgroundVisible: {
+    label: "Fundo automatico",
+    help: "Ativa ou desativa o fundo amarelo automatico do marcador do hotspot."
   },
   hotspotX: {
     label: "Posicao X",
@@ -1200,6 +1516,10 @@ const FIELD_META = {
   hotspotBillboard: {
     label: "Billboard do hotspot",
     help: "Controla se o hotspot acompanha a orientacao do usuario."
+  },
+  hotspotBillboardRotationOffset: {
+    label: "Usar rotacao como offset do billboard",
+    help: "Quando ativo, yaw, pitch e roll do hotspot passam a funcionar como offset da orientacao do billboard."
   },
   hotspotApplySceneYaw: {
     label: "Aplicar yaw de entrada",
@@ -1258,3 +1578,21 @@ const FIELD_META = {
     help: "Visualize, importe ou revise manualmente o JSON consolidado do draft atual."
   }
 };
+
+const ICON_LIBRARY_FOLDER_STORAGE_KEY = "wpa360.editor.iconLibraryFolder";
+const DEFAULT_ICON_LIBRARY_FOLDER = "./assets/icons";
+
+function getStoredIconLibraryFolderPath() {
+  try {
+    return normalizeOptionalAssetPath(window.localStorage?.getItem?.(ICON_LIBRARY_FOLDER_STORAGE_KEY))
+      || DEFAULT_ICON_LIBRARY_FOLDER;
+  } catch {
+    return DEFAULT_ICON_LIBRARY_FOLDER;
+  }
+}
+
+function storeIconLibraryFolderPath(value) {
+  try {
+    window.localStorage?.setItem?.(ICON_LIBRARY_FOLDER_STORAGE_KEY, normalizeOptionalAssetPath(value) || DEFAULT_ICON_LIBRARY_FOLDER);
+  } catch {}
+}

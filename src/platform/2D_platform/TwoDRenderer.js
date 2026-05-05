@@ -43,10 +43,8 @@ export class TwoDRenderer {
     this.hotspotLayer = document.createElement("div");
     this.hotspotLayer.className = "hotspot-layer";
 
-    this.sceneTransitionOverlay = document.createElement("img");
+    this.sceneTransitionOverlay = document.createElement("canvas");
     this.sceneTransitionOverlay.className = "twod-scene-transition-overlay";
-    this.sceneTransitionOverlay.alt = "";
-    this.sceneTransitionOverlay.draggable = false;
     this.sceneTransitionOverlay.hidden = true;
     this.sceneTransitionOverlay.setAttribute("aria-hidden", "true");
 
@@ -154,6 +152,10 @@ export class TwoDRenderer {
 
   projectWorldToScreen(position) {
     return this.panoramaRenderer.projectWorldToScreen(position, this.stage, "center");
+  }
+
+  projectBillboardOrientation(position, rotation) {
+    return this.panoramaRenderer.projectBillboardOrientationToScreen(position, rotation, this.stage, "center");
   }
 
   screenToWorldFromEvent(event, { depth = 8 } = {}) {
@@ -297,13 +299,9 @@ export class TwoDRenderer {
     }
 
     const overlay = this.sceneTransitionOverlay;
-    overlay.src = snapshotUrl;
+    this.drawSceneTransitionSnapshot(snapshotUrl);
     overlay.classList.remove("is-fading-out");
     overlay.hidden = false;
-
-    try {
-      await overlay.decode?.();
-    } catch {}
 
     if (fadeToken !== this.sceneTransitionFadeToken) {
       return false;
@@ -323,24 +321,47 @@ export class TwoDRenderer {
     this.sceneTransitionOverlayActive = false;
     this.sceneTransitionOverlay.hidden = true;
     this.sceneTransitionOverlay.classList.remove("is-fading-out");
-    this.sceneTransitionOverlay.removeAttribute("src");
+    const overlay = this.sceneTransitionOverlay;
+    const context = overlay.getContext("2d");
+    context?.clearRect(0, 0, overlay.width, overlay.height);
   }
 
   createSceneTransitionSnapshot() {
     const attempts = [
-      { maxWidth: 2048, type: "image/png", quality: 1 },
-      { maxWidth: 1600, type: "image/png", quality: 1 },
-      { maxWidth: 1280, type: "image/jpeg", quality: 0.94 }
+      { maxWidth: 2048 },
+      { maxWidth: 1600 },
+      { maxWidth: 1280 }
     ];
 
     for (const attempt of attempts) {
-      const snapshotUrl = this.panoramaRenderer.captureSnapshot(attempt);
-      if (snapshotUrl) {
-        return snapshotUrl;
+      const snapshotCanvas = this.panoramaRenderer.captureSnapshot(attempt);
+      if (snapshotCanvas) {
+        return snapshotCanvas;
       }
     }
 
     return null;
+  }
+
+  drawSceneTransitionSnapshot(snapshotCanvas) {
+    const overlay = this.sceneTransitionOverlay;
+    const context = overlay.getContext("2d", { alpha: false });
+    const width = Math.max(1, Math.floor(this.stage.clientWidth || this.stage.getBoundingClientRect().width || snapshotCanvas.width || 1));
+    const height = Math.max(1, Math.floor(this.stage.clientHeight || this.stage.getBoundingClientRect().height || snapshotCanvas.height || 1));
+
+    if (!context || width <= 0 || height <= 0) {
+      return;
+    }
+
+    if (overlay.width !== width) {
+      overlay.width = width;
+    }
+    if (overlay.height !== height) {
+      overlay.height = height;
+    }
+
+    context.clearRect(0, 0, width, height);
+    context.drawImage(snapshotCanvas, 0, 0, width, height);
   }
 }
 

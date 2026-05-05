@@ -3,6 +3,8 @@ import {
   getHotspotLabelText,
   getHotspotMarkerIconSrc,
   getHotspotLabelWorldPosition,
+  isHotspotMarkerBillboardRotationOffsetEnabled,
+  isHotspotMarkerBackgroundVisible,
   isHotspotLabelVisible,
   isHotspotMarkerVisible
 } from "./HotspotVisualShared.js";
@@ -213,6 +215,7 @@ export class ThreeHotspotLayer {
       markerConfig: null,
       markerBaseSize: 1,
       markerIconSrc: null,
+      markerBackgroundVisible: true,
       markerIconRequestToken: null,
 
       label: null,
@@ -272,33 +275,31 @@ export class ThreeHotspotLayer {
       surface.userData.hotspotId = hotspot.id;
       surface.userData.hotspotRole = "marker";
     }
-    entry.markerConfig = {
-      billboard: hotspot.billboard !== false,
-      baseQuaternion: quaternionFromRotation(hotspot.rotation),
-      offsetQuaternion: new THREE.Quaternion()
-    };
+    entry.markerConfig = createMarkerOrientationConfig(hotspot);
   }
 
   syncEntryMarkerIcon(entry, hotspot) {
     const iconSrc = getHotspotMarkerIconSrc(hotspot);
-    if (entry.markerIconSrc === iconSrc) {
+    const markerBackgroundVisible = isHotspotMarkerBackgroundVisible(hotspot);
+    if (entry.markerIconSrc === iconSrc && entry.markerBackgroundVisible === markerBackgroundVisible) {
       return;
     }
 
     entry.markerIconRequestToken = Symbol(iconSrc ?? "default");
     this.releaseEntryMarkerIcon(entry);
+    entry.markerBackgroundVisible = markerBackgroundVisible;
 
     if (!iconSrc) {
-      this.setEntryMarkerTexture(entry, () => createDefaultMarkerTexture(), { shared: false });
+      this.setEntryMarkerTexture(entry, () => createDefaultMarkerTexture({ showBackground: markerBackgroundVisible }), { shared: false });
       entry.markerIconSrc = null;
       return;
     }
 
     entry.markerIconSrc = iconSrc;
-    this.loadMarkerIconTexture(iconSrc, entry.markerIconRequestToken)
+    this.loadMarkerIconTexture(iconSrc, entry.markerIconRequestToken, { showBackground: markerBackgroundVisible })
       .then((texture) => {
         if (!entry.marker || entry.markerIconRequestToken == null || entry.markerIconSrc !== iconSrc) {
-          this.releaseMarkerIconTexture(iconSrc);
+          this.releaseMarkerIconTexture(iconSrc, { showBackground: markerBackgroundVisible });
           return;
         }
 
@@ -306,7 +307,7 @@ export class ThreeHotspotLayer {
       })
       .catch(() => {
         if (entry.marker && entry.markerIconSrc === iconSrc) {
-          this.setEntryMarkerTexture(entry, () => createDefaultMarkerTexture(), { shared: false });
+          this.setEntryMarkerTexture(entry, () => createDefaultMarkerTexture({ showBackground: markerBackgroundVisible }), { shared: false });
         }
       });
   }
@@ -384,13 +385,15 @@ export class ThreeHotspotLayer {
     entry.markerIconSrc = null;
   }
 
-  async loadMarkerIconTexture(iconSrc, requestToken) {
+  async loadMarkerIconTexture(iconSrc, requestToken, { showBackground = true } = {}) {
     const normalizedSrc = this.normalizeIconSrc(iconSrc);
     if (!normalizedSrc || !this.assetCache) {
       throw new Error("Marker icon asset cache unavailable.");
     }
 
-    const cached = this.markerIconTextureCache.get(normalizedSrc);
+    const cacheKey = createMarkerIconCacheKey(normalizedSrc, showBackground);
+
+    const cached = this.markerIconTextureCache.get(cacheKey);
     if (cached) {
       cached.refCount += 1;
       return cached.texture;
@@ -401,18 +404,18 @@ export class ThreeHotspotLayer {
       throw new Error(`Marker icon unavailable: ${normalizedSrc}`);
     }
 
-    const existing = this.markerIconTextureCache.get(normalizedSrc);
+    const existing = this.markerIconTextureCache.get(cacheKey);
     if (existing) {
       existing.refCount += 1;
       return existing.texture;
     }
 
-    const texture = createMarkerTextureWithIcon(loadedAsset.image);
+    const texture = createMarkerTextureWithIcon(loadedAsset.image, { showBackground });
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.generateMipmaps = true;
     texture.colorSpace = THREE.SRGBColorSpace;
-    this.markerIconTextureCache.set(normalizedSrc, {
+    this.markerIconTextureCache.set(cacheKey, {
       texture,
       refCount: 1
     });
@@ -427,20 +430,23 @@ export class ThreeHotspotLayer {
       return;
     }
 
-    this.releaseMarkerIconTexture(entry.markerIconSrc);
+    this.releaseMarkerIconTexture(entry.markerIconSrc, {
+      showBackground: entry.markerBackgroundVisible
+    });
     for (const material of this.getEntryMarkerMaterials(entry)) {
       material.userData.sharedMap = false;
       material.map = null;
     }
   }
 
-  releaseMarkerIconTexture(iconSrc) {
+  releaseMarkerIconTexture(iconSrc, { showBackground = true } = {}) {
     const normalizedSrc = this.normalizeIconSrc(iconSrc);
     if (!normalizedSrc) {
       return;
     }
 
-    const cached = this.markerIconTextureCache.get(normalizedSrc);
+    const cacheKey = createMarkerIconCacheKey(normalizedSrc, showBackground);
+    const cached = this.markerIconTextureCache.get(cacheKey);
     if (!cached) {
       return;
     }
@@ -451,7 +457,7 @@ export class ThreeHotspotLayer {
     }
 
     cached.texture.dispose?.();
-    this.markerIconTextureCache.delete(normalizedSrc);
+    this.markerIconTextureCache.delete(cacheKey);
     this.assetCache?.releaseImage?.(normalizedSrc);
   }
 
@@ -569,6 +575,21 @@ function orientObject(object, cameraPosition, config) {
   object.quaternion.copy(config.baseQuaternion).multiply(config.offsetQuaternion);
 }
 
+function createMarkerOrientationConfig(hotspot) {
+  const billboard = hotspot?.billboard !== false;
+  const usesBillboardRotationOffset = isHotspotMarkerBillboardRotationOffsetEnabled(hotspot);
+
+  return {
+    billboard,
+    baseQuaternion: billboard
+      ? new THREE.Quaternion()
+      : quaternionFromRotation(hotspot?.rotation),
+    offsetQuaternion: billboard && usesBillboardRotationOffset
+      ? quaternionFromRotation(hotspot?.rotation)
+      : new THREE.Quaternion()
+  };
+}
+
 function createMarkerMaterial() {
   return new THREE.MeshBasicMaterial({
     map: createDefaultMarkerTexture(),
@@ -584,13 +605,15 @@ function createMarkerMaterial() {
   });
 }
 
-function createDefaultMarkerTexture() {
+function createDefaultMarkerTexture({ showBackground = true } = {}) {
   const canvas = document.createElement("canvas");
   canvas.width = MARKER_TEXTURE_SIZE;
   canvas.height = MARKER_TEXTURE_SIZE;
   const ctx = canvas.getContext("2d");
 
-  drawDefaultMarkerTextureBase(ctx, canvas.width, canvas.height);
+  if (showBackground) {
+    drawDefaultMarkerTextureBase(ctx, canvas.width, canvas.height);
+  }
   drawDefaultMarkerGlyph(ctx, canvas.width, canvas.height);
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -598,13 +621,15 @@ function createDefaultMarkerTexture() {
   return texture;
 }
 
-function createMarkerTextureWithIcon(iconImage) {
+function createMarkerTextureWithIcon(iconImage, { showBackground = true } = {}) {
   const canvas = document.createElement("canvas");
   canvas.width = MARKER_TEXTURE_SIZE;
   canvas.height = MARKER_TEXTURE_SIZE;
   const ctx = canvas.getContext("2d");
 
-  drawDefaultMarkerTextureBase(ctx, canvas.width, canvas.height);
+  if (showBackground) {
+    drawDefaultMarkerTextureBase(ctx, canvas.width, canvas.height);
+  }
   drawMarkerIconOverlay(ctx, iconImage, canvas.width, canvas.height);
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -824,6 +849,10 @@ function resolveLabelSize(width, height, scale, referenceDepth) {
     width: baseHeight * ratio,
     height: baseHeight
   };
+}
+
+function createMarkerIconCacheKey(normalizedSrc, showBackground) {
+  return `${normalizedSrc}::${showBackground === false ? "plain" : "background"}`;
 }
 
 function resolveScale(scale, referenceDepth) {

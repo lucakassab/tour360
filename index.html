@@ -29,6 +29,16 @@
             <span>Cena ativa</span>
             <select id="scene-select" aria-label="Selecionar cena" title="Escolha a cena ativa dentro do tour atual."></select>
           </label>
+          <button id="download-active-tour-button" class="topbar-button" type="button" title="Baixar para o cache do navegador as imagens do tour ativo para acelerar a navegacao.">Download Active Tour</button>
+          <div id="download-active-tour-feedback" class="topbar-progress" hidden aria-live="polite">
+            <div class="topbar-progress__header">
+              <strong id="download-active-tour-feedback-label">Preparando download...</strong>
+              <span id="download-active-tour-feedback-count">0/0</span>
+            </div>
+            <div class="topbar-progress__track" aria-hidden="true">
+              <div id="download-active-tour-feedback-bar" class="topbar-progress__bar"></div>
+            </div>
+          </div>
           <div class="platform-toggle" aria-label="Alternar modo de visualizacao" title="Troque entre a visualizacao em tela e a visualizacao voltada para VR.">
             <button type="button" data-platform-switch="2D_platform" class="is-active" title="Ativar a visualizacao 2D do tour.">Modo 2D</button>
             <button type="button" data-platform-switch="VR_platform" title="Ativar a visualizacao preparada para VR.">Modo VR</button>

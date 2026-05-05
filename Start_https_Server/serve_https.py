@@ -34,21 +34,32 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_POST(self):
-        if self.path != "/__open_folder__":
-            self.send_error(404, "Endpoint not found")
-            return
-
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
             payload = self.rfile.read(content_length) if content_length > 0 else b"{}"
             data = json.loads(payload.decode("utf-8") or "{}")
-            asset_path = str(data.get("assetPath", "")).strip()
-            target_folder = resolve_asset_folder(asset_path)
-            open_folder_in_explorer(target_folder)
-            self.send_json_response(200, {
-                "ok": True,
-                "folder": str(target_folder)
-            })
+            if self.path == "/__open_folder__":
+                asset_path = str(data.get("assetPath", "")).strip()
+                target_folder = resolve_asset_folder(asset_path)
+                open_folder_in_explorer(target_folder)
+                self.send_json_response(200, {
+                    "ok": True,
+                    "folder": str(target_folder)
+                })
+                return
+
+            if self.path == "/__list_assets__":
+                folder_path = str(data.get("folderPath") or data.get("assetPath") or "").strip()
+                target_folder = resolve_asset_folder(folder_path)
+                files = list_image_assets(target_folder)
+                self.send_json_response(200, {
+                    "ok": True,
+                    "folder": str(target_folder),
+                    "items": files
+                })
+                return
+
+            self.send_error(404, "Endpoint not found")
         except Exception as error:
             self.send_json_response(400, {
                 "ok": False,
@@ -111,6 +122,24 @@ def resolve_asset_folder(asset_path):
 
 def open_folder_in_explorer(folder_path):
     subprocess.Popen(["explorer", str(folder_path)])
+
+
+def list_image_assets(folder_path):
+    site_root = SITE_DIR.resolve()
+    allowed_extensions = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif", ".bmp"}
+    items = []
+
+    for candidate in sorted(folder_path.iterdir(), key=lambda path: path.name.lower()):
+        if not candidate.is_file() or candidate.suffix.lower() not in allowed_extensions:
+            continue
+
+        relative_path = candidate.resolve().relative_to(site_root).as_posix()
+        items.append({
+            "name": candidate.name,
+            "path": f"./{relative_path}"
+        })
+
+    return items
 
 
 if not CERT_FILE.exists():
